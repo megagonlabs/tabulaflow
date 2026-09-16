@@ -15,27 +15,25 @@ from tabulaflow.data import DataConnectorRegistry, SQLConnector
 async def load_sample_data(sales, support):
     await sales.write_dataframe_async(
         pd.DataFrame(
-            {
-                "order_id": [1001, 1002, 1003, 1004],
-                "region": ["West", "West", "East", "East"],
-                "revenue_usd": [1200, 800, 900, 600],
-            }
+            columns=["order_id", "region", "revenue_usd"],
+            data=[
+                (1001, "West", 1200),
+                (1002, "West", 800),
+                (1003, "East", 900),
+                (1004, "East", 600),
+            ],
         ),
         "sales",
     )
     await support.write_dataframe_async(
         pd.DataFrame(
-            {
-                "ticket_id": [201, 202, 203, 204],
-                "subject": [
-                    "Checkout payment failures",
-                    "Invoice downloads unavailable",
-                    "Profile image upload issue",
-                    "Password reset emails delayed",
-                ],
-                "priority": ["high", "high", "low", "high"],
-                "status": ["open", "open", "open", "resolved"],
-            }
+            columns=["ticket_id", "subject", "priority", "status"],
+            data=[
+                (201, "Checkout payment failures", "high", "open"),
+                (202, "Invoice downloads unavailable", "high", "open"),
+                (203, "Profile image upload issue", "low", "open"),
+                (204, "Password reset emails delayed", "high", "resolved"),
+            ],
         ),
         "support",
     )

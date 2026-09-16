@@ -68,7 +68,14 @@ from tabulaflow.data import DataConnectorRegistry, SQLConnector
 async def main():
     sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     await sales.write_dataframe_async(
-        pd.DataFrame({"region": ["West", "West", "East"], "revenue_usd": [1200, 800, 1500]}),
+        pd.DataFrame(
+            columns=["region", "revenue_usd"],
+            data=[
+                ("West", 1200),
+                ("West", 800),
+                ("East", 1500),
+            ],
+        ),
         "sales",
     )
     registry = DataConnectorRegistry()
@@ -109,11 +116,12 @@ async def main():
     try:
         await stock.write_dataframe_async(
             pd.DataFrame(
-                {
-                    "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                    "on_hand": [3, 18, 4],
-                    "reorder_point": [10, 8, 12],
-                }
+                columns=["product", "on_hand", "reorder_point"],
+                data=[
+                    ("USB-C dock", 3, 10),
+                    ("Laptop stand", 18, 8),
+                    ("HDMI cable", 4, 12),
+                ],
             ),
             "inventory",
         )

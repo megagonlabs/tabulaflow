@@ -21,21 +21,32 @@ class JobDetails(BaseModel):
 
 async def main() -> None:
     jobs = pd.DataFrame(
-        {
-            "title": ["Backend Engineer", "Data Analyst", "ML Engineer"],
-            "description": [
-                "Build payment APIs for a financial services company. Work from home with no office days. "
-                "Requires two years building Python services.",
-                "Analyze sales for a retail chain. Join our London office every Tuesday and Thursday. "
-                "Requires three years of SQL experience.",
-                "Develop diagnostic models for a healthcare provider. Work from anywhere with our ML team. "
-                "Requires at least five years in machine learning.",
-            ],
-        }
+        [
+            {
+                "title": "Backend Engineer",
+                "description": (
+                    "Build payment APIs for a financial services company. Work from home with no office days. "
+                    "Requires two years building Python services."
+                ),
+            },
+            {
+                "title": "Data Analyst",
+                "description": (
+                    "Analyze sales for a retail chain. Join our London office every Tuesday and Thursday. "
+                    "Requires three years of SQL experience."
+                ),
+            },
+            {
+                "title": "ML Engineer",
+                "description": (
+                    "Develop diagnostic models for a healthcare provider. Work from anywhere with our ML team. "
+                    "Requires at least five years in machine learning."
+                ),
+            },
+        ]
     )
 
     enricher = DataFrameEnricher(llm="openai-responses:gpt-5-mini")
-    # Rows run concurrently, with types and categories validated for every result.
     enriched = await enricher.enrich(
         jobs,
         record_type=JobDetails,

@@ -33,11 +33,13 @@ async def load_sample_data(logistics):
     # --8<-- [start:sample-data]
     await logistics.write_dataframe_async(
         pd.DataFrame(
-            {
-                "origin": ["Chicago", "Chicago", "Dallas", "Denver"],
-                "destination": ["Dallas", "Denver", "Austin", "Seattle"],
-                "units": [500, 200, 350, 80],
-            }
+            columns=["origin", "destination", "units"],
+            data=[
+                ("Chicago", "Dallas", 500),
+                ("Chicago", "Denver", 200),
+                ("Dallas", "Austin", 350),
+                ("Denver", "Seattle", 80),
+            ],
         ),
         "transfers",
     )

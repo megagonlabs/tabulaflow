@@ -29,13 +29,13 @@ class SupportReply(BaseModel):
 async def prepare_example(orders, support_dir):
     await orders.write_dataframe_async(
         pd.DataFrame(
-            {
-                "order_id": [1001, 1002, 1003, 1004],
-                "customer_id": [7, 8, 7, 7],
-                "product": ["USB-C dock", "Monitor", "Laptop stand", "USB-C dock"],
-                "purchased_on": ["2026-08-18", "2026-08-20", "2026-08-22", "2025-11-05"],
-                "status": ["delivered", "shipped", "shipped", "delivered"],
-            }
+            columns=["order_id", "customer_id", "product", "purchased_on", "status"],
+            data=[
+                (1001, 7, "USB-C dock", "2026-08-18", "delivered"),
+                (1002, 8, "Monitor", "2026-08-20", "shipped"),
+                (1003, 7, "Laptop stand", "2026-08-22", "shipped"),
+                (1004, 7, "USB-C dock", "2025-11-05", "delivered"),
+            ],
         ),
         "orders",
     )

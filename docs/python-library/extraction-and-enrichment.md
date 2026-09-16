@@ -19,6 +19,10 @@ filter the roles.
     --8<-- "examples/results/library-enrichment.txt"
     ```
 
+Behind the scenes, TabulaFlow runs a subagent for each row in parallel. Each run
+returns structured output validated against `JobDetails`, which TabulaFlow turns
+into new DataFrame columns.
+
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
@@ -56,6 +60,6 @@ paragraphs, list items, and table rows together. Section titles and table header
 carry across chunks, helping each subagent interpret records in context
 (e.g., which city a place belongs to).
 
-Images and PDFs are accepted as `BinaryContent` with a compatible model.
+You can also extract records from images and PDFs with a compatible model.
 PDF chunks include their original page ranges. See the
 [extraction reference](api/agents.md#extraction-and-summarization).

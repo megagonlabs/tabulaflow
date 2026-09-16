@@ -26,11 +26,12 @@ async def load_sample_data(stock):
     # --8<-- [start:sample-data]
     await stock.write_dataframe_async(
         pd.DataFrame(
-            {
-                "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                "on_hand": [3, 18, 4],
-                "reorder_point": [10, 8, 12],
-            }
+            columns=["product", "on_hand", "reorder_point"],
+            data=[
+                ("USB-C dock", 3, 10),
+                ("Laptop stand", 18, 8),
+                ("HDMI cable", 4, 12),
+            ],
         ),
         "inventory",
     )
