@@ -14,7 +14,7 @@
     --hover: #2c3441;
     --border: #21262d;
     --text: #e4e4e7;
-    --wordmark: #d4d4d8;
+    --wordmark: #abcdbb; /* 45% accent + 55% primary text in OKLab. */
     --text-muted: #9aa4b2;
     --text-dim: #6a737d;
     --code-text: #E0E0E0;
