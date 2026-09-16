@@ -20,11 +20,12 @@ function hasText(value) {
 
 function setFavicon() {
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">'
-    + '<rect width="64" height="64" fill="#283629"/>'
+    + '<defs><clipPath id="rounded"><rect width="64" height="64" rx="14"/></clipPath></defs>'
+    + '<g clip-path="url(#rounded)"><rect width="64" height="64" fill="#283629"/>'
     + '<rect x="8" y="0" width="48" height="14" fill="#3EB489"/>'
     + '<rect x="8" y="14" width="48" height="14" fill="#121212"/>'
     + '<rect x="25" y="14" width="14" height="36" fill="#3EB489"/>'
-    + '<rect x="25" y="50" width="14" height="14" fill="#121212"/>'
+    + '<rect x="25" y="50" width="14" height="14" fill="#121212"/></g>'
     + '</svg>';
   var link = document.querySelector('link[rel="icon"]');
   if (!link) {
