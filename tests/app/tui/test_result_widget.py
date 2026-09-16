@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.widgets import Static
@@ -184,6 +185,20 @@ def test_data_preview_caption_uses_compact_fractions() -> None:
     view = ViewItem(kind=VIEW_KIND_DATA, renderable=Text(), data_shape=(30, 7), shown_cols=5)
 
     assert widget._data_preview_caption(view) == "5/30 rows · 5/7 cols"
+
+
+def test_interactive_result_moves_to_adjacent_results_at_control_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    widget = _NumberControlWidgetApp().result_widget
+    focused: list[str] = []
+    monkeypatch.setattr(widget, "action_focus_prev_result", lambda: focused.append("previous"))
+    monkeypatch.setattr(widget, "action_focus_next_result", lambda: focused.append("next"))
+
+    widget.action_result_up()
+    widget.action_result_down()
+
+    assert focused == ["previous", "next"]
 
 
 async def test_number_control_keyboard_adjusts_pending_then_space_applies() -> None:

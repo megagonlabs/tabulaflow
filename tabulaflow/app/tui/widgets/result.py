@@ -330,13 +330,18 @@ class AgentResultWidget(Widget):
     def _control_item_index(self, item: _ControlCursorItem) -> int:
         return self._control_cursor_index_by_item[item]
 
-    def _move_interpretation_cursor(self, delta: int) -> None:
+    def _move_interpretation_cursor(self, delta: int) -> bool:
         max_cursor = len(self._control_cursor_items) - 1
         if max_cursor < 0:
-            return
+            return False
         self._discard_current_number_draft()
-        self._interpretation_cursor = max(0, min(max_cursor, self._interpretation_cursor + delta))
+        next_cursor = self._interpretation_cursor + delta
+        if not 0 <= next_cursor <= max_cursor:
+            self._refresh_all()
+            return False
+        self._interpretation_cursor = next_cursor
         self._refresh_all()
+        return True
 
     def _adjust_number_control(self, direction: int) -> None:
         item = self._current_control_item()
@@ -390,7 +395,7 @@ class AgentResultWidget(Widget):
         available = self._interpretation_title.size.width or 80
         hint = Text(no_wrap=True)
         hint.append("↑↓", style=self._focus_key_hint)
-        hint.append(" Move · ", style="dim")
+        hint.append(" Navigate · ", style="dim")
         hint.append("+/-", style=self._focus_key_hint)
         hint.append(" Adjust · ", style="dim")
         hint.append("Space", style=self._focus_key_hint)
@@ -809,16 +814,14 @@ class AgentResultWidget(Widget):
             self._apply_interpretation_cursor()
 
     def action_result_up(self) -> None:
-        if self._has_answer_controls:
-            self._move_interpretation_cursor(-1)
-        else:
-            self.action_focus_prev_result()
+        if self._has_answer_controls and self._move_interpretation_cursor(-1):
+            return
+        self.action_focus_prev_result()
 
     def action_result_down(self) -> None:
-        if self._has_answer_controls:
-            self._move_interpretation_cursor(1)
-        else:
-            self.action_focus_next_result()
+        if self._has_answer_controls and self._move_interpretation_cursor(1):
+            return
+        self.action_focus_next_result()
 
     can_focus = True
 
