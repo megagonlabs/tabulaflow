@@ -33,8 +33,9 @@ Your frontend can render the resolved artifacts directly.
 
 ## Example: Warehouse transfer graph
 
-Create a table and graph backed by the same warehouse-transfer query, without
-an agent or graph database:
+You're reviewing transfers between warehouses. Explore the transfers as an
+interactive graph without using a graph database, with a filter for the minimum
+transfer size.
 
 ??? info "Create the sample database"
 

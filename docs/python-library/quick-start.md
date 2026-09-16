@@ -6,8 +6,9 @@ across multiple data sources. Connectors and outputs also work without an LLM.
 
 ## Example: Chat with two data sources
 
-Connect two in-memory databases, ask one question across both, and inspect
-the returned chart and table.
+Sales and support records live in separate databases. Compare revenue by
+region and find open high-priority tickets in one request, with an inspectable
+chart and table.
 
 ```python title="quick_start.py"
 --8<-- "examples/quick_start.py:example"

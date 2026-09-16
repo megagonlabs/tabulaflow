@@ -6,7 +6,8 @@ results while keeping its backend's query language.
 
 ## Example: Find products to restock
 
-Create an inventory database from a DataFrame:
+You're preparing a stock order. Find products below their reorder points and
+calculate how many units to buy.
 
 ```python
 --8<-- "examples/working_with_data.py:data-imports"

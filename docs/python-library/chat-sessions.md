@@ -5,7 +5,8 @@ structured outputs, and streaming answers and tool progress.
 
 ## Example: Ask a follow-up question
 
-Connect a small inventory database and ask which products need restocking:
+You're reviewing inventory before placing an order. Ask which products need
+restocking, then follow up with how many units to order using the same conversation.
 
 ??? info "Create the sample database"
 

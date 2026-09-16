@@ -5,9 +5,9 @@ Pydantic AI agent.
 
 ## Example: Build a customer support agent
 
-Find a customer's order, consult product guides, and open a support ticket.
-Reuse `ViewTool` for documents and `RunQueryTool` for customer-scoped queries,
-then add a ticket action and a typed response:
+A customer's USB-C dock won't charge their laptop, and they cannot find the
+order number. Build an agent that finds the order, consults product guides,
+and opens a support ticket.
 
 ```python title="custom_agents.py"
 --8<-- "examples/custom_agents.py:example"
