@@ -86,9 +86,9 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; padding: 12px 16px;
 }
-#brand-group { min-width: 0; display: flex; align-items: center; gap: 12px; }
+#brand-group { min-width: 0; display: flex; align-items: center; gap: 16px; }
 #brand-lockup { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; user-select: none; }
-#brand-mark { width: 26px; height: 26px; flex: 0 0 auto; }
+#brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
 .brand-mark-bg { fill: var(--card); }
 .brand-mark-accent { fill: var(--accent); }
 .brand-mark-muted { fill: var(--hover); }
