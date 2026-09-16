@@ -1417,7 +1417,7 @@ body {
   }
 
   .md-sidebar--primary .md-nav__item--nested:not(.md-nav__item--section) > .md-nav > .md-nav__list {
-    margin-inline-start: 0.5rem;
+    margin-inline-start: 0;
   }
 }
 
