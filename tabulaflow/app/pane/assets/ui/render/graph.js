@@ -108,13 +108,13 @@ function graphNodeElements(nodes) {
 function graphPalette() {
   return [
     cssVar('--chart-category-0', '#5faf87'),
-    cssVar('--chart-category-1', '#5ac8fa'),
-    cssVar('--chart-category-2', '#f5a623'),
-    cssVar('--chart-category-3', '#bd6cf0'),
-    cssVar('--chart-category-4', '#f06292'),
-    cssVar('--chart-category-5', '#4dd0e1'),
-    cssVar('--chart-category-6', '#aed581'),
-    cssVar('--chart-category-7', '#ff8a65')
+    cssVar('--chart-category-1', '#6FA8DC'),
+    cssVar('--chart-category-2', '#D5A65A'),
+    cssVar('--chart-category-3', '#A78BD4'),
+    cssVar('--chart-category-4', '#D47C9E'),
+    cssVar('--chart-category-5', '#62B8B0'),
+    cssVar('--chart-category-6', '#9BBF72'),
+    cssVar('--chart-category-7', '#D4866A')
   ];
 }
 
