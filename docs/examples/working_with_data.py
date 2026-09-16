@@ -46,7 +46,9 @@ async def main():
     async with stock:
         await load_sample_data(stock)
         # --8<-- [start:schema]
-        print("Tables:", [table.name for table in stock.schema.tables])
+        table = stock.schema.tables[0]
+        print("Table:", table.name)
+        print("Columns:", [(column.name, column.dtype) for column in table.columns])
         print(SQLDDLSchemaFormatter().format(stock.schema))
         # --8<-- [end:schema]
 

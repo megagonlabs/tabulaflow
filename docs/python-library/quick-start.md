@@ -19,6 +19,12 @@ tickets **201** and **202**. `result.text` contains the answer; `result.output`
 contains the chart and table specifications. See [Structured outputs](structured-outputs.md)
 for parameter-driven outputs.
 
+??? example-details no-copy "Sample output"
+
+    ```text
+    --8<-- "examples/results/library-quick-start.txt"
+    ```
+
 ## Try it yourself
 
 Set your API key and run the complete example with

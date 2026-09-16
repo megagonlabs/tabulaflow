@@ -100,6 +100,10 @@ async def test_quick_start(
     await example["main"]()
 
     output = capsys.readouterr().out
+    sample_output = (script.with_name("results") / "library-quick-start.txt").read_text()
+    output_lines = {" ".join(line.split()) for line in output.splitlines()}
+    for line in sample_output.splitlines():
+        assert " ".join(line.split()) in output_lines
     for expected in (
         "Answer:",
         "Artifact: Revenue by region",

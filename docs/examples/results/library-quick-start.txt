@@ -1,0 +1,13 @@
+Answer: West: $2,000. East: $1,500. Two high-priority tickets remain open.
+Artifact: Revenue by region
+Source: sales
+DataFrame:
+  region  revenue
+0   East     1500
+1   West     2000
+Artifact: Open high-priority tickets
+Source: support
+DataFrame:
+   ticket_id                       subject priority status
+0        201     Checkout payment failures     high   open
+1        202  Invoice downloads unavailable     high   open

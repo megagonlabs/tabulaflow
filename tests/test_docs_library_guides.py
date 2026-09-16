@@ -113,7 +113,8 @@ async def test_working_with_data(
     output = capsys.readouterr().out
     assert (EXAMPLES / "results/library-inventory.txt").read_text().strip() in output
     for expected in (
-        "Tables: ['inventory']",
+        "Table: inventory",
+        "Columns: [('product', 'TEXT'), ('on_hand', 'BIGINT'), ('reorder_point', 'BIGINT')]",
         "CREATE TABLE inventory",
         "DataFrame:",
         "As text:",
