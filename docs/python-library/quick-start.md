@@ -56,6 +56,13 @@ may vary. For a local example without an API key, try [Data connectors](data-con
     pip install tabulaflow
     ```
 
+The default installation includes the complete dependency set for the Python
+library and the `tabulaflow` data-agent application (Chromium is installed
+separately when web browsing is needed). Advanced library users who manage
+their own dependencies can instead run `uv pip install --no-deps tabulaflow` or
+`pip install --no-deps tabulaflow`, then install the packages required by the
+APIs and connectors they use.
+
 - [Data connectors](data-connectors.md): query sources and inspect schemas.
 - [Extraction and enrichment](extraction-and-enrichment.md): turn documents into records and enrich DataFrames.
 - [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
