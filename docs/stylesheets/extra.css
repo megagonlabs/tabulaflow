@@ -1304,6 +1304,11 @@ body {
   color: var(--tf-accent);
 }
 
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  padding-block: 0.625em;
+}
+
 .md-typeset .doc-contents table code a,
 .md-typeset .doc-contents table a code {
   color: var(--tf-code);
