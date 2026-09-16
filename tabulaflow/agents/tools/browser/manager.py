@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -131,7 +132,21 @@ class WebBrowserManager:
                 "playwright is not installed. Install with: uv add playwright && uv run playwright install chromium"
             ) from e
         self._playwright = await async_playwright().start()
-        if not self._headless:
-            logger.info("Launching Chromium in headed mode")
-        self._browser = await self._playwright.chromium.launch(headless=self._headless)
-        return self._browser
+        try:
+            if not Path(self._playwright.chromium.executable_path).is_file():
+                raise RuntimeError(
+                    "Chromium is not installed. Run `playwright install chromium` in the environment where "
+                    "TabulaFlow is installed. For `uv tool install`, run "
+                    "`uv tool run --from playwright playwright install chromium`."
+                )
+            if not self._headless:
+                logger.info("Launching Chromium in headed mode")
+            self._browser = await self._playwright.chromium.launch(headless=self._headless)
+            return self._browser
+        except BaseException:
+            try:
+                await self._playwright.stop()
+            except Exception:
+                pass
+            self._playwright = None
+            raise
