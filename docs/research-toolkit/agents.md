@@ -51,7 +51,7 @@ After [setting up ARCS](benchmarks.md#arcs) and setting
 `OPENAI_API_KEY`, run directly:
 
 ```bash
-uv run tabulaflow examples run ambiguity-aware-queries
+tabulaflow examples run ambiguity-aware-queries
 ```
 
 See [ambiguity evaluation](evaluation.md#evaluate-ambiguity) for accuracy, coverage,

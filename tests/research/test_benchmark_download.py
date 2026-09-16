@@ -105,7 +105,7 @@ def test_missing_benchmark_error_is_actionable(tmp_path: Path, monkeypatch: pyte
 
     with pytest.raises(
         BenchmarkInstallationError,
-        match=r"example is not downloaded\.\s+Run:\s+uv run tabulaflow benchmark download example",
+        match=r"example is not downloaded\.\s+Run:\s+tabulaflow benchmark download example",
     ):
         benchmark.require()
 

@@ -26,7 +26,7 @@ After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
 run directly:
 
 ```bash
-uv run tabulaflow examples run table-linking-agent
+tabulaflow examples run table-linking-agent
 ```
 
 The script runs three BIRD-SQL tasks and saves results under `runs/table_linking/`.

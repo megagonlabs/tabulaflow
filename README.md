@@ -12,7 +12,7 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 Requires Python 3.11 or later on macOS or Linux. Install with
 [`uv`](https://docs.astral.sh/uv/), set your API key, and launch from your
-project directory:
+working directory:
 
 ```bash
 uv tool install tabulaflow
@@ -157,13 +157,16 @@ Reuse agent logic across BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA, and
 CypherBench, with managed benchmark setup and metrics adapted from official
 evaluation implementations.
 
-With the Python package installed and `OPENAI_API_KEY` set, download BIRD-SQL:
+With the TabulaFlow tool installed and `OPENAI_API_KEY` set, download BIRD-SQL
+and run the bundled research example:
 
 ```bash
-uv run tabulaflow benchmark download bird-sql
+tabulaflow benchmark download bird-sql
+tabulaflow examples run research-quick-start
 ```
 
-Run three tasks concurrently, measure execution accuracy, and save the results:
+To adapt the workflow in your own project, add TabulaFlow with `uv add
+tabulaflow`, then run and save experiments from Python:
 
 ```python
 import asyncio

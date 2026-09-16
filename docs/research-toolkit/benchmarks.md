@@ -11,9 +11,9 @@
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
 | [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
 
-Run the setup commands from a project with [TabulaFlow installed](quick-start.md#use-in-your-project).
+Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try-it-yourself).
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
-with `uv run tabulaflow benchmark list`.
+with `tabulaflow benchmark list`.
 
 ## BIRD-SQL
 
@@ -22,7 +22,7 @@ SQLite databases. The download includes tasks and databases for all splits;
 `dev` uses the June 2024 release, while `dev_20251106` uses updated annotations.
 
 ```bash
-uv run tabulaflow benchmark download bird-sql
+tabulaflow benchmark download bird-sql
 ```
 
 ## Spider 2.0 Snow
@@ -31,7 +31,7 @@ Text-to-SQL tasks over Snowflake databases. Download the tasks, schema metadata,
 and reference results:
 
 ```bash
-uv run tabulaflow benchmark download spider2-snow
+tabulaflow benchmark download spider2-snow
 ```
 
 Follow the [Spider 2.0 Snowflake access guide](https://github.com/xlang-ai/Spider2/blob/main/assets/Snowflake_Guideline.md)
@@ -49,7 +49,7 @@ Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The download include
 task assets and the local SQLite databases:
 
 ```bash
-uv run tabulaflow benchmark download spider2-lite
+tabulaflow benchmark download spider2-lite
 ```
 
 Configure credentials only for the databases you select. For setup, see the
@@ -90,7 +90,7 @@ Data transformation tasks in dbt projects backed by DuckDB. The download include
 the projects and their starting and reference databases:
 
 ```bash
-uv run tabulaflow benchmark download spider2-dbt
+tabulaflow benchmark download spider2-dbt
 ```
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
@@ -102,13 +102,13 @@ tasks over MySQL databases. With Docker running, download the data and start
 the databases:
 
 ```bash
-uv run tabulaflow benchmark start beaver
+tabulaflow benchmark start beaver
 ```
 
 The databases use local ports `3311` and `3312`. Stop them when finished:
 
 ```bash
-uv run tabulaflow benchmark stop beaver
+tabulaflow benchmark stop beaver
 ```
 
 ## ARCS
@@ -140,7 +140,7 @@ For an existing data directory, pass its path as `directory` to the loader.
 Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 
 ```bash
-uv run tabulaflow benchmark download ambrosia-s
+tabulaflow benchmark download ambrosia-s
 ```
 
 ## CypherBench
@@ -149,13 +149,13 @@ Text-to-Cypher tasks over Neo4j property graphs. With Docker running and
 Docker Compose available, download the data and start the test databases:
 
 ```bash
-uv run tabulaflow benchmark start cypherbench
+tabulaflow benchmark start cypherbench
 ```
 
 Stop the databases when finished:
 
 ```bash
-uv run tabulaflow benchmark stop cypherbench
+tabulaflow benchmark stop cypherbench
 ```
 
 For training databases, add `--split train` to both `start` and `stop`.

@@ -26,7 +26,7 @@ into new DataFrame columns.
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
-uv run tabulaflow examples run data-enrichment
+tabulaflow examples run data-enrichment
 ```
 
 For enrichment that needs web information, enable browser tools directly:
@@ -64,7 +64,7 @@ with a category and a short reason for each recommendation. The script loads the
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
-uv run tabulaflow examples run document-extraction
+tabulaflow examples run document-extraction
 ```
 
 The extractor splits long text at natural boundaries where possible, keeping

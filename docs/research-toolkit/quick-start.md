@@ -41,28 +41,29 @@ See [saving a run](running-experiments.md#save-and-restore-a-run) to export the 
 
 ## Try it yourself
 
-Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or
-Linux. Download BIRD-SQL and set an OpenAI API key:
+Install TabulaFlow once with [`uv`](https://docs.astral.sh/uv/), download
+BIRD-SQL, and set an OpenAI API key:
 
 ```bash
-uv init tabulaflow-examples
-cd tabulaflow-examples
-uv add tabulaflow
-uv run tabulaflow benchmark download bird-sql
+uv tool install tabulaflow
+tabulaflow benchmark download bird-sql
 export OPENAI_API_KEY="your-api-key"
 ```
 
 Run the example directly:
 
 ```bash
-uv run tabulaflow examples run research-quick-start
+tabulaflow examples run research-quick-start
 ```
 
-The bundled example uses the TabulaFlow version installed in your project. No manual file
-creation is needed.
+The benchmark and bundled example use the same project-independent TabulaFlow
+installation. No manual file creation is needed.
 The example makes paid model calls; predictions and scores vary between runs.
 
-## Use in your project
+## Build in your project
+
+Install TabulaFlow in a Python project when you are ready to write your own
+research code:
 
 === "uv"
 

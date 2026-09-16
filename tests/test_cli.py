@@ -72,7 +72,7 @@ def test_examples_cli_runs_selected_example(monkeypatch: MonkeyPatch) -> None:
 def test_examples_cli_reports_missing_benchmark_without_traceback(monkeypatch: MonkeyPatch) -> None:
     async def main() -> None:
         raise BenchmarkInstallationError(
-            "bird-sql is not downloaded.\n\nRun:\n  uv run tabulaflow benchmark download bird-sql"
+            "bird-sql is not downloaded.\n\nRun:\n  tabulaflow benchmark download bird-sql"
         )
 
     monkeypatch.setattr(importlib, "import_module", lambda name: SimpleNamespace(main=main))
@@ -81,7 +81,7 @@ def test_examples_cli_reports_missing_benchmark_without_traceback(monkeypatch: M
 
     assert result.exit_code == 1
     assert "Setup required: bird-sql is not downloaded." in result.output
-    assert "Run:\n  uv run tabulaflow benchmark download bird-sql" in result.output
+    assert "Run:\n  tabulaflow benchmark download bird-sql" in result.output
     assert "Traceback" not in result.output
 
 

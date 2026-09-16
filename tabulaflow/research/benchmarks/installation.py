@@ -50,7 +50,7 @@ class BenchmarkInstallation:
         if not self.is_installed:
             raise BenchmarkInstallationError(
                 f"{self.name} is not downloaded.\n\n"
-                f"Run:\n  uv run tabulaflow benchmark download {self.name}"
+                f"Run:\n  tabulaflow benchmark download {self.name}"
             )
 
     async def install(self, *, force: bool = False, progress: ProgressCallback | None = None) -> Path:

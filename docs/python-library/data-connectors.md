@@ -55,7 +55,7 @@ After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
 example without a database server or API key:
 
 ```bash
-uv run tabulaflow examples run working-with-data
+tabulaflow examples run working-with-data
 ```
 
 Connectors are async context managers, so `async with stock:` guarantees cleanup

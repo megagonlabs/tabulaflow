@@ -54,7 +54,7 @@ Inspect the completed turn's token usage and estimated API cost:
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run both turns:
 
 ```bash
-uv run tabulaflow examples run chat-sessions
+tabulaflow examples run chat-sessions
 ```
 
 ## Manage a conversation

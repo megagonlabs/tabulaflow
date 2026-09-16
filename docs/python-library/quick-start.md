@@ -26,21 +26,22 @@ parameter-driven outputs.
 
 ## Try it yourself
 
-Set your API key and run the complete example with
-[uv](https://docs.astral.sh/uv/getting-started/installation/):
+Install TabulaFlow once with [`uv`](https://docs.astral.sh/uv/), set your API
+key, and run the bundled example:
 
 ```bash
-uv init tabulaflow-examples
-cd tabulaflow-examples
-uv add tabulaflow
+uv tool install tabulaflow
 export OPENAI_API_KEY="your-api-key"
-uv run tabulaflow examples run quick-start
+tabulaflow examples run quick-start
 ```
 
-This project and its environment can be reused for the other examples. For an example without
-an API key, try [Data connectors](data-connectors.md).
+The tool installation can run every bundled example from any directory. For an
+example without an API key, try [Data connectors](data-connectors.md).
 
-## Use in your project
+## Build in your project
+
+Install TabulaFlow in a Python project when you are ready to import it in your
+own code:
 
 === "uv"
 

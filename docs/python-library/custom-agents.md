@@ -22,7 +22,7 @@ and opens a support ticket.
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
 
 ```bash
-uv run tabulaflow examples run custom-agents
+tabulaflow examples run custom-agents
 ```
 
 The example intentionally keeps application concerns lightweight: the signed-in

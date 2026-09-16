@@ -98,7 +98,7 @@ After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
 example without a database server or API key:
 
 ```bash
-uv run tabulaflow examples run structured-outputs
+tabulaflow examples run structured-outputs
 ```
 
 See [result storage](api/output.md#result-storage) for persistence and cache behavior.
