@@ -406,6 +406,7 @@ class HistoryInput(TextArea):
     def action_dismiss_suggestions(self) -> None:
         menu = self._suggestion_menu()
         if menu is None or menu.selected is None:
+            cast("TabulaflowApp", self.app).action_toggle_focus()
             return
         self._dismissed_suggestion_value = self.value
         menu.dismiss()

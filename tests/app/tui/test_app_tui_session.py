@@ -13,6 +13,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Button, Static
 
 from tabulaflow.app import session as session_module
+from tabulaflow.agents.chat import ChatResult
 from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.tui import app as tui
 from tabulaflow.app.tui.commands import (
@@ -27,6 +28,8 @@ from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemM
 from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.widgets.choice import InlineChoiceSelector
 from tabulaflow.app.tui.widgets.input import HistoryInput
+from tabulaflow.app.tui.widgets.result import AgentResultWidget
+from tabulaflow.app.tui.widgets.suggestions import InputSuggestionMenu
 
 
 class _StatusCapture:
@@ -111,6 +114,40 @@ def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
         runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
         workspace=None,
     )
+
+
+async def test_escape_returns_to_previously_focused_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+
+    async with app.run_test(size=(100, 36)) as pilot:
+        chat_log = app.query_one("#chat-log", ChatLog)
+        first = AgentResultWidget(ChatResult(text="first"), [])
+        second = AgentResultWidget(ChatResult(text="second"), [])
+        await chat_log.mount(first, second)
+
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        input_bar.focus()
+        app._last_focused_result = None
+        await pilot.press("escape")
+        assert second.has_focus
+
+        await pilot.press("escape")
+        assert input_bar.has_focus
+
+        first.focus()
+        await pilot.pause()
+        await pilot.press("escape")
+        assert input_bar.has_focus
+
+        await pilot.press("/")
+        await pilot.pause()
+        await pilot.press("escape")
+        assert input_bar.has_focus
+        assert not app.query_one(InputSuggestionMenu).suggestions
+
+        await pilot.press("escape")
+        assert first.has_focus
 
 
 async def test_clear_resets_tui_and_output_pane(monkeypatch: pytest.MonkeyPatch) -> None:

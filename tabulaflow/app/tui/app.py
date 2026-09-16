@@ -279,6 +279,7 @@ class TabulaflowApp(App[None]):
         self._last_quit_request_ts: float | None = None
         self._saved_input_placeholder: str | None = None
         self._input_hint_timer: Timer | None = None
+        self._last_focused_result: AgentResultWidget | None = None
         # Session-scoped expansion + cursor state for the schema browser.
         # The same instance is passed to every SchemaBrowserScreen, which
         # mutates it on close so reopening lands the user where they left
@@ -337,6 +338,10 @@ class TabulaflowApp(App[None]):
         except Exception:
             logger.warning("copying selected text failed", exc_info=True)
             self.screen.clear_selection()
+
+    def on_descendant_focus(self, event: events.DescendantFocus) -> None:
+        if isinstance(event.widget, AgentResultWidget):
+            self._last_focused_result = event.widget
 
     def _copy_to_clipboard(self, text: str) -> None:
         """Write ``text`` to the system clipboard.
@@ -878,11 +883,14 @@ class TabulaflowApp(App[None]):
         """Toggle focus between input bar and result widgets."""
         inp = self.query_one("#input-bar", HistoryInput)
         if inp.has_focus:
-            # Jump to the last result widget
-            results = self.query(AgentResultWidget)
-            if results:
-                results.last().focus()
-                results.last().scroll_visible()
+            results = list(self.query(AgentResultWidget))
+            if not results:
+                return
+            target = self._last_focused_result
+            if target not in results:
+                target = results[-1]
+            target.focus()
+            target.scroll_visible()
         else:
             inp.focus()
 
