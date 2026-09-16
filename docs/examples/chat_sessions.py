@@ -7,13 +7,12 @@ import asyncio
 
 # --8<-- [start:session-imports]
 from tabulaflow.agents import ChatSession
-from tabulaflow.data import DataConnectorRegistry
 
 # --8<-- [end:session-imports]
 # --8<-- [start:data-imports]
 import pandas as pd
 
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import DataConnectorRegistry, SQLConnector
 # --8<-- [end:data-imports]
 
 
@@ -37,9 +36,12 @@ async def main():
     # --8<-- [start:connect]
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
-    async with DataConnectorRegistry() as registry:
-        # The registry closes registered connectors when this block exits.
-        registry.register("stock", stock)
+    # --8<-- [start:registry]
+    registry = DataConnectorRegistry()
+    # Make the connector available to the session.
+    registry.register("stock", stock)
+    # --8<-- [end:registry]
+    async with registry:
         await load_sample_data(stock)
         # --8<-- [start:session]
         session = ChatSession(registry=registry, model="openai-responses:gpt-5-mini", reasoning="low")

@@ -22,7 +22,7 @@ Query it and read the result as a DataFrame:
 --8<-- "examples/working_with_data.py:query"
 ```
 
-??? example-output no-copy "Sample output"
+??? example-details no-copy "Sample output"
 
     ```text
     --8<-- "examples/results/library-inventory.txt"
@@ -37,7 +37,7 @@ that schema for an LLM prompt or inspection:
 --8<-- "examples/working_with_data.py:schema"
 ```
 
-??? example-output no-copy "Sample output"
+??? example-details no-copy "Sample output"
 
     ````text
     --8<-- "examples/results/library-inventory-schema.txt"

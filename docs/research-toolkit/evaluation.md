@@ -43,7 +43,7 @@ for the first ARCS task from the [ambiguity example](agents.md#ambiguity-aware-a
 --8<-- "examples/ambiguity_aware_queries.py:evaluation-output"
 ```
 
-??? example-output no-copy "Sample evaluation result"
+??? example-details no-copy "Sample evaluation result"
 
     ```text
     --8<-- "examples/results/evaluation.txt"

@@ -13,7 +13,7 @@ filter the roles.
 --8<-- "examples/data_enrichment.py:example"
 ```
 
-??? example-output no-copy "Sample output"
+??? example-details no-copy "Sample output"
 
     ```text
     --8<-- "examples/results/library-enrichment.txt"
@@ -54,7 +54,7 @@ with a category and a short reason for each recommendation. The script loads the
 --8<-- "examples/document_extraction.py:example"
 ```
 
-??? example-output no-copy "Sample output"
+??? example-details no-copy "Sample output"
 
     ```text
     --8<-- "examples/results/library-extraction.txt"

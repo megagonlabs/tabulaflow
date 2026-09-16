@@ -37,12 +37,13 @@ You're reviewing transfers between warehouses. Explore the transfers as an
 interactive graph without using a graph database, with a filter for the minimum
 transfer size.
 
-??? info "Create the sample database"
+??? example-details "Create the sample database"
 
     ```python
     --8<-- "examples/structured_outputs.py:data-imports"
 
     --8<-- "examples/structured_outputs.py:connect"
+    --8<-- "examples/structured_outputs.py:registry"
     --8<-- "examples/structured_outputs.py:sample-data"
     ```
 
@@ -87,7 +88,7 @@ query result, and returning to an earlier selection reuses that result:
 --8<-- "examples/structured_outputs.py:resolve"
 ```
 
-??? example-output no-copy "Sample output"
+??? example-details no-copy "Sample output"
 
     ```text
     --8<-- "examples/results/library-transfers.txt"

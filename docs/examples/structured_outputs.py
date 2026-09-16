@@ -8,11 +8,10 @@ import asyncio
 # --8<-- [start:data-imports]
 import pandas as pd
 
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import DataConnectorRegistry, SQLConnector
 
 # --8<-- [end:data-imports]
 # --8<-- [start:store-imports]
-from tabulaflow.data import DataConnectorRegistry
 from tabulaflow.output.store import OutputStore
 
 # --8<-- [end:store-imports]
@@ -50,8 +49,12 @@ async def main():
     # --8<-- [start:connect]
     logistics = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
-    async with DataConnectorRegistry() as registry:
-        registry.register("logistics", logistics)
+    # --8<-- [start:registry]
+    registry = DataConnectorRegistry()
+    # Make the connector available to the output store.
+    registry.register("logistics", logistics)
+    # --8<-- [end:registry]
+    async with registry:
         await load_sample_data(logistics)
         # --8<-- [start:store]
         store = OutputStore(registry=registry)

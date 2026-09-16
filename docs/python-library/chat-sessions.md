@@ -8,12 +8,13 @@ structured outputs, and streaming answers and tool progress.
 You're reviewing inventory before placing an order. Ask which products need
 restocking, then follow up with how many units to order using the same conversation.
 
-??? info "Create the sample database"
+??? example-details "Create the sample database"
 
     ```python
     --8<-- "examples/chat_sessions.py:data-imports"
 
     --8<-- "examples/chat_sessions.py:connect"
+    --8<-- "examples/chat_sessions.py:registry"
     --8<-- "examples/chat_sessions.py:sample-data"
     ```
 
