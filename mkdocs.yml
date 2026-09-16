@@ -35,7 +35,6 @@ extra:
 
 nav:
   - Overview: index.md
-  - Quick start: data-agent/quick-start.md
   - Examples:
       - Compare spending by merchant: data-agent/examples/compare-spending.md
       - Evaluate model performance: data-agent/examples/evaluate-model-performance.md

@@ -16,7 +16,32 @@ it can also write code, work with files, run shell commands, and browse the web.
   <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
 </figure>
 
-[Get started](data-agent/quick-start.md){ .inline-cta }
+## Get started
+
+TabulaFlow requires Python 3.11 or later on macOS or Linux. Install it with
+[`uv`](https://docs.astral.sh/uv/), set a model provider key, and launch it from
+any directory where you want it to work:
+
+```bash
+uv tool install tabulaflow
+export OPENAI_API_KEY="your-api-key"
+tabulaflow
+```
+
+TabulaFlow opens with a bundled sample database. Try:
+
+```text
+Using the sample data, show the five merchants with the highest total spend as
+a bar chart.
+```
+
+The result opens as an interactive chart with its data and query available for
+inspection. Use a trusted working directory and least-privilege credentials.
+See [Configuration](data-agent/configuration.md) for Anthropic, pip, browser
+setup, and runtime options.
+
+[Explore more examples](data-agent/examples/compare-spending.md){ .inline-cta }
+[Connect your data](data-agent/connecting-data.md){ .inline-cta }
 
 ## What TabulaFlow can do
 

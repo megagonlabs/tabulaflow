@@ -36,7 +36,7 @@ For web browsing, also install Chromium:
 uv tool run --from playwright playwright install chromium
 ```
 
-[Data agent guide](https://megagonlabs.github.io/tabulaflow/data-agent/quick-start/)
+[Data agent guide](https://megagonlabs.github.io/tabulaflow/#get-started)
 
 TabulaFlow 0.1.0 is a public beta. Minor `0.x` releases may contain documented
 breaking changes.

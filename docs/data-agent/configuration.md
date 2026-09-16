@@ -3,6 +3,25 @@
 The defaults suit local use. Change them to select a model, control resources,
 enable caching, or expose the output pane on another host.
 
+## Installation
+
+The recommended installation keeps the `tabulaflow` command available from any
+directory in an isolated environment:
+
+```bash
+uv tool install tabulaflow
+```
+
+Upgrade it with `uv tool upgrade tabulaflow`.
+
+??? info "Install with pip"
+
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install tabulaflow
+    ```
+
 ## Model selection
 
 The Data Agent includes OpenAI and Anthropic presets. Set a key for the provider
@@ -28,6 +47,24 @@ tabulaflow --llm-preset off
 
 TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
 keys from the environment and does not save them.
+
+## Web browsing
+
+Install Chromium only if you want the Data Agent to browse the web:
+
+=== "uv"
+
+    ```bash
+    uv tool run --from playwright playwright install chromium
+    ```
+
+=== "pip"
+
+    ```bash
+    playwright install chromium
+    ```
+
+Database and local-file workflows do not use Chromium.
 
 ## In-app commands
 
