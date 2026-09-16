@@ -65,51 +65,22 @@ tool progress, usage, and context compaction.
         - CompactionFinished
         - TurnFinished
 
-## Runtime and model configuration
+## DataFrame enrichment
 
-Initialize process-wide policies before creating model or browser resources.
-Use `make_agent` to construct a Pydantic AI agent with TabulaFlow's shared
-model throttling.
+Add typed columns using each row's supplied content. See the
+[job enrichment example](../extraction-and-enrichment.md#example-find-jobs-that-fit).
 
-::: tabulaflow.agents.config.AgentRuntimeConfig
+::: tabulaflow.agents.enrichment.DataFrameEnricher
 
-::: tabulaflow.agents.config.AgentCacheMode
+## Extraction and summarization
 
-::: tabulaflow.agents.runtime.initialize_agent_runtime
+These services can be used directly without a chat session. Import
+`EntityExtractor` from `tabulaflow.agents.extraction`. Pass a Pydantic model class
+to `extract(..., record_type=Place, instruction=...)` to receive a `list[Place]`.
 
-::: tabulaflow.agents.llm.make_agent
+::: tabulaflow.agents.extraction.extractor.EntityExtractor
 
-::: tabulaflow.agents.llm.make_model_settings
-
-::: tabulaflow.agents.llm.ReasoningLevel
-
-::: tabulaflow.agents.llm.ReasoningEffort
-
-::: tabulaflow.agents.llm.ServiceTier
-    options:
-      show_docstring_description: false
-
-::: tabulaflow.agents.llm.model_display_name
-
-::: tabulaflow.agents.llm.embedding_throttle
-
-## Tool contracts
-
-Tools expose a model-facing adapter through `__call__` and
-`as_pydantic_ai_tool()`. Tools with an `execute(...)` method also support direct
-programmatic use. Registry adapters resolve connector aliases and may return
-`ToolReturn` objects carrying display metadata. Check each tool's return type;
-the adapters do not all return the same shape.
-
-::: tabulaflow.agents.tools.protocols.AgentTool
-
-::: tabulaflow.agents.tools.protocols.ToolCallOutcome
-
-::: tabulaflow.agents.tools.protocols.ToolProgressUpdate
-
-::: tabulaflow.agents.tools.protocols.ProgressReportingTool
-
-::: tabulaflow.agents.tools.protocols.LLMProfileTool
+::: tabulaflow.agents.summarization.DataSourceSummarizer
 
 ## Data tools
 
@@ -187,59 +158,6 @@ the adapters do not all return the same shape.
 
 ::: tabulaflow.agents.tools.shell.tool.WaitTimeout
 
-## DataFrame enrichment
-
-Add typed columns using each row's supplied content. See the
-[job enrichment example](../extraction-and-enrichment.md#example-find-jobs-that-fit).
-
-::: tabulaflow.agents.enrichment.DataFrameEnricher
-
-## Extraction and summarization
-
-These services can be used directly without a chat session. Import
-`EntityExtractor` from `tabulaflow.agents.extraction`. Pass a Pydantic model class
-to `extract(..., record_type=Place, instruction=...)` to receive a `list[Place]`.
-
-::: tabulaflow.agents.extraction.extractor.EntityExtractor
-
-::: tabulaflow.agents.summarization.DataSourceSummarizer
-
-## Media inputs
-
-These APIs prepare binary values for model input. Core media detection is
-documented in the [Core reference](core.md#media-values).
-
-::: tabulaflow.agents.media.to_binary_content
-
-::: tabulaflow.agents.media.select_pdf_pages
-
-::: tabulaflow.agents.media.PdfSelection
-
-::: tabulaflow.agents.media.inspect_inline_media
-
-::: tabulaflow.agents.media.InlineMediaItem
-
-::: tabulaflow.agents.media.InlineMediaCandidate
-
-::: tabulaflow.agents.media.materialize_inline_media
-
-::: tabulaflow.agents.media.UnrecognizedMediaError
-
-::: tabulaflow.agents.media.UnsupportedModelMediaError
-
-## Message storage
-
-`MessageStore` persists user prompts and tool responses in a writable SQL
-connector. Scoped stores attach an agent provenance tag to writes.
-
-::: tabulaflow.agents.message_store.MessageStore
-
-::: tabulaflow.agents.message_store.ScopedMessageStore
-    options:
-      merge_init_into_class: false
-
-::: tabulaflow.agents.message_store.MessageKind
-
 ## Usage and traces
 
 ::: tabulaflow.agents.trace.Usage
@@ -290,3 +208,85 @@ counters are documented with the [research tools](../../research-toolkit/api/age
 ::: tabulaflow.agents.tools.filesystem.patch.ApplyPatchToolMetrics
 
 ::: tabulaflow.agents.tools.shell.tool.BashToolMetrics
+
+## Runtime and model configuration
+
+Initialize process-wide policies before creating model or browser resources.
+Use `make_agent` to construct a Pydantic AI agent with TabulaFlow's shared
+model throttling.
+
+::: tabulaflow.agents.config.AgentRuntimeConfig
+
+::: tabulaflow.agents.config.AgentCacheMode
+
+::: tabulaflow.agents.runtime.initialize_agent_runtime
+
+::: tabulaflow.agents.llm.make_agent
+
+::: tabulaflow.agents.llm.make_model_settings
+
+::: tabulaflow.agents.llm.ReasoningLevel
+
+::: tabulaflow.agents.llm.ReasoningEffort
+
+::: tabulaflow.agents.llm.ServiceTier
+    options:
+      show_docstring_description: false
+
+::: tabulaflow.agents.llm.model_display_name
+
+::: tabulaflow.agents.llm.embedding_throttle
+
+## Tool contracts
+
+Tools expose a model-facing adapter through `__call__` and
+`as_pydantic_ai_tool()`. Tools with an `execute(...)` method also support direct
+programmatic use. Registry adapters resolve connector aliases and may return
+`ToolReturn` objects carrying display metadata. Check each tool's return type;
+the adapters do not all return the same shape.
+
+::: tabulaflow.agents.tools.protocols.AgentTool
+
+::: tabulaflow.agents.tools.protocols.ToolCallOutcome
+
+::: tabulaflow.agents.tools.protocols.ToolProgressUpdate
+
+::: tabulaflow.agents.tools.protocols.ProgressReportingTool
+
+::: tabulaflow.agents.tools.protocols.LLMProfileTool
+
+## Media inputs
+
+These APIs prepare binary values for model input. Core media detection is
+documented in the [Core reference](core.md#media-values).
+
+::: tabulaflow.agents.media.to_binary_content
+
+::: tabulaflow.agents.media.select_pdf_pages
+
+::: tabulaflow.agents.media.PdfSelection
+
+::: tabulaflow.agents.media.inspect_inline_media
+
+::: tabulaflow.agents.media.InlineMediaItem
+
+::: tabulaflow.agents.media.InlineMediaCandidate
+
+::: tabulaflow.agents.media.materialize_inline_media
+
+::: tabulaflow.agents.media.UnrecognizedMediaError
+
+::: tabulaflow.agents.media.UnsupportedModelMediaError
+
+## Message storage
+
+`MessageStore` persists user prompts and tool responses in a writable SQL
+connector. Scoped stores attach an agent provenance tag to writes.
+
+::: tabulaflow.agents.message_store.MessageStore
+
+::: tabulaflow.agents.message_store.ScopedMessageStore
+    options:
+      merge_init_into_class: false
+
+::: tabulaflow.agents.message_store.MessageKind
