@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import sqlalchemy
+from pydantic import BaseModel
 from pydantic_ai import AgentRunResult, RunContext, Tool
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.messages import UserContent
@@ -38,7 +39,7 @@ from tabulaflow.agents.tools.browser.tool import (
     WebBrowserTool,
     snapshot_snippet,
 )
-from tabulaflow.agents.enrichment import _RowResult, _RowRunner, _prepare_rows
+from tabulaflow.agents.enrichment import _RowResult, _RowRunner, _make_row_agent, _prepare_rows
 
 
 _COL_EXCEPTION = "_subagent_exception"
@@ -398,11 +399,7 @@ class RunSubagentForEachRowTool:
             raise ValueError(f"output_columns not found in table {qualified_target}: {missing_output}")
 
         record_type = create_column_model(self.connector.schema, schema_name, table_name, output_columns, name="Answer")
-        runner = _RowRunner(
-            llm=self.subagent_llm,
-            model_settings=self.model_settings,
-            max_concurrency=self.max_concurrency,
-        )
+        runner = _RowRunner(max_concurrency=self.max_concurrency)
 
         # Validate that each key_column can address exactly one target row on
         # write-back (UPDATE ... WHERE key = value). A key that is not a real
@@ -580,7 +577,7 @@ class RunSubagentForEachRowTool:
             except Exception:
                 logger.exception("Failed to write subagent trajectory file: %s", path)
 
-        async def _run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[Any]:
+        async def _run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[BaseModel]:
             row_idx = position + 1
             browser_tool: WebBrowserTool | None = None
             try:
@@ -625,7 +622,13 @@ class RunSubagentForEachRowTool:
                     if message_id is not None and len(text) > MESSAGE_THRESHOLD_CHARS:
                         snippet = make_snippet(message_id, text)
                         prompt = snippet if isinstance(prompt, str) else [snippet, *prompt[1:]]
-                agent = runner.create_agent(record_type, tools=tools, capabilities=capabilities)
+                agent = _make_row_agent(
+                    self.subagent_llm,
+                    record_type,
+                    model_settings=self.model_settings,
+                    tools=tools,
+                    capabilities=capabilities,
+                )
                 return await agent.run(prompt)
             finally:
                 if browser_tool is not None:
@@ -643,8 +646,10 @@ class RunSubagentForEachRowTool:
                 if result.run_result is not None and (self.store_metadata or traj_dir is not None):
                     trajectory = Trajectory.from_pydantic_ai_messages(result.run_result.all_messages())
                     _write_trajectory_file(row_idx, trajectory)
-                if result.values is not None:
-                    write_error = await _write_row_output(key_payload, result.values)
+                if error is None and result.run_result is not None:
+                    output = result.run_result.output
+                    values = {name: getattr(output, name) for name in record_type.model_fields}
+                    write_error = await _write_row_output(key_payload, values)
                     if write_error is not None:
                         error = f"write-back failed: {write_error}"
             except Exception as exc:
@@ -661,7 +666,7 @@ class RunSubagentForEachRowTool:
 
         if self.on_progress is not None and total > 0:
             self.on_progress(ToolProgressUpdate(completed=0, total=total, tool_call_id=tool_call_id))
-        await runner.run(rows, record_type=record_type, on_result=_save_result, run_agent=_run_agent)
+        await runner.run(rows, run_agent=_run_agent, on_result=_save_result)
         await self.connector.refresh_schema_async()
 
         error_messages = [e for e in errors if e is not None]

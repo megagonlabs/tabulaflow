@@ -17,26 +17,22 @@ appends the results to a table.
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Callable, Sequence
-from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import TypeVar, cast
 
 from pydantic import BaseModel
+from pydantic_ai import AgentRunResult
 from pydantic_ai.messages import BinaryContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.media import select_pdf_pages
-from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.extraction.markdown import (
     DEFAULT_MAX_CHARS,
     DEFAULT_TARGET_CHARS,
     Chunk,
     split_markdown,
 )
-
-logger = logging.getLogger(__name__)
 
 _PDF_PAGES_PER_CHUNK = 20
 _EntityT = TypeVar("_EntityT", bound=BaseModel)
@@ -129,7 +125,6 @@ class EntityExtractor:
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,
         chunk_max: int = DEFAULT_MAX_CHARS,
-        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the extractor.
 
@@ -143,10 +138,6 @@ class EntityExtractor:
                 for many-small-entity documents.
             chunk_max: Hard per-chunk ceiling; the only size at which a single block is
                 split. A larger entity stays whole up to this.
-            trajectory_log_dir: If set, each per-chunk subagent trajectory is written
-                as ``<dir>/<label>chunk-<N>.md`` (the ``label`` prefix comes from
-                ``extract``'s ``trajectory_label``, distinguishing documents). A
-                filesystem sink for local debugging; independent of the returned data.
 
         Raises:
             ValueError: If a concurrency or chunk size argument is not positive.
@@ -159,7 +150,6 @@ class EntityExtractor:
         self.model_settings = model_settings
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
-        self.trajectory_log_dir = trajectory_log_dir
 
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
@@ -175,8 +165,7 @@ class EntityExtractor:
         record_type: type[_EntityT],
         instruction: str,
         doc_context: str | None = None,
-        on_chunk_complete: Callable[[int], None] | None = None,
-        trajectory_label: str | None = None,
+        on_chunk_complete: Callable[[int, AgentRunResult[list[_EntityT]]], None] | None = None,
     ) -> list[_EntityT]:
         """Extract validated records from one document.
 
@@ -191,11 +180,8 @@ class EntityExtractor:
                 surfaced in every chunk's ``<context>`` block, so provenance/framing
                 reaches each excerpt without the caller threading it through ``instruction``.
             on_chunk_complete: Optional callback invoked as each chunk finishes, with
-                the number of entities that chunk produced. Chunks run concurrently,
-                so it fires in completion order, not document order.
-            trajectory_label: Optional prefix for this document's per-chunk trajectory
-                filenames (``<label>chunk-<N>.md``), so trajectories from different
-                documents don't collide. Only used when ``trajectory_log_dir`` is set.
+                its 1-based index and agent run result (records, messages, and usage).
+                Called in completion order. Callback errors propagate to the caller.
 
         Returns:
             Instances of ``record_type``, in chunk order. Empty if the document is blank
@@ -232,16 +218,13 @@ class EntityExtractor:
             model_settings=self.model_settings,
             instructions=_EXTRACTION_SYSTEM_PROMPT,
         )
-        prefix = f"{trajectory_label}-" if trajectory_label else ""
 
         async def _run(chunk_idx: int, prompt: str | Sequence[UserContent]) -> list[_EntityT]:
             async with self._semaphore:
-                result = await agent.run(prompt)
-            self._write_trajectory(f"{prefix}chunk-{chunk_idx}", result)
-            entities = cast(list[_EntityT], result.output)
+                result = cast(AgentRunResult[list[_EntityT]], await agent.run(prompt))
             if on_chunk_complete is not None:
-                on_chunk_complete(len(entities))
-            return entities
+                on_chunk_complete(chunk_idx, result)
+            return result.output
 
         tasks = [asyncio.create_task(_run(i, prompt)) for i, prompt in enumerate(prompts, start=1)]
         try:
@@ -252,19 +235,3 @@ class EntityExtractor:
                 if not task.done():
                     task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
-
-    def _write_trajectory(self, traj_name: str, result: Any) -> None:
-        """Persist one chunk subagent's trajectory as ``<trajectory_log_dir>/<traj_name>.md``.
-
-        Best-effort: trajectory capture is a debug sink and must never affect the
-        extraction result, so any failure (dir creation, message conversion, write)
-        is logged and swallowed.
-        """
-        if self.trajectory_log_dir is None:
-            return
-        try:
-            self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
-            traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
-            (self.trajectory_log_dir / f"{traj_name}.md").write_text(traj.to_markdown(), encoding="utf-8")
-        except Exception:
-            logger.exception("Failed to write trajectory %s/%s.md", self.trajectory_log_dir, traj_name)

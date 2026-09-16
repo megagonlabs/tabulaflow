@@ -13,7 +13,8 @@ import jinja2
 import jinja2.meta
 import pandas as pd
 from pandas.api import types as pdt
-from pydantic_ai import RunContext, Tool
+from pydantic import BaseModel
+from pydantic_ai import AgentRunResult, RunContext, Tool
 from pydantic_ai.messages import BinaryContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
@@ -24,6 +25,7 @@ from tabulaflow.agents.extraction import EntityExtractor
 from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.agents.tools._sql import create_column_model, qualified_table
+from tabulaflow.agents.trace import Trajectory
 
 logger = logging.getLogger(__name__)
 
@@ -289,8 +291,6 @@ class ExtractRowsFromDocumentsTool:
             self.connector.schema, schema_name, table_name, output_columns, name="ExtractedEntity"
         )
 
-        # Per-execution trajectory directory, shared across documents;
-        # EntityExtractor creates it lazily on first write.
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
 
         extractor = EntityExtractor(
@@ -299,7 +299,6 @@ class ExtractRowsFromDocumentsTool:
             max_concurrency=self.max_concurrency,
             chunk_target=self.chunk_target,
             chunk_max=self.chunk_max,
-            trajectory_log_dir=traj_dir,
         )
 
         total_docs = len(rows)
@@ -307,17 +306,27 @@ class ExtractRowsFromDocumentsTool:
         if self.on_progress is not None and total_docs > 0:
             self.on_progress(ToolProgressUpdate(completed=0, unit="rows", tool_call_id=tool_call_id))
 
-        def _on_chunk_complete(n: int) -> None:
-            nonlocal extracted_count
-            extracted_count += n
-            if self.on_progress is not None:
-                self.on_progress(ToolProgressUpdate(completed=extracted_count, unit="rows", tool_call_id=tool_call_id))
-
         async def _process_document(
             doc_idx: int,
             row: dict[str, Any],
             content: DocumentContent,
         ) -> tuple[list[dict[str, Any]], str | None]:
+            def _on_chunk_complete(chunk_idx: int, result: AgentRunResult[list[BaseModel]]) -> None:
+                nonlocal extracted_count
+                if traj_dir is not None:
+                    path = traj_dir / f"doc-{doc_idx}-chunk-{chunk_idx}.md"
+                    try:
+                        traj_dir.mkdir(parents=True, exist_ok=True)
+                        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
+                        path.write_text(trajectory.to_markdown(), encoding="utf-8")
+                    except Exception:
+                        logger.exception("Failed to write extraction trajectory: %s", path)
+                extracted_count += len(result.output)
+                if self.on_progress is not None:
+                    self.on_progress(
+                        ToolProgressUpdate(completed=extracted_count, unit="rows", tool_call_id=tool_call_id)
+                    )
+
             error: str | None = None
             entities: list[dict[str, Any]] = []
             try:
@@ -329,7 +338,6 @@ class ExtractRowsFromDocumentsTool:
                     record_type=record_type,
                     instruction=instruction,
                     on_chunk_complete=_on_chunk_complete,
-                    trajectory_label=f"doc-{doc_idx}",
                 )
                 entities = [record.model_dump() for record in records]
             except asyncio.CancelledError:

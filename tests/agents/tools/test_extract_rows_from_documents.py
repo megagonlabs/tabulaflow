@@ -10,13 +10,15 @@ import duckdb
 from PIL import Image
 import pytest
 from pydantic import BaseModel
-from pydantic_ai.messages import BinaryContent
+from pydantic_ai.messages import BinaryContent, ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pypdf import PdfWriter
 
 import tabulaflow.agents.tools.extract_rows_from_documents as mod
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 
 
 def _png() -> bytes:
@@ -121,6 +123,91 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     # The missing numerics land as SQL NULL rather than a batch-aborting junk string.
     assert gadget["name"] == "Gadget"
     assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1
+
+
+@pytest.mark.parametrize("tracing", ["enabled", "disabled", "unwritable"])
+async def test_tool_owns_chunk_traces_without_affecting_extraction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tracing: str
+) -> None:
+    db_path = str(tmp_path / "products.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE products (name VARCHAR)")
+    raw.execute("CREATE TABLE source (id INTEGER, content VARCHAR)")
+    raw.executemany(
+        "INSERT INTO source VALUES (?, ?)",
+        [
+            (1, "# First\n\nWidget is here.\n\n# Second\n\nGadget is here."),
+            (2, "# First\n\nThing is here.\n\n# Second\n\nNothing is here."),
+        ],
+    )
+    raw.close()
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_traces",
+        url=f"duckdb:///{db_path}",
+        display_name="products",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
+    )
+    trace_dir = tmp_path / "traces"
+    if tracing == "unwritable":
+        trace_dir.write_text("not a directory", encoding="utf-8")
+    if tracing == "disabled":
+
+        def unexpected_trace(*_: object, **__: object) -> None:
+            pytest.fail("trajectory conversion should be skipped when tracing is disabled")
+
+        monkeypatch.setattr(
+            "tabulaflow.agents.tools.extract_rows_from_documents.Trajectory.from_pydantic_ai_messages", unexpected_trace
+        )
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, str)
+        records = [{"name": name} for name in ("Widget", "Gadget", "Thing") if name in prompt]
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": records})])
+
+    tool = ExtractRowsFromDocumentsTool(
+        conn,
+        subagent_llm=FunctionModel(respond),
+        trajectory_log_dir=None if tracing == "disabled" else trace_dir,
+        chunk_target=20,
+        chunk_max=40,
+    )
+    progress: list[ToolProgressUpdate] = []
+    tool.on_progress = progress.append
+    try:
+        summary = await tool.execute(
+            None,
+            "products",
+            task_query="SELECT content FROM source ORDER BY id",
+            task_instruction="Extract names",
+            output_columns=["name"],
+            tool_call_id="extract-1",
+        )
+        assert "Extracted 3 entities from 2 documents" in summary
+        assert "Sample errors" not in summary
+        result = await conn.run_query_async("SELECT name FROM products ORDER BY name")
+        assert result.df is not None
+        assert result.df["name"].tolist() == ["Gadget", "Thing", "Widget"]
+        assert len(progress) == 5
+        assert progress[0].completed == 0 and progress[-1].completed == 3
+        assert all(update.tool_call_id == "extract-1" and update.unit == "rows" for update in progress)
+        if tracing == "enabled":
+            directories = list(trace_dir.iterdir())
+            assert len(directories) == 1
+            traces = {path.name: path.read_text(encoding="utf-8") for path in directories[0].iterdir()}
+            assert set(traces) == {f"doc-{doc}-chunk-{chunk}.md" for doc in (1, 2) for chunk in (1, 2)}
+            assert "Widget" in traces["doc-1-chunk-1.md"]
+            assert "Gadget" in traces["doc-1-chunk-2.md"]
+            assert "Thing" in traces["doc-2-chunk-1.md"]
+            assert "Nothing" in traces["doc-2-chunk-2.md"]
+        elif tracing == "disabled":
+            assert not trace_dir.exists()
+        assert ("Failed to write extraction trajectory" in caplog.text) == (tracing == "unwritable")
+    finally:
+        await conn.close_async()
 
 
 async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

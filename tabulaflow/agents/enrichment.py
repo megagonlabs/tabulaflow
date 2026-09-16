@@ -121,6 +121,23 @@ def _terminal_output_type(llm: str | Model, answer_model: type[BaseModel]) -> An
     ]
 
 
+def _make_row_agent(
+    llm: str | Model,
+    record_type: type[BaseModel],
+    *,
+    model_settings: ModelSettings | None,
+    tools: Sequence[Tool] = (),
+    capabilities: Sequence[AbstractCapability[Any]] = (),
+) -> Agent[Any, BaseModel]:
+    return make_agent(
+        llm,
+        tools=tools,
+        capabilities=capabilities or None,
+        output_type=_terminal_output_type(llm, record_type),
+        model_settings=model_settings,
+    )
+
+
 def _prepare_rows(df: pd.DataFrame, instruction: str) -> list[_TaskRow]:
     if not df.columns.is_unique or any(not isinstance(column, str) for column in df.columns):
         raise ValueError("input columns must have unique string names")
@@ -141,72 +158,41 @@ def _prepare_rows(df: pd.DataFrame, instruction: str) -> list[_TaskRow]:
 
 @dataclass(frozen=True)
 class _RowResult:
-    values: dict[str, Any] | None
+    run_result: AgentRunResult[BaseModel] | None
     error: str | None
-    run_result: AgentRunResult[Any] | None
 
 
 class _RowRunner:
     """Run typed row tasks; consumers own persistence and failure policy."""
 
-    def __init__(
-        self,
-        *,
-        llm: str | Model,
-        model_settings: ModelSettings | None,
-        max_concurrency: int,
-    ) -> None:
+    def __init__(self, *, max_concurrency: int) -> None:
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
-        self._llm = llm
-        self._model_settings = model_settings
         self._max_concurrency = max_concurrency
         self._semaphore = asyncio.Semaphore(max_concurrency)
-
-    def create_agent(
-        self,
-        record_type: type[BaseModel],
-        *,
-        tools: Sequence[Tool] = (),
-        capabilities: Sequence[AbstractCapability[Any]] = (),
-    ) -> Agent[Any, Any]:
-        return make_agent(
-            self._llm,
-            tools=tools,
-            capabilities=capabilities or None,
-            output_type=_terminal_output_type(self._llm, record_type),
-            model_settings=self._model_settings,
-        )
 
     async def run(
         self,
         rows: list[_TaskRow],
         *,
-        record_type: type[BaseModel],
+        run_agent: Callable[[int, str | list[UserContent]], Awaitable[AgentRunResult[BaseModel]]],
         on_result: Callable[[int, _RowResult], Awaitable[None]],
-        run_agent: Callable[[int, str | list[UserContent]], Awaitable[AgentRunResult[Any]]] | None = None,
     ) -> None:
         if not rows:
             return
-        agent = self.create_agent(record_type) if run_agent is None else None
         pending = iter(enumerate(rows))
 
         async def worker() -> None:
             for position, row in pending:
                 async with self._semaphore:
                     try:
-                        if run_agent is not None:
-                            result = await run_agent(position, row.prompt)
-                        else:
-                            assert agent is not None
-                            result = await agent.run(row.prompt)
+                        result = await run_agent(position, row.prompt)
                         if isinstance(result.output, AbortTask):
-                            outcome = _RowResult(None, f"AbortTask: {result.output.message}", result)
+                            outcome = _RowResult(result, f"AbortTask: {result.output.message}")
                         else:
-                            values = {name: getattr(result.output, name) for name in record_type.model_fields}
-                            outcome = _RowResult(values, None, result)
+                            outcome = _RowResult(result, None)
                     except Exception as exc:
-                        outcome = _RowResult(None, f"{type(exc).__name__}: {exc}", None)
+                        outcome = _RowResult(None, f"{type(exc).__name__}: {exc}")
                     await on_result(position, outcome)
 
         workers = [asyncio.create_task(worker()) for _ in range(min(len(rows), self._max_concurrency))]
@@ -263,7 +249,9 @@ class DataFrameEnricher:
         Raises:
             ValueError: If concurrency is not positive.
         """
-        self._runner = _RowRunner(llm=llm, model_settings=model_settings, max_concurrency=max_concurrency)
+        self._llm = llm
+        self._model_settings = model_settings
+        self._runner = _RowRunner(max_concurrency=max_concurrency)
 
     async def enrich(self, df: pd.DataFrame, *, record_type: type[BaseModel], instruction: str) -> pd.DataFrame:
         """Return a copy with the model's fields added or replaced as columns.
@@ -301,17 +289,23 @@ class DataFrameEnricher:
         dtypes = {name: _pandas_dtype(field.annotation) for name, field in record_type.model_fields.items()}
         enriched = df.copy()
         rows = _prepare_rows(enriched, instruction)
-        outputs: list[dict[str, Any]] = [{} for _ in rows]
+        outputs: dict[int, BaseModel] = {}
 
         async def collect(position: int, result: _RowResult) -> None:
             if result.error is not None:
                 raise RuntimeError(f"row {position + 1}: {result.error}")
-            assert result.values is not None
-            outputs[position] = result.values
+            assert result.run_result is not None
+            outputs[position] = result.run_result.output
 
-        await self._runner.run(rows, record_type=record_type, on_result=collect)
+        if rows:
+            agent = _make_row_agent(self._llm, record_type, model_settings=self._model_settings)
+
+            async def run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[BaseModel]:
+                return await agent.run(prompt)
+
+            await self._runner.run(rows, run_agent=run_agent, on_result=collect)
         for name, dtype in dtypes.items():
-            values = [output[name] for output in outputs]
+            values = [getattr(outputs[position], name) for position in range(len(rows))]
             values = [value.value if isinstance(value, Enum) else value for value in values]
             enriched[name] = pd.Series(values, index=enriched.index, dtype=dtype)
         return enriched

@@ -8,6 +8,7 @@ from typing import Literal, assert_type
 from PIL import Image
 import pytest
 from pydantic import BaseModel, Field, field_validator
+from pydantic_ai import AgentRunResult
 from pydantic_ai.messages import (
     BinaryContent,
     UserContent,
@@ -134,8 +135,44 @@ async def test_extractor_concurrent_schemas_share_limit_without_mixing_results()
     assert all(isinstance(record, CountRecord) and record.count == 1 for record in counts)
 
 
-@pytest.mark.parametrize("cancel", [False, True])
-async def test_extractor_failure_and_cancellation_drain_active_chunks(cancel: bool) -> None:
+async def test_chunk_callback_exposes_typed_results_in_completion_order() -> None:
+    release_first = asyncio.Event()
+    completed: list[tuple[int, AgentRunResult[list[NamedRecord]]]] = []
+
+    async def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, str)
+        records = []
+        if "Alice appears here." in prompt:
+            await release_first.wait()
+            records = [{"name": "Alice"}]
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": records})])
+
+    def on_chunk_complete(index: int, result: AgentRunResult[list[NamedRecord]]) -> None:
+        completed.append((index, result))
+        if index == 2:
+            release_first.set()
+
+    extractor = EntityExtractor(llm=FunctionModel(respond), chunk_target=20, chunk_max=40)
+    async with asyncio.timeout(5):
+        records = await extractor.extract(
+            "# First\n\nAlice appears here.\n\n# Second\n\nNobody appears here.",
+            record_type=NamedRecord,
+            instruction="Read names",
+            on_chunk_complete=on_chunk_complete,
+        )
+
+    assert [index for index, _ in completed] == [2, 1]
+    assert completed[0][1].output == []
+    assert records == [NamedRecord(name="Alice")]
+    assert records[0] is completed[1][1].output[0]
+    assert all(result.all_messages() and result.usage.requests == 1 for _, result in completed)
+
+
+@pytest.mark.parametrize("failure", ["model", "callback", "cancel"])
+async def test_extractor_failure_and_cancellation_drain_active_chunks(failure: str) -> None:
     ready = asyncio.Event()
     never = asyncio.Event()
     active = 0
@@ -150,8 +187,10 @@ async def test_extractor_failure_and_cancellation_drain_active_chunks(cancel: bo
             ready.set()
         try:
             await ready.wait()
-            if first and not cancel:
+            if first and failure == "model":
                 raise RuntimeError("source unavailable")
+            if first and failure == "callback":
+                return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": []})])
             await never.wait()
             raise AssertionError("cancelled request resumed")
         finally:
@@ -159,12 +198,20 @@ async def test_extractor_failure_and_cancellation_drain_active_chunks(cancel: bo
 
     extractor = EntityExtractor(llm=FunctionModel(respond), max_concurrency=2, chunk_target=20, chunk_max=40)
     content = "# First\n\nAlice appears here.\n\n# Second\n\nBob appears here."
+
+    def on_chunk_complete(index: int, result: AgentRunResult[list[NamedRecord]]) -> None:
+        raise RuntimeError("callback failed")
+
     async with asyncio.timeout(5):
-        task = asyncio.create_task(extractor.extract(content, record_type=NamedRecord, instruction="Read names"))
-        if cancel:
+        task = asyncio.create_task(
+            extractor.extract(
+                content, record_type=NamedRecord, instruction="Read names", on_chunk_complete=on_chunk_complete
+            )
+        )
+        if failure == "cancel":
             await ready.wait()
             task.cancel()
-        with pytest.raises(asyncio.CancelledError if cancel else RuntimeError):
+        with pytest.raises(asyncio.CancelledError if failure == "cancel" else RuntimeError):
             await task
     assert calls == 2 and active == 0
 

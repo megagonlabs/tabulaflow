@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 
 import pandas as pd
 import pytest
-from pydantic import BaseModel, Field, RootModel, create_model, field_validator
+from pydantic import BaseModel, Field, RootModel, create_model, field_serializer, field_validator
 from pandas.testing import assert_frame_equal, assert_index_equal
 from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, ToolCallPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -289,7 +289,7 @@ async def test_constant_instruction_preserves_rows_without_input_columns() -> No
 async def test_schema_constraints_defaults_aliases_and_validators_are_preserved() -> None:
     class Job(BaseModel):
         years: int = Field(ge=0, alias="experience", description="Minimum years of experience")
-        label: str = "default"
+        label: str = Field(default="default", exclude=True)
         note: str | None = None
 
         @field_validator("years")
@@ -298,6 +298,10 @@ async def test_schema_constraints_defaults_aliases_and_validators_are_preserved(
             if value > 80:
                 raise ValueError("unrealistic experience")
             return value
+
+        @field_serializer("years")
+        def format_years(self, value: int) -> str:
+            return f"{value} years"
 
     answers: list[dict[str, Any]] = [
         {},
