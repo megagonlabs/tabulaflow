@@ -1,6 +1,6 @@
 # Extraction and enrichment
 
-Turn long documents into typed records and add useful fields to database rows with LLMs.
+Turn long documents into typed records and add useful fields to your data with LLMs.
 
 ## Example: Find jobs that fit
 
@@ -17,20 +17,14 @@ then find remote roles that require at most three years of experience:
     --8<-- "examples/results/library-enrichment.txt"
     ```
 
-Rows are processed concurrently, and both fields are written back using
-`key_columns`. The output columns must already exist. Behind the scenes,
-TabulaFlow uses their types and native enum choices to define and validate
-each subagent's structured output for you. Enum discovery depends on the
-database driver; `CHECK` constraints are not interpreted.
-
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
 ```
 
-Already have a DataFrame? [DataFrameEnricher](api/agents.md#dataframe-enrichment)
-adds typed columns directly, using the same row execution and validation.
+For database tables, [`RunSubagentForEachRowTool`](api/agents.md#extraction-and-enrichment-tools)
+derives output types from the target columns and writes results back automatically.
 
 ## Extract records from documents
 
@@ -68,8 +62,8 @@ places = await extractor.extract(
         "that reason in at most eight words. Skip background mentions and travel logistics."
     ),
 )
+assert all(place.category in {"food", "culture", "outdoors", "shopping"} for place in places)
 df = pd.DataFrame([place.model_dump() for place in places])
-assert df["category"].dropna().isin(["food", "culture", "outdoors", "shopping"]).all()
 print(df.to_string(index=False))
 ```
 

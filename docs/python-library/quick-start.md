@@ -57,7 +57,7 @@ may vary. For a local example without an API key, try [Data connectors](data-con
     ```
 
 - [Data connectors](data-connectors.md): query sources and inspect schemas.
-- [Extraction and enrichment](extraction-and-enrichment.md): turn documents into records and enrich table rows.
+- [Extraction and enrichment](extraction-and-enrichment.md): turn documents into records and enrich DataFrames.
 - [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
 - [Structured outputs](structured-outputs.md): resolve tables, charts, maps, and graphs.
 - [Custom agents](custom-agents.md): combine reusable tools with your own actions.

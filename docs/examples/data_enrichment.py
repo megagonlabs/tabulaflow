@@ -1,76 +1,52 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
+# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "pydantic>=2.12"]
 # ///
 
 # --8<-- [start:example]
 import asyncio
+from typing import Literal
 
 import pandas as pd
+from pydantic import BaseModel, Field
 
-from tabulaflow.agents.tools import RunSubagentForEachRowTool
-from tabulaflow.data import SQLConnector
+from tabulaflow.agents.enrichment import DataFrameEnricher
 
 
-async def main():
-    database = await SQLConnector.from_url_async("duckdb:///:memory:", read_only=False)
-    result = await database.run_query_async("""
-        CREATE TABLE jobs (
-            job_id INTEGER PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            work_mode ENUM ('remote', 'hybrid', 'onsite'),
-            min_experience_years INTEGER
-        )
-    """)
-    if result.error is not None:
-        raise RuntimeError(result.error.message)
-    await database.write_dataframe_async(
-        pd.DataFrame(
-            {
-                "job_id": [1, 2, 3],
-                "title": ["Backend Engineer", "Data Analyst", "ML Engineer"],
-                "description": [
-                    "Work from home with no office days. Requires two years building Python services.",
-                    "Join our London office every Tuesday and Thursday. Requires three years of SQL experience.",
-                    "Work from anywhere with our ML team. Requires at least five years in machine learning.",
-                ],
-            }
-        ),
-        "jobs",
-        mode="append",
+class JobDetails(BaseModel):
+    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
+    min_experience_years: int | None = Field(default=None, ge=0)
+
+
+async def main() -> None:
+    jobs = pd.DataFrame(
+        {
+            "title": ["Backend Engineer", "Data Analyst", "ML Engineer"],
+            "description": [
+                "Work from home with no office days. Requires two years building Python services.",
+                "Join our London office every Tuesday and Thursday. Requires three years of SQL experience.",
+                "Work from anywhere with our ML team. Requires at least five years in machine learning.",
+            ],
+        }
     )
 
-    enricher = RunSubagentForEachRowTool(database, subagent_llm="openai-responses:gpt-5-mini")
-    # Column types and enum choices constrain each subagent's output.
-    # Rows are processed concurrently and results are written back automatically.
-    summary = await enricher.execute(
-        schema_name=None,
-        table_name="jobs",
-        task_query="SELECT job_id, description FROM jobs WHERE work_mode IS NULL",
-        task_instruction=(
+    enricher = DataFrameEnricher(llm="openai-responses:gpt-5-mini")
+    # Rows run concurrently, with types, categories, and constraints validated for every result.
+    enriched = await enricher.enrich(
+        jobs,
+        record_type=JobDetails,
+        instruction=(
             "Identify the work arrangement and minimum years of experience required. "
             "Leave unstated requirements null. Job description: {{ description }}"
         ),
-        key_columns=["job_id"],
-        output_columns=["work_mode", "min_experience_years"],
     )
-    print(summary)
+    assert all(mode in {"remote", "hybrid", "onsite"} for mode in enriched["work_mode"].dropna())
 
-    result = await database.run_query_async("SELECT work_mode FROM jobs")
-    assert result.error is None and result.df is not None
-    assert result.df["work_mode"].dropna().isin(["remote", "hybrid", "onsite"]).all()
-
-    result = await database.run_query_async("""
-        SELECT title, work_mode, min_experience_years
-        FROM jobs
-        WHERE work_mode = 'remote' AND min_experience_years <= 3
-        ORDER BY job_id
-    """)
-    if result.error is not None:
-        raise RuntimeError(result.error.message)
-    print(result.df.to_string(index=False))
-    await database.close_async()
+    matches = enriched.loc[
+        (enriched["work_mode"] == "remote") & (enriched["min_experience_years"] <= 3),
+        ["title", "work_mode", "min_experience_years"],
+    ]
+    print(matches.to_string(index=False))
 
 
 if __name__ == "__main__":

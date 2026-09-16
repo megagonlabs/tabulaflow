@@ -189,35 +189,8 @@ the adapters do not all return the same shape.
 
 ## DataFrame enrichment
 
-Add typed columns to an existing DataFrame without creating a database:
-
-```python
-from typing import Literal
-
-from pydantic import BaseModel, Field
-
-from tabulaflow.agents.enrichment import DataFrameEnricher
-
-
-class JobDetails(BaseModel):
-    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
-    min_experience_years: int | None = Field(default=None, ge=0)
-
-
-enricher = DataFrameEnricher(llm="openai-responses:gpt-5-mini")
-enriched = await enricher.enrich(
-    jobs,
-    record_type=JobDetails,
-    instruction=(
-        "Identify the work arrangement and minimum years of experience. "
-        "Leave unstated requirements null. {{ description }}"
-    ),
-)
-```
-
-The result preserves the input rows and index. Declared columns are added or
-replaced; other columns stay unchanged. The model controls required values,
-defaults, and validation. The SQL enrichment tool uses the same row execution.
+Add typed columns to an existing DataFrame. See the
+[job enrichment example](../extraction-and-enrichment.md#example-find-jobs-that-fit).
 
 ::: tabulaflow.agents.enrichment.DataFrameEnricher
 

@@ -1,3 +1,2 @@
-Processed 3 rows from "jobs"; subagent updates succeeded for 3 rows, failed for 0 rows.
            title work_mode  min_experience_years
 Backend Engineer    remote                     2
