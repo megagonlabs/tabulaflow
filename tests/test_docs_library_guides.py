@@ -138,29 +138,33 @@ async def test_data_example_closes_after_query_failure(
     assert len(closed_connectors) == 1
 
 
-async def test_enrichment_adds_work_arrangement_and_experience_to_jobs(
+async def test_enrichment_adds_typed_details_to_jobs(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    requirements = {
-        "building Python services": {"work_mode": "remote", "min_experience_years": 2},
-        "London office": {"work_mode": "hybrid", "min_experience_years": 3},
-        "our ML team": {"work_mode": "remote", "min_experience_years": 5},
+    details = {
+        "financial services company": {
+            "business_domain": "financial services",
+            "work_mode": "remote",
+            "min_experience_years": 2,
+        },
+        "retail chain": {"business_domain": "Retail", "work_mode": "hybrid", "min_experience_years": 3},
+        "healthcare provider": {"business_domain": "Healthcare", "work_mode": "remote", "min_experience_years": 5},
     }
     prompts: list[str] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         answer = next(tool for tool in info.output_tools if tool.name == "submit_answer")
         fields = answer.parameters_json_schema["properties"]
+        assert fields["business_domain"]["anyOf"][0]["type"] == "string"
         assert fields["work_mode"]["anyOf"][0]["enum"] == ["remote", "hybrid", "onsite"]
         assert fields["min_experience_years"]["anyOf"][0]["type"] == "integer"
-        assert fields["min_experience_years"]["anyOf"][0]["minimum"] == 0
         prompt = next(
             part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
         )
         assert isinstance(prompt, str)
         prompts.append(prompt)
-        values = next(values for description, values in requirements.items() if description in prompt)
+        values = next(values for description, values in details.items() if description in prompt)
         return ModelResponse(parts=[ToolCallPart("submit_answer", values)])
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:

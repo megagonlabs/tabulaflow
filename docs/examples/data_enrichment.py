@@ -8,14 +8,15 @@ import asyncio
 from typing import Literal
 
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from tabulaflow.agents.enrichment import DataFrameEnricher
 
 
 class JobDetails(BaseModel):
+    business_domain: str | None = None
     work_mode: Literal["remote", "hybrid", "onsite"] | None = None
-    min_experience_years: int | None = Field(default=None, ge=0)
+    min_experience_years: int | None = None
 
 
 async def main() -> None:
@@ -23,26 +24,31 @@ async def main() -> None:
         {
             "title": ["Backend Engineer", "Data Analyst", "ML Engineer"],
             "description": [
-                "Work from home with no office days. Requires two years building Python services.",
-                "Join our London office every Tuesday and Thursday. Requires three years of SQL experience.",
-                "Work from anywhere with our ML team. Requires at least five years in machine learning.",
+                "Build payment APIs for a financial services company. Work from home with no office days. "
+                "Requires two years building Python services.",
+                "Analyze sales for a retail chain. Join our London office every Tuesday and Thursday. "
+                "Requires three years of SQL experience.",
+                "Develop diagnostic models for a healthcare provider. Work from anywhere with our ML team. "
+                "Requires at least five years in machine learning.",
             ],
         }
     )
 
     enricher = DataFrameEnricher(llm="openai-responses:gpt-5-mini")
-    # Rows run concurrently, with types, categories, and constraints validated for every result.
+    # Rows run concurrently, with types and categories validated for every result.
     enriched = await enricher.enrich(
         jobs,
         record_type=JobDetails,
         instruction=(
-            "Identify the work arrangement and minimum years of experience required. "
-            "Leave unstated requirements null. Job description: {{ description }}"
+            "Identify the business domain, work arrangement, and minimum years of experience required. "
+            "Leave unstated details null.\n"
+            "Job title: {{ title }}\n"
+            "Job description: {{ description }}"
         ),
     )
     assert all(mode in {"remote", "hybrid", "onsite"} for mode in enriched["work_mode"].dropna())
 
-    print(enriched[["title", "work_mode", "min_experience_years"]].to_string(index=False))
+    print(enriched[["title", "business_domain", "work_mode", "min_experience_years"]].to_string(index=False))
 
 
 if __name__ == "__main__":

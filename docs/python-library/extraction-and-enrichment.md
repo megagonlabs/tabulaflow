@@ -5,9 +5,9 @@ Both extraction and enrichment support text, images, and PDFs.
 
 ## Example: Find jobs that fit
 
-You're comparing job listings, but work arrangements and experience requirements
-are buried in the descriptions. Extract those details into typed columns so the
-roles are easier to compare.
+You're comparing job listings across industries. Extract the business domain,
+work arrangement, and experience requirements into typed columns so you can
+filter the roles.
 
 ```python title="data_enrichment.py"
 --8<-- "examples/data_enrichment.py:example"
