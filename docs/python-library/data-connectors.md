@@ -57,8 +57,9 @@ Run the complete example without a database server or API key:
 uv run https://megagonlabs.github.io/tabulaflow/examples/working_with_data.py
 ```
 
-Close the connector with `await stock.close_async()` when finished. The script
-includes cleanup even if an operation fails.
+Connectors are async context managers, so `async with stock:` guarantees cleanup
+even if an operation fails. You can also close one directly with
+`await stock.close_async()`.
 
 ## Connect your own data
 

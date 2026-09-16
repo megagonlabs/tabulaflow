@@ -50,11 +50,10 @@ async def main():
     # --8<-- [start:connect]
     logistics = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
-    try:
+    async with DataConnectorRegistry() as registry:
+        registry.register("logistics", logistics)
         await load_sample_data(logistics)
         # --8<-- [start:store]
-        registry = DataConnectorRegistry()
-        registry.register("logistics", logistics)
         store = OutputStore(registry=registry)
         # --8<-- [end:store]
 
@@ -113,8 +112,6 @@ async def main():
         # --8<-- [end:resolve]
 
         print("Output JSON:", output.model_dump_json())
-    finally:
-        await logistics.close_async()
 
 
 if __name__ == "__main__":

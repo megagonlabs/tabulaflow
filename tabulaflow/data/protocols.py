@@ -2,7 +2,8 @@
 
 from collections.abc import Mapping
 import re
-from typing import Any, Protocol
+from types import TracebackType
+from typing import Any, Protocol, Self
 
 from tabulaflow.core.results import ExecResult
 from tabulaflow.core.schema import DataSourceSchema, QueryLanguage
@@ -29,6 +30,19 @@ class ResultTooLargeError(RuntimeError):
 
 class DataConnector(Protocol):
     """Structural interface implemented by every live queryable data source."""
+
+    async def __aenter__(self) -> Self:
+        """Return this open connector."""
+        ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Close the connector without suppressing exceptions."""
+        ...
 
     @property
     def global_id(self) -> str:

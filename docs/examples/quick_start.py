@@ -40,36 +40,33 @@ async def load_sample_data(sales, support):
 
 
 async def main():
-    sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
-    support = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
-    await load_sample_data(sales, support)
+    async with DataConnectorRegistry() as registry:
+        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        # The registry closes registered connectors when this block exits.
+        registry.register("sales", sales)
+        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        registry.register("support", support)
+        await load_sample_data(sales, support)
 
-    registry = DataConnectorRegistry()
-    registry.register("sales", sales)
-    registry.register("support", support)
-    session = ChatSession(
-        registry=registry,
-        model="openai-responses:gpt-5-mini",
-        reasoning="low",
-    )
-    result = await session.run(
-        "How does revenue compare across regions, and which high-priority "
-        "support tickets are still open? Show revenue as a bar chart "
-        "and the tickets in a table."
-    )
-    print("Answer:", result.text)
+        async with ChatSession(
+            registry=registry,
+            model="openai-responses:gpt-5-mini",
+            reasoning="low",
+        ) as session:
+            result = await session.run(
+                "How does revenue compare across regions, and which high-priority "
+                "support tickets are still open? Show revenue as a bar chart "
+                "and the tickets in a table."
+            )
+            print("Answer:", result.text)
 
-    for artifact in result.output.artifacts:
-        if artifact.kind in ("table", "chart"):
-            data = await session.output_store.resolve_artifact_source(artifact.source_id)
-            print("Artifact:", artifact.label)
-            print("Source:", data.metadata.connector_alias)
-            print("SQL:", data.metadata.query)
-            print("DataFrame:\n", data.df)
-
-    await session.aclose()
-    await support.close_async()
-    await sales.close_async()
+            for artifact in result.output.artifacts:
+                if artifact.kind in ("table", "chart"):
+                    data = await session.output_store.resolve_artifact_source(artifact.source_id)
+                    print("Artifact:", artifact.label)
+                    print("Source:", data.metadata.connector_alias)
+                    print("SQL:", data.metadata.query)
+                    print("DataFrame:\n", data.df)
 
 
 if __name__ == "__main__":

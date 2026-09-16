@@ -42,7 +42,8 @@ async def main():
     # --8<-- [start:connect]
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
-    try:
+    # Async context management guarantees connector cleanup.
+    async with stock:
         await load_sample_data(stock)
         # --8<-- [start:schema]
         print("Tables:", [table.name for table in stock.schema.tables])
@@ -66,8 +67,6 @@ async def main():
         restored = ExecResult.model_validate_json(payload)
         print("Restored DataFrame:\n", restored.df)
         # --8<-- [end:serialize]
-    finally:
-        await stock.close_async()
 
 
 if __name__ == "__main__":

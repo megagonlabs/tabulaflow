@@ -4,7 +4,8 @@ import numbers
 import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, Literal
+from types import TracebackType
+from typing import Any, ClassVar, Literal, Self
 
 import neo4j
 import pandas as pd
@@ -467,6 +468,18 @@ class Neo4jConnector:
             return
         await self._driver.close()
         self._closed = True
+
+    async def __aenter__(self) -> Self:
+        self._check_open()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close_async()
 
     def _check_open(self) -> None:
         if self._closed:

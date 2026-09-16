@@ -15,7 +15,9 @@ Query failures are represented by `ExecResult.error`. `read_only=True`
 requests the connector's read-only behavior; database permissions remain the
 security boundary for SQL connections.
 
-The caller closes each connector when finished.
+Connectors are async context managers and also expose `aclose()`. A
+`DataConnectorRegistry` takes ownership of registered connectors and closes them
+when its context exits.
 
 Check `ExecResult.error` before using its payload. Successful statements such
 as `CREATE TABLE` can have no DataFrame. DataFrame writes and connection

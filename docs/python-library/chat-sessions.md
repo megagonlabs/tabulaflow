@@ -59,7 +59,8 @@ Start a new conversation while keeping the session's connectors and stored outpu
 --8<-- "examples/chat_sessions.py:reset"
 ```
 
-Long conversations use automatic context compaction. Close the session with
-`await session.aclose()` and its connector with `await stock.close_async()` when
-finished. See the [session reference](api/agents.md#chat-sessions) for configuration
-and lifecycle details.
+Long conversations use automatic context compaction. `ChatSession` and
+`DataConnectorRegistry` are async context managers; closing the registry closes
+the connectors registered with it. See the
+[session reference](api/agents.md#chat-sessions) for configuration and lifecycle
+details.

@@ -4,16 +4,28 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Coroutine
-from typing import Any
+from types import TracebackType
+from typing import Any, Self
 
 from tabulaflow.data.protocols import DataConnector, validate_global_id
 
 
 class DataConnectorRegistry:
-    """Store named data connectors for a runtime."""
+    """Own named data connectors for a runtime."""
 
     def __init__(self) -> None:
         self._connectors: dict[str, DataConnector] = {}
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close_all_async()
 
     def has(self, alias: str) -> bool:
         """Return whether a connector is registered for ``alias``."""
@@ -34,7 +46,7 @@ class DataConnectorRegistry:
         return connector
 
     def register(self, alias: str, connector: DataConnector) -> None:
-        """Register a connector under ``alias``.
+        """Register a connector under ``alias`` and take ownership of it.
 
         Args:
             alias: The connector alias.

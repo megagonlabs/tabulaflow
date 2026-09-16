@@ -84,7 +84,8 @@ from uuid import uuid4
 
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
-from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeAlias, TypeVar
+from types import TracebackType
+from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, Self, TypeAlias, TypeVar
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -2462,6 +2463,18 @@ class SQLConnector:
     def _check_open(self) -> None:
         if self._closed:
             raise RuntimeError("SQLConnector is closed")
+
+    async def __aenter__(self) -> Self:
+        self._check_open()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close_async()
 
     async def release_connections_async(self) -> None:
         """Release pooled connections while keeping the connector reusable.

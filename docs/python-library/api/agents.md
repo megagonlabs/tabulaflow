@@ -11,8 +11,8 @@ Import `ChatSession` and `ChatInput` from `tabulaflow.agents`.
 A session runs one turn at a time. `run(...)` returns a `ChatResult`;
 `run_stream(...)` yields semantic events and ends with `TurnFinished` on
 normal completion. Failures and cancellation propagate as exceptions.
-Close the session with `aclose()` and close the connectors owned by your
-application separately.
+`ChatSession` is an async context manager and also exposes `aclose()`. It does
+not close the registry or connectors supplied by the application.
 
 For interruption, cancel and await the task consuming the stream before
 starting another turn. `reset_conversation()` clears conversation context

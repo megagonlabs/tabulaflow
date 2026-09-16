@@ -47,11 +47,10 @@ async def test_chat_session_passes_ordered_multimodal_input_to_pydantic_ai(
     media = BinaryContent(b"image", media_type="image/png")
     text = "x" * (MESSAGE_THRESHOLD_CHARS + 1)
 
-    try:
+    async with session as entered:
+        assert entered is session
         result = await session.run([text, media])
         follow_up = await session.run("summarize it")
-    finally:
-        await session.aclose()
 
     assert result.text == "ok"
     assert follow_up.text == "ok"

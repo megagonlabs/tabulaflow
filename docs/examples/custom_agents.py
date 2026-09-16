@@ -83,11 +83,9 @@ async def run_support_agent(orders: SQLConnector, support_dir: Path) -> None:
 async def main() -> None:
     with TemporaryDirectory() as directory:
         orders = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
-        try:
+        async with orders:
             await prepare_example(orders, Path(directory))
             await run_support_agent(orders, Path(directory))
-        finally:
-            await orders.close_async()
 
 
 if __name__ == "__main__":

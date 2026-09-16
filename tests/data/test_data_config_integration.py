@@ -264,9 +264,14 @@ async def test_release_connections_keeps_connector_usable_but_close_is_terminal(
     await connector.release_connections_async()
     assert (await connector.run_query_async("SELECT 1")).error is None
 
-    await connector.close_async()
+    async with connector as entered:
+        assert entered is connector
+        assert (await connector.run_query_async("SELECT 1")).error is None
     await connector.close_async()
 
+    with pytest.raises(RuntimeError, match="SQLConnector is closed"):
+        async with connector:
+            pass
     with pytest.raises(RuntimeError, match="SQLConnector is closed"):
         await connector.run_query_async("SELECT 1")
     with pytest.raises(RuntimeError, match="SQLConnector is closed"):

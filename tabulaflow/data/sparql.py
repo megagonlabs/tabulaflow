@@ -28,7 +28,8 @@ from collections.abc import Mapping
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from email.utils import parsedate_to_datetime
-from typing import Any, ClassVar, Literal
+from types import TracebackType
+from typing import Any, ClassVar, Literal, Self
 from urllib.parse import urlparse
 
 import httpx
@@ -472,6 +473,18 @@ class SPARQLConnector:
             return
         await self._client.aclose()
         self._closed = True
+
+    async def __aenter__(self) -> Self:
+        self._check_open()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close_async()
 
 
 __all__ = [

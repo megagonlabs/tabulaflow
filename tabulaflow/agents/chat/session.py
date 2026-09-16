@@ -10,7 +10,8 @@ from importlib.resources import files
 import logging
 from pathlib import Path
 import sys
-from typing import TYPE_CHECKING, Any, Final
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Final, Self
 
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.messages import BinaryContent
@@ -646,6 +647,17 @@ class ChatSession:
         """Release session-scoped resources, including active shell jobs."""
         if self._tools.bash is not None:
             await self._tools.bash.close()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.aclose()
 
     def _make_agent(self, model: str, *, use_apply_patch: bool | None = None) -> Agent[object, str]:
         """Construct the model-specific runtime around the session's live tools."""

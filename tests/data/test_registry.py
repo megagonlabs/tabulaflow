@@ -64,6 +64,17 @@ async def test_close_all_removes_aliases_and_attempts_every_close() -> None:
     assert replacement.closed
 
 
+async def test_context_closes_owned_connectors_on_error() -> None:
+    connector = CloseRecorder("connector")
+
+    with pytest.raises(RuntimeError, match="failed inside context"):
+        async with DataConnectorRegistry() as registry:
+            _register(registry, "connector", connector)
+            raise RuntimeError("failed inside context")
+
+    assert connector.closed
+
+
 async def test_close_all_finishes_cleanup_before_propagating_cancellation() -> None:
     registry = DataConnectorRegistry()
     first = CloseRecorder("first")

@@ -37,14 +37,14 @@ async def main():
     # --8<-- [start:connect]
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
-    try:
+    async with DataConnectorRegistry() as registry:
+        # The registry closes registered connectors when this block exits.
+        registry.register("stock", stock)
         await load_sample_data(stock)
         # --8<-- [start:session]
-        registry = DataConnectorRegistry()
-        registry.register("stock", stock)
         session = ChatSession(registry=registry, model="openai-responses:gpt-5-mini", reasoning="low")
         # --8<-- [end:session]
-        try:
+        async with session:
             # --8<-- [start:first-turn]
             result = await session.run("Which products are below their reorder point?")
             print(result.text)
@@ -72,10 +72,6 @@ async def main():
             # --8<-- [start:reset]
             session.reset_conversation()
             # --8<-- [end:reset]
-        finally:
-            await session.aclose()
-    finally:
-        await stock.close_async()
 
 
 if __name__ == "__main__":
