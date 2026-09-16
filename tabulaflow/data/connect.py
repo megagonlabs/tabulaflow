@@ -205,15 +205,13 @@ async def connect_url(
             are invalid.
         TypeError: If ``config`` does not match the URL backend.
     """
-    from tabulaflow.data.neo4j import Neo4jConnector
-    from tabulaflow.data.sparql import SPARQLConnector
-    from tabulaflow.data.sql import SQLConnector
-
     if "://" not in source:
         raise ValueError(f"Unsupported connection source: {source!r}; expected an explicit connection URL")
     url = normalize_connection_url(source)
 
     if _is_sparql_url(url):
+        from tabulaflow.data.sparql import SPARQLConnector
+
         if config is not None and not isinstance(config, SPARQLConnectorConfig):
             raise TypeError("SPARQL URLs require SPARQLConnectorConfig")
         endpoint_url, auth = _sparql_endpoint_params(url)
@@ -227,6 +225,8 @@ async def connect_url(
         )
 
     if _is_neo4j_bolt_url(url):
+        from tabulaflow.data.neo4j import Neo4jConnector
+
         if config is not None and not isinstance(config, Neo4jConnectorConfig):
             raise TypeError("Neo4j URLs require Neo4jConnectorConfig")
         driver_url, database, auth = _neo4j_driver_params(url)
@@ -245,6 +245,8 @@ async def connect_url(
 
     if config is not None and not isinstance(config, SQLConnectorConfig):
         raise TypeError("SQL URLs require SQLConnectorConfig")
+    from tabulaflow.data.sql import SQLConnector
+
     return await SQLConnector.from_url_async(
         url=url,
         display_name=display_name,
