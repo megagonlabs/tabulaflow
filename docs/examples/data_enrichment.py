@@ -42,11 +42,7 @@ async def main() -> None:
     )
     assert all(mode in {"remote", "hybrid", "onsite"} for mode in enriched["work_mode"].dropna())
 
-    matches = enriched.loc[
-        (enriched["work_mode"] == "remote") & (enriched["min_experience_years"] <= 3),
-        ["title", "work_mode", "min_experience_years"],
-    ]
-    print(matches.to_string(index=False))
+    print(enriched[["title", "work_mode", "min_experience_years"]].to_string(index=False))
 
 
 if __name__ == "__main__":

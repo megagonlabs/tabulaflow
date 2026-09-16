@@ -138,7 +138,7 @@ async def test_data_example_closes_after_query_failure(
     assert len(closed_connectors) == 1
 
 
-async def test_enrichment_finds_remote_jobs_with_matching_experience(
+async def test_enrichment_adds_work_arrangement_and_experience_to_jobs(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -174,8 +174,9 @@ async def test_enrichment_finds_remote_jobs_with_matching_experience(
     assert (EXAMPLES / "results/library-enrichment.txt").read_text().strip() == printed.strip()
 
 
+@pytest.mark.parametrize("status", [200, 404])
 async def test_extraction_turns_travel_guide_into_categorized_places(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path, status: int
 ) -> None:
     places = [
         ("Sensoji Temple", "Tokyo", "culture", "Historic temple showcasing religious heritage and architecture"),
@@ -207,18 +208,30 @@ async def test_extraction_turns_travel_guide_into_categorized_places(
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
 
-    monkeypatch.setattr("tabulaflow.agents.extraction.extractor.make_agent", make_test_agent)
-    monkeypatch.chdir(EXAMPLES / "support")
-    page = EXAMPLES.parent / "python-library/extraction-and-enrichment.md"
-    snippet = page.read_text().split("```python\n", 1)[1].split("```", 1)[0]
-    code = compile(snippet, str(page), "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
-    namespace: dict[str, Any] = {}
-    await eval(code, namespace)
+    requests: list[str] = []
+    original_client = httpx.AsyncClient
 
-    assert len(prompts) > 1
-    assert all(isinstance(place, namespace["Place"]) for place in namespace["places"])
-    assert [place.model_dump() for place in namespace["places"]] == expected
-    assert (EXAMPLES / "results/library-extraction.txt").read_text().strip() == capsys.readouterr().out.strip()
+    def download(request: httpx.Request) -> httpx.Response:
+        requests.append(str(request.url))
+        return httpx.Response(status, content=(EXAMPLES / "support/travel_guide.txt").read_bytes())
+
+    def make_client(**kwargs: Any) -> httpx.AsyncClient:
+        return original_client(transport=httpx.MockTransport(download), **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", make_client)
+    monkeypatch.setattr("tabulaflow.agents.extraction.extractor.make_agent", make_test_agent)
+    monkeypatch.chdir(tmp_path)
+    example = runpy.run_path(str(EXAMPLES / "document_extraction.py"))
+    if status == 404:
+        with pytest.raises(httpx.HTTPStatusError):
+            await example["main"]()
+        assert not prompts
+    else:
+        await example["main"]()
+        assert len(prompts) > 1
+        assert (EXAMPLES / "results/library-extraction.txt").read_text().strip() == capsys.readouterr().out.strip()
+
+    assert requests == ["https://megagonlabs.github.io/tabulaflow/examples/support/travel_guide.txt"]
 
 
 @pytest.mark.parametrize(
