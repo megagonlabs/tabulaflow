@@ -1,3 +1,11 @@
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 300 900;
+    font-display: swap;
+    src: url("/assets/fonts/figtree/Figtree-Variable.woff2") format("woff2");
+}
+
 :root {
     --accent: #3EB489; /* Duplicated from the TUI brand accent; the pane owns browser presentation. */
     --bg: #0f1117;
@@ -22,6 +30,7 @@
     --query-border: #242b36;
     --query-hover: #202633;
     --focus-ring: rgb(96, 165, 250);
+    --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
     --chart-grid: #3a4352;
     --chart-category-0: #3EB489;
@@ -56,7 +65,7 @@
 html, body { height: 100%; }
 :root { view-transition-name: none; }
 body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column;
-       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+       font-family: var(--font-sans); }
 * { scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width: thin; }
 :where(:focus-visible) {
     outline: 2px solid var(--focus-ring);
@@ -111,7 +120,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     stroke-linecap: round; stroke-linejoin: round;
 }
 .turntext { min-width: 0; display: grid; gap: 5px; }
-.turntitle { color: var(--text-muted); font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
+.turntitle { color: var(--text-muted); font: 500 13px/1.25 var(--font-sans); white-space: nowrap;
              overflow: hidden; text-overflow: ellipsis; }
 .turnmeta { color: var(--text-dim); font: 12px/1 var(--font-mono); white-space: nowrap;
             overflow: hidden; text-overflow: ellipsis; }
@@ -171,7 +180,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message.assistant { justify-content: stretch; }
 .message.assistant .message-body { width: 100%; color: var(--text); }
 .pending-turn { display: flex; align-items: center; gap: 9px; color: var(--text-muted);
-                font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+                font: 14px/1.4 var(--font-sans); }
 .pending-turn-spinner { width: 14px; height: 14px; flex: 0 0 auto; box-sizing: border-box; border-radius: 50%;
                         color: var(--text-dim); border: 2px solid rgba(154, 164, 178, 0.18);
                         border-top-color: currentColor;
@@ -229,13 +238,13 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .answer-control { display: grid; gap: 6px; }
 .answer-control-label {
-    color: var(--text-muted); font: 600 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--text-muted); font: 600 12px/1.2 var(--font-sans);
 }
 .answer-control-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .answer-control-option {
     appearance: none; border: 1px solid rgba(154, 164, 178, 0.18); border-radius: 999px;
     background: rgba(255, 255, 255, 0.03); color: var(--text-muted); cursor: pointer;
-    padding: 5px 11px; font: 600 12px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 5px 11px; font: 600 12px/1.25 var(--font-sans);
     transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
 .answer-control-option:hover:not(.active):not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.06); }
@@ -294,7 +303,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .answer-control-status.error {
     position: static; width: auto; height: auto; margin: -6px 0 0; overflow: visible;
     clip-path: none; white-space: normal; color: #ff8a8a;
-    font: 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 12px/1.35 var(--font-sans);
 }
 @media (prefers-reduced-motion: reduce) {
     .answer-controls[aria-busy="true"]::after {
@@ -339,7 +348,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .rectab { position: relative; height: 35px; padding: 6px 10px 9px; box-sizing: border-box; white-space: nowrap;
           border: 1px solid rgba(154, 164, 178, 0.12); border-bottom: 0; border-radius: 6px 6px 0 0;
           background: rgba(255, 255, 255, 0.018); color: var(--text-muted); cursor: pointer;
-          font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          font: 500 13px/1.25 var(--font-sans);
           transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease; }
 .rectab:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
 .rectab.active {
@@ -465,7 +474,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-message-label { color: var(--text-muted); font: 650 12px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.02em; }
 .tf-message-view.tone-info .tf-message-label { color: var(--accent); }
 .tf-message-view.tone-error .tf-message-label { color: #ff8a8a; }
-.tf-message-text { color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow-wrap: anywhere; }
+.tf-message-text { color: var(--text); font: 14px/1.5 var(--font-sans); overflow-wrap: anywhere; }
 
 /* Direct table rendering. */
 .tf-table-view {
@@ -607,8 +616,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-modal-close svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2;
                       stroke-linecap: round; stroke-linejoin: round; }
 .tf-modal-body { min-height: 0; padding: 16px 18px; overflow: auto; flex: 1; }
-.tf-modal-body pre { margin: 0; color: var(--text); font: 14px/1.55 -apple-system, BlinkMacSystemFont,
-                     "Segoe UI", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tf-modal-body pre { margin: 0; color: var(--text); font: 14px/1.55 var(--font-sans); white-space: pre-wrap; overflow-wrap: anywhere; }
 .tf-json-dialog .tf-modal-body pre { font: 13px/1.55 var(--font-mono);
                                      white-space: pre; overflow-wrap: normal; }
 .tf-lightbox .tf-modal-card { width: min(1100px, 92vw); max-width: 92vw; max-height: 92vh; min-width: 0;
@@ -616,8 +624,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-lightbox .tf-modal-copy { display: none; }
 .tf-lightbox .tf-modal-header { padding: 0; border: 0; }
 .tf-lightbox .tf-media-count { position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
-                                color: rgba(228, 228, 231, 0.72); font: 500 12px/1.2 -apple-system,
-                                BlinkMacSystemFont, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+                                color: rgba(228, 228, 231, 0.72); font: 500 12px/1.2 var(--font-sans); font-variant-numeric: tabular-nums;
                                 letter-spacing: 0.04em; }
 .tf-lightbox .tf-modal-close,
 .tf-lightbox .tf-media-step { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center;
@@ -648,9 +655,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-lightbox-file:hover { background: rgba(255, 255, 255, 0.08); color: #f4f4f5; }
 .tf-lightbox-file:active { background: rgba(255, 255, 255, 0.13); }
 .tf-lightbox-file svg { width: 32px; height: 32px; margin-bottom: 2px; }
-.tf-lightbox-file-title { color: #e4e4e7; font: 550 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-.tf-lightbox-file-meta { color: rgba(228, 228, 231, 0.58); font: 12px/1.3 -apple-system, BlinkMacSystemFont,
-                         "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+.tf-lightbox-file-title { color: #e4e4e7; font: 550 14px/1.3 var(--font-sans); }
+.tf-lightbox-file-meta { color: rgba(228, 228, 231, 0.58); font: 12px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; }
 .tf-media-step { cursor: pointer; }
 .tf-media-step-placeholder { width: 40px; }
 
@@ -669,7 +675,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     width: 24px; height: 24px; margin-bottom: 2px; fill: none; stroke: var(--text-dim);
     stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
 }
-.tf-empty-state-title { color: var(--text); font: 600 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tf-empty-state-title { color: var(--text); font: 600 14px/1.3 var(--font-sans); }
 .tf-empty-state-copy { color: var(--text-dim); font: 12px/1.4 var(--font-mono); }
 @media (prefers-reduced-motion: reduce) {
     .tf-empty-state { transition: none; }
@@ -727,7 +733,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     background: var(--map-overlay-bg); color: var(--map-overlay-text);
     box-shadow: var(--map-overlay-shadow); backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px); pointer-events: none;
-    font: 500 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 500 12px/1.35 var(--font-sans);
     text-align: center; white-space: nowrap; z-index: 500;
 }
 .tf-map-empty.show { display: block; }
@@ -742,7 +748,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-error.show { display: grid; }
 .tf-map-popup {
     max-width: min(420px, 72vw); color: #111827;
-    font: 11px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 11px/1.35 var(--font-sans);
     overflow-wrap: anywhere;
 }
 .tf-map-popup-title { margin: 0 0 4px; color: #111827; font-size: 13px; font-weight: 700; }
@@ -750,7 +756,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-popup th,
 .tf-map-popup td { padding: 2px 6px 2px 0; text-align: left; vertical-align: top; }
 .tf-map-popup th { color: #4b5563; font-weight: 600; white-space: nowrap; }
-.tf-map-view .maplibregl-map { background: var(--card); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tf-map-view .maplibregl-map { background: var(--card); font-family: var(--font-sans); }
 .tf-map-view .maplibregl-canvas:focus { outline: none; }
 .tf-map-legend {
     position: absolute; top: 12px; right: 12px; z-index: 5;
@@ -759,7 +765,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     padding: 10px 12px; border: 1px solid var(--map-overlay-border); border-radius: 8px;
     background: var(--map-overlay-bg); color: #111827;
     box-shadow: var(--map-overlay-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    font: 12px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 12px/1.25 var(--font-sans);
 }
 .tf-map-legend-section + .tf-map-legend-section { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(17, 24, 39, 0.12); }
 .tf-map-legend-title { margin: 0 0 6px; font-weight: 700; color: #111827; overflow-wrap: anywhere; }
@@ -853,7 +859,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     background: var(--popover-bg); color: var(--text);
     border: 1px solid var(--popover-border);
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
-    font: 11px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 11px/1.35 var(--font-sans);
     overflow: auto; overflow-wrap: anywhere; pointer-events: auto;
 }
 .tf-graph-detail.show { display: block; }
@@ -870,7 +876,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
                     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
 .query-bar { height: 42px; display: flex; align-items: center; justify-content: space-between;
              padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--query-border);
-             color: #f5f5f5; font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+             color: #f5f5f5; font: 600 13px/1.2 var(--font-sans); }
 .query-lang { color: var(--text-muted); }
 .query-copy { display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px;
               border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer;

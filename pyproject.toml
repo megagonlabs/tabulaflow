@@ -87,6 +87,7 @@ tabulaflow = [
     "agents/chat/*.md",
     "app/tui/*.tcss",
     "app/assets/samples/*",
+    "app/pane/assets/fonts/figtree/*",
     "app/pane/assets/ui/*",
     "app/pane/assets/ui/render/*",
     "app/pane/assets/vendor/cytoscape/*",

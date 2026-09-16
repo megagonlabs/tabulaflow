@@ -996,6 +996,7 @@ def test_pane_serves_bundled_assets_with_expected_cache_policy(tmp_path: Path) -
         with urllib.request.urlopen(pane.url, timeout=2) as response:
             assert response.headers["Cache-Control"] == "no-store"
             assert response.headers["Referrer-Policy"] == "no-referrer"
+            assert b'/assets/fonts/figtree/Figtree-Variable.woff2' in response.read()
 
         origin = _origin_url(pane.url)
         cases = [
@@ -1004,6 +1005,7 @@ def test_pane_serves_bundled_assets_with_expected_cache_policy(tmp_path: Path) -
             ("assets/vendor/maplibre/maplibre-gl.js", "max-age=31536000, immutable", "text/javascript"),
             ("assets/vendor/maplibre/osm-bright-sprite.png", "max-age=31536000, immutable", "image/png"),
             ("assets/vendor/katex/fonts/KaTeX_Main-Regular.woff2", "max-age=31536000, immutable", "font/woff2"),
+            ("assets/fonts/figtree/Figtree-Variable.woff2", "max-age=31536000, immutable", "font/woff2"),
         ]
         for relative, cache_control, content_type in cases:
             with urllib.request.urlopen(f"{origin}{relative}", timeout=2) as response:

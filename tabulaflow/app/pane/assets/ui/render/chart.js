@@ -20,7 +20,7 @@ function vegaDarkConfig() {
   return {
     background: card,
     view: { stroke: 'transparent' },
-    font: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+    font: 'Figtree, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
     title: { color: text, subtitleColor: muted, fontSize: 17, fontWeight: 600 },
     axis: {
       labelColor: muted,
