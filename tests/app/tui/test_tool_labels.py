@@ -1,6 +1,9 @@
 """Tests for the TUI tool-step label rendering (verb-led labels + diffstat)."""
 
+from io import StringIO
 from pathlib import Path
+
+from rich.console import Console
 
 from tabulaflow.app.tui.theme import DIFF_ADDED, DIFF_REMOVED
 from tabulaflow.app.tui.widgets.progress import (
@@ -21,6 +24,51 @@ async def test_compaction_events_update_the_status_spinner() -> None:
 
     await widget.apply(CompactionFinished())
     assert widget._status_text == "Thinking..."
+
+
+def test_tool_turns_are_separated_by_a_blank_row() -> None:
+    widget = AgentProgressWidget()
+    widget._on_tool_start("call-1", "run_query", "Query customers")
+    widget._on_tool_end("call-1", "run_query", "")
+    widget._on_tool_start("call-2", "render_chart", "Render Chart Revenue")
+
+    output = StringIO()
+    Console(file=output, width=80, color_system=None).print(widget.render())
+
+    assert output.getvalue().splitlines() == [
+        "→ Query customers",
+        "",
+        "· Render Chart Revenue",
+    ]
+
+
+def test_parallel_tool_calls_have_no_blank_row_between_them() -> None:
+    widget = AgentProgressWidget()
+    widget._on_tool_start("call-1", "run_query", "Query customers")
+    widget._on_tool_start("call-2", "render_chart", "Render Chart Revenue")
+
+    output = StringIO()
+    Console(file=output, width=80, color_system=None).print(widget.render())
+
+    assert output.getvalue().splitlines() == [
+        "· Query customers",
+        "· Render Chart Revenue",
+    ]
+
+
+def test_thinking_spinner_is_separated_from_finished_tool_turn() -> None:
+    widget = AgentProgressWidget()
+    widget._on_tool_start("call-1", "run_query", "Query customers")
+    widget._on_tool_end("call-1", "run_query", "")
+
+    output = StringIO()
+    Console(file=output, width=80, color_system=None).print(widget.render())
+
+    assert output.getvalue().splitlines() == [
+        "→ Query customers",
+        "",
+        "· Thinking...",
+    ]
 
 
 class TestLineDiffstat:

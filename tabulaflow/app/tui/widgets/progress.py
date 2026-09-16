@@ -439,6 +439,7 @@ class AgentProgressWidget(Widget):
     def __init__(self) -> None:
         super().__init__()
         self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
+        self._turn_starts: set[str] = set()
         self._streaming_text = ""
         # The final answer streams into this selectable sibling block. Mid-turn
         # narration arrives as ``NarrationDelta`` (not handled), so it never reaches
@@ -468,6 +469,8 @@ class AgentProgressWidget(Widget):
 
         has_running = False
         for status, tool_call_id, _name, label in self._steps:
+            if tool_call_id in self._turn_starts:
+                parts.append(Text())
             if status == "running":
                 has_running = True
                 if self._frozen:
@@ -489,6 +492,8 @@ class AgentProgressWidget(Widget):
                 parts.append(line)
 
         if self._status_text and not has_running:
+            if parts:
+                parts.append(Text())
             if self._frozen:
                 parts.append(Text(self._status_text, style="dim"))
             else:
@@ -578,6 +583,8 @@ class AgentProgressWidget(Widget):
         self._refresh(layout=True)
 
     def _on_tool_start(self, tool_call_id: str, name: str, label: str) -> None:
+        if self._steps and not any(status == "running" for status, *_rest in self._steps):
+            self._turn_starts.add(tool_call_id)
         if self._status_text and self._status_text != "Thinking...":
             self._steps.append(("done", "", "__status__", self._status_text))
         self._steps.append(("running", tool_call_id, name, label or name))
