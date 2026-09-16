@@ -96,7 +96,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import sqlalchemy
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy.exc import DBAPIError, SAWarning
+from sqlalchemy.exc import DBAPIError, NoSuchModuleError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy.engine.url import make_url
@@ -1087,10 +1087,16 @@ class ThrottledEngine:
         if connect_args:
             engine_kwargs["connect_args"] = connect_args
         engine: AsyncEngine | sqlalchemy.engine.Engine
-        if engine_type == "async":
-            engine = create_async_engine(url, **engine_kwargs)
-        else:
-            engine = create_engine(url, **engine_kwargs)
+        try:
+            if engine_type == "async":
+                engine = create_async_engine(url, **engine_kwargs)
+            else:
+                engine = create_engine(url, **engine_kwargs)
+        except (ModuleNotFoundError, NoSuchModuleError) as exc:
+            raise RuntimeError(
+                f"SQLAlchemy cannot load a driver for URL scheme {url.drivername!r}; "
+                "install its dialect and DBAPI package, or check the URL scheme"
+            ) from exc
 
         cancel_connection_factory: Callable[[], Any] | None = None
         if backend in {"mysql", "mariadb"}:

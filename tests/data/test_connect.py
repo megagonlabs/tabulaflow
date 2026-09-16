@@ -10,6 +10,7 @@ from tabulaflow.data.connect import (
     redact_url_password,
     strip_url_credentials,
 )
+from tabulaflow.data.sql import ThrottledEngine
 
 
 @pytest.mark.parametrize(
@@ -45,6 +46,15 @@ async def test_connect_url_imports_only_selected_connector(monkeypatch: pytest.M
     await connect_url("sqlite+aiosqlite:///:memory:")
 
     factory.assert_awaited_once()
+
+
+def test_missing_sqlalchemy_driver_has_actionable_error() -> None:
+    with pytest.raises(
+        RuntimeError, match="install its dialect and DBAPI package, or check the URL scheme"
+    ) as exc_info:
+        ThrottledEngine.from_url("unknown://localhost/database")
+
+    assert exc_info.value.__cause__ is not None
 
 
 class TestNormalizeConnectionUrl:
