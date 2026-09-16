@@ -3,16 +3,29 @@
 import asyncio
 from datetime import date, datetime
 from enum import Enum
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import pandas as pd
 import pytest
 from pydantic import BaseModel, Field, RootModel, create_model, field_serializer, field_validator
 from pandas.testing import assert_frame_equal, assert_index_equal
-from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, ToolCallPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelResponse,
+    RetryPromptPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+import tabulaflow.agents.enrichment as enrichment_module
 from tabulaflow.agents.enrichment import DataFrameEnricher
+from tabulaflow.agents.tools.browser.tool import BROWSER_TOOL_NAMES, WebBrowserTool
+from tabulaflow.data.config import SQLConnectorConfig
+from tabulaflow.data.registry import DataConnectorRegistry
+from tabulaflow.data.sql import SQLConnector
 
 
 class Label(BaseModel):
@@ -89,6 +102,7 @@ async def test_typed_nullable_columns_and_empty_input(empty: bool) -> None:
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         nonlocal calls
+        assert info.function_tools == []
         calls += 1
         return _answer(values if _prompt(messages) == "0" else {})
 
@@ -202,11 +216,27 @@ async def test_abort_and_exhausted_validation_raise_instead_of_returning_null(ab
 
 
 @pytest.mark.parametrize("cancel", [False, True])
-async def test_failure_and_cancellation_drain_workers_without_starting_remaining_rows(cancel: bool) -> None:
+@pytest.mark.parametrize("browser", [False, True])
+async def test_failure_and_cancellation_drain_workers_without_starting_remaining_rows(
+    cancel: bool, browser: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
     started: list[int] = []
     finished: list[int] = []
     ready = asyncio.Event()
     never = asyncio.Event()
+    opened: list[WebBrowserTool] = []
+    closed: list[WebBrowserTool] = []
+
+    class TrackingBrowser(WebBrowserTool):
+        def __init__(self) -> None:
+            super().__init__()
+            opened.append(self)
+
+        async def close(self) -> None:
+            await super().close()
+            closed.append(self)
+
+    monkeypatch.setattr(enrichment_module, "WebBrowserTool", TrackingBrowser)
 
     async def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         row = int(_prompt(messages))
@@ -224,7 +254,7 @@ async def test_failure_and_cancellation_drain_workers_without_starting_remaining
 
     frame = pd.DataFrame({"row": range(8)})
     before = frame.copy()
-    enricher = DataFrameEnricher(llm=FunctionModel(respond), max_concurrency=3)
+    enricher = DataFrameEnricher(llm=FunctionModel(respond), max_concurrency=3, enable_browser_tools=browser)
     async with asyncio.timeout(5):
         task = asyncio.create_task(enricher.enrich(frame, record_type=Value, instruction="{{ row }}"))
         if cancel:
@@ -234,6 +264,8 @@ async def test_failure_and_cancellation_drain_workers_without_starting_remaining
             await task
     assert sorted(started) == [0, 1, 2]
     assert sorted(finished) == [0, 1, 2]
+    assert len(opened) == (3 if browser else 0)
+    assert set(closed) == set(opened)
     assert_frame_equal(frame, before)
 
 
@@ -353,3 +385,86 @@ async def test_nullable_annotated_columns_and_enum_values() -> None:
     assert result["mode"].tolist() == ["remote"]
     assert result["mode"].cat.categories.tolist() == ["remote", "onsite"]
     assert result["priority"].tolist() == [1]
+
+
+async def test_browser_tools_have_per_row_state_lifecycle_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    browsers: list["TrackingBrowser"] = []
+    ready = asyncio.Event()
+
+    class TrackingBrowser(WebBrowserTool):
+        def __init__(self) -> None:
+            super().__init__()
+            self.visited: list[str] = []
+            self.ticks = 0
+            self.closed = False
+            browsers.append(self)
+
+        async def browser_navigate(self, url: str, tab: str | None = None) -> str:
+            self.visited.append(url)
+            if sum(bool(browser.visited) for browser in browsers) == 2:
+                ready.set()
+            await ready.wait()
+            return f"page: {url}"
+
+        async def tick(self) -> None:
+            self.ticks += 1
+            await super().tick()
+
+        async def close(self) -> None:
+            await super().close()
+            self.closed = True
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        assert {tool.name for tool in info.function_tools} == BROWSER_TOOL_NAMES
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        if not returns:
+            return ModelResponse(parts=[ToolCallPart("browser_navigate", {"url": _prompt(messages)})])
+        assert returns[-1].content == f"page: {_prompt(messages)}"
+        return _answer({"label": returns[-1].content})
+
+    monkeypatch.setattr(enrichment_module, "WebBrowserTool", TrackingBrowser)
+    frame = pd.DataFrame({"url": ["https://example.com/a", "https://example.com/b"]}, index=[4, 4])
+    enricher = DataFrameEnricher(llm=FunctionModel(respond), enable_browser_tools=True)
+    async with asyncio.timeout(5):
+        result = await enricher.enrich(frame, record_type=Label, instruction="{{ url }}")
+    assert result["label"].tolist() == [f"page: {url}" for url in frame["url"]]
+    assert_index_equal(result.index, frame.index)
+    assert len(browsers) == 2
+    assert [browser.visited for browser in browsers] == [[url] for url in frame["url"]]
+    assert all(browser.ticks == 2 and browser.closed for browser in browsers)
+
+
+def test_query_tools_require_a_registry() -> None:
+    with pytest.raises(ValueError, match="enable_run_query_tool=True requires a registry"):
+        DataFrameEnricher(enable_run_query_tool=True)
+
+
+async def test_query_tools_can_read_a_registered_source(tmp_path: Path) -> None:
+    connector = await SQLConnector.from_url_async(
+        global_id="enrichment-lookup",
+        url=f"duckdb:///{tmp_path / 'lookup.duckdb'}",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
+    )
+    try:
+        await connector.run_query_async("CREATE TABLE lookup(name VARCHAR)")
+        await connector.run_query_async("INSERT INTO lookup VALUES ('mint')")
+        registry = DataConnectorRegistry()
+        registry.register("lookup", connector)
+
+        def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+            assert {tool.name for tool in info.function_tools} == {"run_query"}
+            returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+            if not returns:
+                return ModelResponse(
+                    parts=[ToolCallPart("run_query", {"connector_alias": "lookup", "query": "SELECT name FROM lookup"})]
+                )
+            assert isinstance(returns[-1].content, str)
+            assert "mint" in returns[-1].content
+            return _answer({"label": "mint"})
+
+        enricher = DataFrameEnricher(llm=FunctionModel(respond), registry=registry, enable_run_query_tool=True)
+        result = await enricher.enrich(pd.DataFrame({"id": [1]}), record_type=Label, instruction="Look up the name")
+        assert result["label"].tolist() == ["mint"]
+    finally:
+        await connector.close_async()

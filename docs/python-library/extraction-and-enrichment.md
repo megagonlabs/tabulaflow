@@ -29,10 +29,23 @@ Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
 ```
 
-For enrichment that needs external information,
+For enrichment that needs web information, enable browser tools directly:
+
+```python
+enricher = DataFrameEnricher(enable_browser_tools=True)
+```
+
+Each row agent gets its own browser tools, which are closed when the row finishes
+or is cancelled. To query registered data sources, pass a `DataConnectorRegistry`
+as `registry` and set `enable_run_query_tool=True`.
+
+For enrichment that writes results back to a database table,
 [`RunSubagentForEachRowTool`](api/agents.md#extraction-and-enrichment-tools)
-can give each row's agent browser and database tools, then write the results
-back to the table automatically.
+uses the same row execution runtime and writes each result as it completes.
+Its browser option also includes workspace extraction and canonicalization tools;
+its nested-subagent option enables further table tasks. Individual row failures
+are recorded while other rows continue. `DataFrameEnricher` raises on a row
+failure and cancels pending work, leaving the input DataFrame unchanged.
 
 ## Extract records from documents
 

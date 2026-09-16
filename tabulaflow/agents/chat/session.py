@@ -649,7 +649,7 @@ class ChatSession:
 
     def _make_agent(self, model: str, *, use_apply_patch: bool | None = None) -> Agent[object, str]:
         """Construct the model-specific runtime around the session's live tools."""
-        from tabulaflow.agents.tools.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
+        from tabulaflow.agents.tools.browser.tool import ReleaseBrowserBeforeFanout
 
         if use_apply_patch is None:
             use_apply_patch = self.use_apply_patch
@@ -671,7 +671,10 @@ class ChatSession:
                 # Suspend the root agent's browser around any fan-out it triggers,
                 # so it holds no page permits while awaiting subagent rows that
                 # need them (same deadlock-avoidance as for non-leaf subagents).
-                ReleaseBrowserBeforeFanout(browser_tool=self._tools.web_browser),
+                ReleaseBrowserBeforeFanout(
+                    browser_tool=self._tools.web_browser,
+                    tool_names=frozenset({"run_subagent_for_each_row"}),
+                ),
                 MessageStoreCapability(
                     store=self._main_scope,
                     tool_allowlist=BROWSER_TOOL_NAMES,

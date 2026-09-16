@@ -6,15 +6,11 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
 import sqlalchemy
-from pydantic import BaseModel
-from pydantic_ai import AgentRunResult, RunContext, Tool
-from pydantic_ai.capabilities.abstract import AbstractCapability
-from pydantic_ai.messages import UserContent
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
@@ -26,20 +22,8 @@ from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools._sql import create_column_model, qualified_table, sa_table
-from tabulaflow.agents.message_store import (
-    MESSAGE_THRESHOLD_CHARS,
-    MessageStore,
-    MessageStoreCapability,
-    make_snippet,
-)
-from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
-from tabulaflow.agents.tools.browser.tool import (
-    BROWSER_TOOL_NAMES,
-    SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
-    WebBrowserTool,
-    snapshot_snippet,
-)
-from tabulaflow.agents.enrichment import _RowResult, _RowRunner, _make_row_agent, _prepare_rows
+from tabulaflow.agents.message_store import MessageStore
+from tabulaflow.agents.enrichment import RowResult, RowRunner, prepare_rows
 
 
 _COL_EXCEPTION = "_subagent_exception"
@@ -71,33 +55,6 @@ def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) ->
         col: sqlalchemy.ColumnClause[object] = sqlalchemy.column(col_name)
         conditions.append(col.is_(None) if val is None else col == val)
     return sqlalchemy.and_(*conditions)
-
-
-@dataclass
-class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
-    """Suspend the agent's browser for the duration of a fan-out it triggers.
-
-    An agent that can both browse and nest could hold browser page permits (its
-    open tabs aren't released until the next turn boundary) while awaiting a
-    nested ``run_subagent_for_each_row`` whose rows need those same permits — a
-    deadlock on the shared page budget. pydantic-ai runs same-turn tool calls
-    concurrently, so closing the tabs once before the fan-out body isn't enough:
-    a sibling ``browser_*`` call in the same turn could reopen one mid fan-out.
-    Wrapping the call instead — suspend before, resume after — keeps the tool
-    holding zero permits across the whole await, while leaving the agent free to
-    browse again on later turns.
-    """
-
-    browser_tool: WebBrowserTool
-
-    async def wrap_tool_execute(self, ctx: Any, *, call: Any, tool_def: Any, args: Any, handler: Any) -> Any:
-        if tool_def.name != RunSubagentForEachRowTool.name:
-            return await handler(args)
-        await self.browser_tool.suspend()
-        try:
-            return await handler(args)
-        finally:
-            self.browser_tool.resume()
 
 
 class RunSubagentForEachRowTool:
@@ -366,6 +323,17 @@ class RunSubagentForEachRowTool:
         if not key_columns:
             raise ValueError("key_columns must be a non-empty list naming a unique key of the target table")
 
+        runner = RowRunner(
+            llm=self.subagent_llm,
+            model_settings=self.model_settings,
+            max_concurrency=self.max_concurrency,
+            enable_browser_tools=enable_browser_tools,
+            enable_run_query_tool=enable_run_query_tool,
+            registry=self.registry,
+            message_store=self.message_store,
+            truncate_messages=enable_nested_subagents and self.message_store is not None and self.registry is not None,
+        )
+
         select_result = await self.connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
@@ -399,7 +367,6 @@ class RunSubagentForEachRowTool:
             raise ValueError(f"output_columns not found in table {qualified_target}: {missing_output}")
 
         record_type = create_column_model(self.connector.schema, schema_name, table_name, output_columns, name="Answer")
-        runner = _RowRunner(max_concurrency=self.max_concurrency)
 
         # Validate that each key_column can address exactly one target row on
         # write-back (UPDATE ... WHERE key = value). A key that is not a real
@@ -426,7 +393,7 @@ class RunSubagentForEachRowTool:
                 "key, or add a row-id column before fan-out."
             )
 
-        rows = _prepare_rows(df, task_instruction)
+        rows = prepare_rows(df, task_instruction)
         total = len(rows)
 
         # Ensure _subagent_* columns exist on the target table.
@@ -438,40 +405,17 @@ class RunSubagentForEachRowTool:
                     dtype = trajectory_dtype if col == _COL_TRAJECTORY else "TEXT"
                     await self.connector.run_query_async(f"ALTER TABLE {qualified_target} ADD COLUMN {col} {dtype}")
 
-        # If nesting is enabled, construct one fresh tool instance to share across
-        # all rows. Fresh (not ``self``) so its ``on_progress`` stays None and
-        # nested progress doesn't bleed into the parent's TUI callback. One per
-        # outer execution (not per row) — per-call state lives in the frame.
-        nested_pa_tool: Tool | None = None
-        if enable_nested_subagents:
-            nested_tool = RunSubagentForEachRowTool(
-                self.connector,
-                registry=self.registry,
-                message_store=self.message_store,
-                subagent_llm=self.subagent_llm,
-                model_settings=self.model_settings,
-                max_concurrency=self.max_concurrency,
-                store_metadata=self.store_metadata,
-                trajectory_log_dir=self.trajectory_log_dir,
-            )
-            nested_pa_tool = nested_tool.as_pydantic_ai_tool()
-
-        # A browsing subagent should be able to mine the pages it reads into
-        # structured rows (``extract_rows_from_documents``) and unify entity
-        # variants (``add_canonical_name``) — the same document→table→clean
-        # toolchain the top-level agent uses. Both write to the shared workspace
-        # connector, so they're only wired when it is a full SQLConnector.
-        # Constructed once per call (like the nested tool) and shared across rows.
-        extract_pa_tool: Tool | None = None
-        canonical_pa_tool: Tool | None = None
+        tools: list[Tool] = []
         if enable_browser_tools and isinstance(self.connector, SQLConnector):
-            extract_pa_tool = ExtractRowsFromDocumentsTool(
-                self.connector,
-                subagent_llm=self.subagent_llm,
-                model_settings=self.model_settings,
-                max_concurrency=self.max_concurrency,
-                trajectory_log_dir=self.trajectory_log_dir,
-            ).as_pydantic_ai_tool()
+            tools.append(
+                ExtractRowsFromDocumentsTool(
+                    self.connector,
+                    subagent_llm=self.subagent_llm,
+                    model_settings=self.model_settings,
+                    max_concurrency=self.max_concurrency,
+                    trajectory_log_dir=self.trajectory_log_dir,
+                ).as_pydantic_ai_tool()
+            )
             canonical_tool = AddCanonicalNameTool(
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
@@ -479,27 +423,22 @@ class RunSubagentForEachRowTool:
                 trajectory_log_dir=self.trajectory_log_dir,
             )
             canonical_tool.attach_connector(self.connector)
-            canonical_pa_tool = canonical_tool.as_pydantic_ai_tool()
-
-        if enable_run_query_tool and self.registry is None:
-            raise ValueError("enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool")
-
-        # Browser tool returns (the ``tool_allowlist`` below) are mirrored to the
-        # message store and tagged with a ``[message_id=M<n>]`` marker whenever a
-        # store is wired (``store_enabled``). Truncation — replacing an oversized
-        # prompt/return body with a head+tail snippet — is applied only for
-        # non-leaf subagents with a registry (``truncate_enabled``); those
-        # dereference the snippet by reading ``workspace._internal.messages`` with
-        # ``run_query``, so truncation implies the run_query tool. A store-only
-        # leaf subagent thus keeps full, tagged returns it can't be stranded from.
-        store_enabled = self.message_store is not None
-        truncate_enabled = enable_nested_subagents and self.message_store is not None and self.registry is not None
+            tools.append(canonical_tool.as_pydantic_ai_tool())
+        if enable_nested_subagents:
+            # A fresh instance keeps nested progress separate from the parent.
+            tools.append(
+                RunSubagentForEachRowTool(
+                    self.connector,
+                    registry=self.registry,
+                    message_store=self.message_store,
+                    subagent_llm=self.subagent_llm,
+                    model_settings=self.model_settings,
+                    max_concurrency=self.max_concurrency,
+                    store_metadata=self.store_metadata,
+                    trajectory_log_dir=self.trajectory_log_dir,
+                ).as_pydantic_ai_tool()
+            )
         call_id = uuid.uuid4().hex[:8]
-
-        run_query_pa_tool: Tool | None = None
-        if enable_run_query_tool or truncate_enabled:
-            assert self.registry is not None
-            run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
         completed = 0
 
@@ -577,66 +516,9 @@ class RunSubagentForEachRowTool:
             except Exception:
                 logger.exception("Failed to write subagent trajectory file: %s", path)
 
-        async def _run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[BaseModel]:
-            row_idx = position + 1
-            browser_tool: WebBrowserTool | None = None
-            try:
-                tools: list[Tool] = []
-                if enable_browser_tools:
-                    browser_tool = WebBrowserTool()
-                    tools.extend(browser_tool.as_pydantic_ai_tools())
-                if extract_pa_tool is not None:
-                    tools.append(extract_pa_tool)
-                if canonical_pa_tool is not None:
-                    tools.append(canonical_pa_tool)
-                if nested_pa_tool is not None:
-                    tools.append(nested_pa_tool)
-                if run_query_pa_tool is not None:
-                    tools.append(run_query_pa_tool)
-
-                capabilities: list[AbstractCapability[Any]] = []
-                if browser_tool is not None:
-                    capabilities.append(browser_tool.lifecycle_capability())
-                    # If this subagent can both browse and fan out, suspend its
-                    # browser around any nested fan-out so it holds no page permits
-                    # while awaiting nested rows that need them (deadlock avoidance).
-                    if nested_pa_tool is not None:
-                        capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
-                subagent_scope = None
-                if store_enabled:
-                    assert self.message_store is not None
-                    subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
-                    capabilities.append(
-                        MessageStoreCapability(
-                            store=subagent_scope,
-                            tool_allowlist=BROWSER_TOOL_NAMES,
-                            truncate=truncate_enabled,
-                            snippet_fn=snapshot_snippet,
-                            threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
-                        )
-                    )
-
-                if subagent_scope is not None and truncate_enabled:
-                    text = prompt if isinstance(prompt, str) else str(prompt[0])
-                    message_id = await subagent_scope.add(kind="user_prompt", content=text)
-                    if message_id is not None and len(text) > MESSAGE_THRESHOLD_CHARS:
-                        snippet = make_snippet(message_id, text)
-                        prompt = snippet if isinstance(prompt, str) else [snippet, *prompt[1:]]
-                agent = _make_row_agent(
-                    self.subagent_llm,
-                    record_type,
-                    model_settings=self.model_settings,
-                    tools=tools,
-                    capabilities=capabilities,
-                )
-                return await agent.run(prompt)
-            finally:
-                if browser_tool is not None:
-                    await browser_tool.close()
-
         errors: list[str | None] = [None] * total
 
-        async def _save_result(position: int, result: _RowResult) -> None:
+        async def _save_result(position: int, result: RowResult) -> None:
             nonlocal completed
             row_idx = position + 1
             key_payload = {column: rows[position].values[column] for column in key_columns}
@@ -666,7 +548,14 @@ class RunSubagentForEachRowTool:
 
         if self.on_progress is not None and total > 0:
             self.on_progress(ToolProgressUpdate(completed=0, total=total, tool_call_id=tool_call_id))
-        await runner.run(rows, run_agent=_run_agent, on_result=_save_result)
+        await runner.run(
+            rows,
+            record_type=record_type,
+            on_result=_save_result,
+            tools=tools,
+            fanout_tool_names=frozenset({self.name}) if enable_nested_subagents else frozenset(),
+            call_id=call_id,
+        )
         await self.connector.refresh_schema_async()
 
         error_messages = [e for e in errors if e is not None]

@@ -27,16 +27,16 @@ from pydantic_ai.messages import (
     ModelResponse,
     TextPart,
     ToolCallPart,
+    ToolReturnPart,
     UserPromptPart,
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 import tabulaflow.agents.enrichment as enrichment_module
 import pandas as pd
-import tabulaflow.agents.tools.run_subagent_for_each_row as run_subagent_module
 from tabulaflow.agents.enrichment import DataFrameEnricher
 from tabulaflow.agents.message_store import MessageStore
-from tabulaflow.agents.tools.browser.tool import WebBrowserTool
+from tabulaflow.agents.tools.browser.tool import BROWSER_TOOL_NAMES, WebBrowserTool
 from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.data.config import SQLConnectorConfig
@@ -344,7 +344,7 @@ class TestMediaInput:
     )
     def test_path_backed_media_fails_with_actionable_guidance(self, value: object, source: str) -> None:
         with pytest.raises(ValueError) as exc_info:
-            enrichment_module._prepare_rows(pd.DataFrame({"images": [value]}), "inspect")  # noqa: SLF001
+            enrichment_module.prepare_rows(pd.DataFrame({"images": [value]}), "inspect")
 
         message = str(exc_info.value)
         assert f"column '{source}'" in message
@@ -624,7 +624,7 @@ async def test_optional_tools_and_browser_cleanup_on_cancellation(
         await never.wait()
         raise AssertionError("cancelled model resumed")
 
-    monkeypatch.setattr(run_subagent_module, "WebBrowserTool", TrackingBrowser)
+    monkeypatch.setattr(enrichment_module, "WebBrowserTool", TrackingBrowser)
     registry = DataConnectorRegistry()
     registry.register("workspace", conn)
     tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(respond), registry=registry, max_concurrency=2)
@@ -654,7 +654,7 @@ async def test_nested_agent_truncation_keeps_inline_media(conn: SQLConnector, mo
     image = _png()
     await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, image BLOB, label VARCHAR)")
     await conn.run_query_async("INSERT INTO t VALUES (1, ?, NULL)", (image,))
-    monkeypatch.setattr(run_subagent_module, "MESSAGE_THRESHOLD_CHARS", 10)
+    monkeypatch.setattr(enrichment_module, "MESSAGE_THRESHOLD_CHARS", 10)
     registry = DataConnectorRegistry()
     registry.register("workspace", conn)
 
@@ -682,3 +682,178 @@ async def test_nested_agent_truncation_keeps_inline_media(conn: SQLConnector, mo
     )
     assert "succeeded for 1 rows, failed for 0 rows" in summary
     assert await _rows(conn, "SELECT label FROM t") == [{"label": "image"}]
+
+
+async def test_query_configuration_fails_before_metadata_mutations(conn: SQLConnector) -> None:
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
+    with pytest.raises(ValueError, match="requires a registry"):
+        await _tool(conn, store_metadata=True).execute(
+            None,
+            "t",
+            task_query="SELECT id FROM t",
+            task_instruction="classify {{ id }}",
+            key_columns=["id"],
+            output_columns=["label"],
+            enable_run_query_tool=True,
+        )
+    assert await _rows(conn, "SELECT * FROM t") == [{"id": 1, "label": None}]
+
+
+async def test_nested_browser_agents_release_shared_capacity_and_keep_progress_separate(
+    conn: SQLConnector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL),(2,NULL)")
+    page_budget = asyncio.Semaphore(1)
+    browsers: list[LimitedBrowser] = []
+    visits: list[str] = []
+    progress: list[tuple[int, int | None]] = []
+
+    class LimitedBrowser(WebBrowserTool):
+        def __init__(self) -> None:
+            super().__init__()
+            self.holds_page = False
+            self.closed = False
+            browsers.append(self)
+
+        async def browser_navigate(self, url: str, tab: str | None = None) -> str:
+            assert self._suspend_depth == 0
+            if not self.holds_page:
+                await page_budget.acquire()
+                self.holds_page = True
+            visits.append(url)
+            return url
+
+        async def _drop_tabs(self) -> None:
+            if self.holds_page:
+                self.holds_page = False
+                page_budget.release()
+            await super()._drop_tabs()
+
+        async def close(self) -> None:
+            await super().close()
+            self.closed = True
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        if not returns:
+            return ModelResponse(parts=[ToolCallPart("browser_navigate", {"url": f"https://example.com/{prompt}"})])
+        if prompt == "parent" and len(returns) == 1:
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "run_subagent_for_each_row",
+                        {
+                            "schema_name": None,
+                            "table_name": "t",
+                            "task_query": "SELECT id FROM t WHERE id = 2",
+                            "task_instruction": "child",
+                            "key_columns": ["id"],
+                            "output_columns": ["label"],
+                            "enable_browser_tools": True,
+                        },
+                    )
+                ]
+            )
+        if prompt == "parent":
+            assert isinstance(returns[-1].content, str)
+            assert "succeeded for 1 rows, failed for 0 rows" in returns[-1].content
+        return ModelResponse(parts=[ToolCallPart("submit_answer", {"label": prompt})])
+
+    monkeypatch.setattr(enrichment_module, "WebBrowserTool", LimitedBrowser)
+    tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(respond), max_concurrency=1)
+    tool.on_progress = lambda update: progress.append((update.completed, update.total))
+    async with asyncio.timeout(5):
+        summary = await tool.execute(
+            None,
+            "t",
+            task_query="SELECT id FROM t WHERE id = 1",
+            task_instruction="parent",
+            key_columns=["id"],
+            output_columns=["label"],
+            enable_browser_tools=True,
+            enable_nested_subagents=True,
+        )
+    assert "succeeded for 1 rows, failed for 0 rows" in summary
+    assert await _rows(conn, "SELECT label FROM t ORDER BY id") == [{"label": "parent"}, {"label": "child"}]
+    assert visits == ["https://example.com/parent", "https://example.com/child"]
+    assert len(browsers) == 2 and all(browser.closed and browser._suspend_depth == 0 for browser in browsers)
+    assert progress == [(0, 1), (1, 1)]
+
+
+@pytest.mark.parametrize(
+    "nested,with_registry,with_store",
+    [(False, False, False), (False, False, True), (False, True, True), (True, False, True), (True, True, True)],
+)
+async def test_browser_bundle_and_message_offloading_policy(
+    conn: SQLConnector, monkeypatch: pytest.MonkeyPatch, nested: bool, with_registry: bool, with_store: bool
+) -> None:
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
+    instruction = "input " * 10000
+    snapshot = "page content " * 10000
+    truncate = nested and with_registry and with_store
+
+    class SnapshotBrowser(WebBrowserTool):
+        async def browser_navigate(self, url: str, tab: str | None = None) -> str:
+            return snapshot
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        names = {tool.name for tool in info.function_tools}
+        expected = BROWSER_TOOL_NAMES | {"extract_rows_from_documents", "add_canonical_name"}
+        if nested:
+            expected |= {"run_subagent_for_each_row"}
+        if truncate:
+            expected |= {"run_query"}
+        assert names == expected
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, str)
+        if truncate:
+            assert prompt.startswith("[message_id=") and len(prompt) < len(instruction)
+        else:
+            assert prompt == instruction
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        if not returns:
+            return ModelResponse(parts=[ToolCallPart("browser_navigate", {"url": "https://example.com"})])
+        content = returns[-1].content
+        assert isinstance(content, str)
+        assert content.startswith("[message_id=") == with_store
+        if truncate:
+            assert len(content) < len(snapshot)
+        else:
+            assert content.endswith(snapshot)
+        return ModelResponse(parts=[ToolCallPart("submit_answer", {"label": "DONE"})])
+
+    monkeypatch.setattr(enrichment_module, "WebBrowserTool", SnapshotBrowser)
+    registry = DataConnectorRegistry()
+    registry.register("workspace", conn)
+    tool = RunSubagentForEachRowTool(
+        conn,
+        subagent_llm=FunctionModel(respond),
+        registry=registry if with_registry else None,
+        message_store=MessageStore(conn) if with_store else None,
+    )
+    summary = await tool.execute(
+        None,
+        "t",
+        task_query="SELECT id FROM t",
+        task_instruction=instruction,
+        key_columns=["id"],
+        output_columns=["label"],
+        enable_browser_tools=True,
+        enable_nested_subagents=nested,
+    )
+    assert "succeeded for 1 rows, failed for 0 rows" in summary
+    if with_store:
+        stored = await _rows(conn, "SELECT agent_id, kind, content FROM _internal.messages ORDER BY message_id")
+        expected_messages = [("user_prompt", instruction)] if truncate else []
+        expected_messages.append(("tool_return", snapshot))
+        assert [(row["kind"], row["content"]) for row in stored] == expected_messages
+        assert len({row["agent_id"] for row in stored}) == 1
+        assert stored[0]["agent_id"].startswith("subagent:")

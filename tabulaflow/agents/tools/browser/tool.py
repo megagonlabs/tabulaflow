@@ -47,6 +47,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
+from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.messages import BinaryContent
 
 from tabulaflow.agents.media import select_pdf_pages, to_binary_content
@@ -1411,3 +1412,25 @@ class WebBrowserTool:
     def _error_message(e: Exception) -> str:
         msg = str(e).strip()
         return msg or e.__class__.__name__
+
+
+@dataclass
+class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
+    """Suspend the agent's browser for the duration of a fan-out it triggers.
+
+    Nested agents need the parent's browser page permits. Suspension releases
+    those permits and prevents concurrent browser calls from reacquiring them
+    while the selected tool runs. Browsing resumes when that call exits.
+    """
+
+    browser_tool: WebBrowserTool
+    tool_names: frozenset[str]
+
+    async def wrap_tool_execute(self, ctx: Any, *, call: Any, tool_def: Any, args: Any, handler: Any) -> Any:
+        if tool_def.name not in self.tool_names:
+            return await handler(args)
+        await self.browser_tool.suspend()
+        try:
+            return await handler(args)
+        finally:
+            self.browser_tool.resume()

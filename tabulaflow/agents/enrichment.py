@@ -1,8 +1,9 @@
-"""Typed, concurrent enrichment of DataFrame rows without a database."""
+"""Typed, concurrent row enrichment for DataFrames and SQL tools."""
 
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -14,7 +15,7 @@ import jinja2
 import jinja2.meta
 import pandas as pd
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, AgentRunResult, NativeOutput, PromptedOutput, Tool, ToolOutput
+from pydantic_ai import AgentRunResult, NativeOutput, PromptedOutput, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.messages import UserContent
 from pydantic_ai.models import Model
@@ -22,6 +23,22 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
+from tabulaflow.agents.message_store import (
+    MESSAGE_THRESHOLD_CHARS,
+    MessageStore,
+    MessageStoreCapability,
+    ScopedMessageStore,
+    make_snippet,
+)
+from tabulaflow.agents.tools.browser.tool import (
+    BROWSER_TOOL_NAMES,
+    SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
+    ReleaseBrowserBeforeFanout,
+    WebBrowserTool,
+    snapshot_snippet,
+)
+from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
+from tabulaflow.data.registry import DataConnectorRegistry
 
 _MAX_MEDIA_ITEMS_PER_ROW = 10
 _MAX_MEDIA_BYTES_PER_ROW = 25 * 1024 * 1024
@@ -29,12 +46,12 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
 
 @dataclass(frozen=True)
-class _TaskRow:
+class TaskRow:
     values: dict[str, object]
     prompt: str | list[UserContent]
 
 
-def _prepare_task_row(row_idx: int, row: dict[str, object], template: jinja2.Template) -> _TaskRow:
+def _prepare_task_row(row_idx: int, row: dict[str, object], template: jinja2.Template) -> TaskRow:
     prompt_values = dict(row)
     media: list[UserContent] = []
     attached = 0
@@ -74,7 +91,7 @@ def _prepare_task_row(row_idx: int, row: dict[str, object], template: jinja2.Tem
         prompt = template.render(prompt_values)
     except jinja2.TemplateError as exc:
         raise ValueError(f"cannot render instruction for row {row_idx}: {exc}") from exc
-    return _TaskRow(values=row, prompt=[prompt, *media] if media else prompt)
+    return TaskRow(values=row, prompt=[prompt, *media] if media else prompt)
 
 
 class AbortTask(BaseModel):
@@ -121,24 +138,7 @@ def _terminal_output_type(llm: str | Model, answer_model: type[BaseModel]) -> An
     ]
 
 
-def _make_row_agent(
-    llm: str | Model,
-    record_type: type[BaseModel],
-    *,
-    model_settings: ModelSettings | None,
-    tools: Sequence[Tool] = (),
-    capabilities: Sequence[AbstractCapability[Any]] = (),
-) -> Agent[Any, BaseModel]:
-    return make_agent(
-        llm,
-        tools=tools,
-        capabilities=capabilities or None,
-        output_type=_terminal_output_type(llm, record_type),
-        model_settings=model_settings,
-    )
-
-
-def _prepare_rows(df: pd.DataFrame, instruction: str) -> list[_TaskRow]:
+def prepare_rows(df: pd.DataFrame, instruction: str) -> list[TaskRow]:
     if not df.columns.is_unique or any(not isinstance(column, str) for column in df.columns):
         raise ValueError("input columns must have unique string names")
     try:
@@ -157,42 +157,88 @@ def _prepare_rows(df: pd.DataFrame, instruction: str) -> list[_TaskRow]:
 
 
 @dataclass(frozen=True)
-class _RowResult:
+class RowResult:
     run_result: AgentRunResult[BaseModel] | None
     error: str | None
 
 
-class _RowRunner:
-    """Run typed row tasks; consumers own persistence and failure policy."""
+class RowRunner:
+    """Run typed row agents; consumers own persistence and failure policy.
 
-    def __init__(self, *, max_concurrency: int) -> None:
+    Concurrency is shared across calls on one runner. Each row owns its browser
+    and message scope; additional tools are supplied by the consumer.
+    """
+
+    def __init__(
+        self,
+        *,
+        llm: str | Model,
+        model_settings: ModelSettings | None = None,
+        max_concurrency: int = 200,
+        enable_browser_tools: bool = False,
+        enable_run_query_tool: bool = False,
+        registry: DataConnectorRegistry | None = None,
+        message_store: MessageStore | None = None,
+        truncate_messages: bool = False,
+    ) -> None:
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
+        if enable_run_query_tool and registry is None:
+            raise ValueError("enable_run_query_tool=True requires a registry")
+        if truncate_messages and (message_store is None or registry is None):
+            raise ValueError("message truncation requires a message store and registry")
+        self._llm = llm
+        self._model_settings = model_settings
         self._max_concurrency = max_concurrency
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._enable_browser_tools = enable_browser_tools
+        self._enable_run_query_tool = enable_run_query_tool
+        self._registry = registry
+        self._message_store = message_store
+        self._truncate_messages = truncate_messages
 
     async def run(
         self,
-        rows: list[_TaskRow],
+        rows: list[TaskRow],
         *,
-        run_agent: Callable[[int, str | list[UserContent]], Awaitable[AgentRunResult[BaseModel]]],
-        on_result: Callable[[int, _RowResult], Awaitable[None]],
+        record_type: type[BaseModel],
+        on_result: Callable[[int, RowResult], Awaitable[None]],
+        tools: Sequence[Tool] = (),
+        fanout_tool_names: frozenset[str] = frozenset(),
+        call_id: str | None = None,
     ) -> None:
+        """Deliver each row's outcome as it completes and drain workers on exit."""
         if not rows:
             return
+        call_id = call_id or uuid.uuid4().hex[:8]
+        shared_tools = list(tools)
+        if self._enable_run_query_tool or self._truncate_messages:
+            assert self._registry is not None
+            shared_tools.append(RegistryRunQueryTool(self._registry).as_pydantic_ai_tool())
         pending = iter(enumerate(rows))
 
         async def worker() -> None:
             for position, row in pending:
                 async with self._semaphore:
+                    scope = (
+                        self._message_store.scoped(f"subagent:{call_id}:{position + 1}")
+                        if self._message_store is not None
+                        else None
+                    )
                     try:
-                        result = await run_agent(position, row.prompt)
+                        result = await self._run_agent(
+                            row.prompt,
+                            record_type=record_type,
+                            tools=shared_tools,
+                            fanout_tool_names=fanout_tool_names,
+                            scope=scope,
+                        )
                         if isinstance(result.output, AbortTask):
-                            outcome = _RowResult(result, f"AbortTask: {result.output.message}")
+                            outcome = RowResult(result, f"AbortTask: {result.output.message}")
                         else:
-                            outcome = _RowResult(result, None)
+                            outcome = RowResult(result, None)
                     except Exception as exc:
-                        outcome = _RowResult(None, f"{type(exc).__name__}: {exc}")
+                        outcome = RowResult(None, f"{type(exc).__name__}: {exc}")
                     await on_result(position, outcome)
 
         workers = [asyncio.create_task(worker()) for _ in range(min(len(rows), self._max_concurrency))]
@@ -203,6 +249,54 @@ class _RowRunner:
                 if not task.done():
                     task.cancel()
             await asyncio.gather(*workers, return_exceptions=True)
+
+    async def _run_agent(
+        self,
+        prompt: str | list[UserContent],
+        *,
+        record_type: type[BaseModel],
+        tools: Sequence[Tool],
+        fanout_tool_names: frozenset[str],
+        scope: ScopedMessageStore | None,
+    ) -> AgentRunResult[BaseModel]:
+        browser: WebBrowserTool | None = None
+        try:
+            row_tools: list[Tool] = []
+            capabilities: list[AbstractCapability[Any]] = []
+            if self._enable_browser_tools:
+                browser = WebBrowserTool()
+                row_tools.extend(browser.as_pydantic_ai_tools())
+                capabilities.append(browser.lifecycle_capability())
+                if fanout_tool_names:
+                    capabilities.append(ReleaseBrowserBeforeFanout(browser, fanout_tool_names))
+            row_tools.extend(tools)
+            if scope is not None:
+                capabilities.append(
+                    MessageStoreCapability(
+                        store=scope,
+                        tool_allowlist=BROWSER_TOOL_NAMES,
+                        truncate=self._truncate_messages,
+                        snippet_fn=snapshot_snippet,
+                        threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
+                    )
+                )
+                if self._truncate_messages:
+                    text = prompt if isinstance(prompt, str) else str(prompt[0])
+                    message_id = await scope.add(kind="user_prompt", content=text)
+                    if message_id is not None and len(text) > MESSAGE_THRESHOLD_CHARS:
+                        snippet = make_snippet(message_id, text)
+                        prompt = snippet if isinstance(prompt, str) else [snippet, *prompt[1:]]
+            agent = make_agent(
+                self._llm,
+                tools=row_tools,
+                capabilities=capabilities or None,
+                output_type=_terminal_output_type(self._llm, record_type),
+                model_settings=self._model_settings,
+            )
+            return await agent.run(prompt)
+        finally:
+            if browser is not None:
+                await browser.close()
 
 
 def _pandas_dtype(annotation: Any) -> str | pd.CategoricalDtype:
@@ -226,9 +320,9 @@ def _pandas_dtype(annotation: Any) -> str | pd.CategoricalDtype:
 class DataFrameEnricher:
     """Enrich DataFrame rows with typed fields using an LLM.
 
-    Rows are processed concurrently using their supplied content. Each row produces
-    a record validated by the supplied Pydantic model, preserving required fields,
-    defaults, constraints, and nullability.
+    Rows are processed concurrently using their supplied content and optional
+    browser or database tools. Each row produces a record validated by the supplied
+    Pydantic model, preserving required fields, defaults, constraints, and nullability.
     """
 
     def __init__(
@@ -237,6 +331,9 @@ class DataFrameEnricher:
         llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
+        enable_browser_tools: bool = False,
+        enable_run_query_tool: bool = False,
+        registry: DataConnectorRegistry | None = None,
     ) -> None:
         """Initialize the enricher.
 
@@ -245,13 +342,22 @@ class DataFrameEnricher:
             model_settings: Optional settings passed to each agent.
             max_concurrency: Maximum concurrent row tasks across all calls
                 on this instance.
+            enable_browser_tools: Give each row agent its own browser tools.
+            enable_run_query_tool: Give row agents a tool to query and modify
+                registered data sources. Requires ``registry``.
+            registry: Data sources available to the optional query tool.
 
         Raises:
-            ValueError: If concurrency is not positive.
+            ValueError: If concurrency is not positive or query tools lack a registry.
         """
-        self._llm = llm
-        self._model_settings = model_settings
-        self._runner = _RowRunner(max_concurrency=max_concurrency)
+        self._runner = RowRunner(
+            llm=llm,
+            model_settings=model_settings,
+            max_concurrency=max_concurrency,
+            enable_browser_tools=enable_browser_tools,
+            enable_run_query_tool=enable_run_query_tool,
+            registry=registry,
+        )
 
     async def enrich(self, df: pd.DataFrame, *, record_type: type[BaseModel], instruction: str) -> pd.DataFrame:
         """Return a copy with the model's fields added or replaced as columns.
@@ -288,22 +394,16 @@ class DataFrameEnricher:
             raise ValueError("record_type must define a non-empty record")
         dtypes = {name: _pandas_dtype(field.annotation) for name, field in record_type.model_fields.items()}
         enriched = df.copy()
-        rows = _prepare_rows(enriched, instruction)
+        rows = prepare_rows(enriched, instruction)
         outputs: dict[int, BaseModel] = {}
 
-        async def collect(position: int, result: _RowResult) -> None:
+        async def collect(position: int, result: RowResult) -> None:
             if result.error is not None:
                 raise RuntimeError(f"row {position + 1}: {result.error}")
             assert result.run_result is not None
             outputs[position] = result.run_result.output
 
-        if rows:
-            agent = _make_row_agent(self._llm, record_type, model_settings=self._model_settings)
-
-            async def run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[BaseModel]:
-                return await agent.run(prompt)
-
-            await self._runner.run(rows, run_agent=run_agent, on_result=collect)
+        await self._runner.run(rows, record_type=record_type, on_result=collect)
         for name, dtype in dtypes.items():
             values = [getattr(outputs[position], name) for position in range(len(rows))]
             values = [value.value if isinstance(value, Enum) else value for value in values]
