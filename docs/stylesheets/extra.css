@@ -21,6 +21,7 @@
   --tf-hover: #2c3441;
   --tf-border: #21262d;
   --tf-text: #e4e4e7;
+  --tf-wordmark: #d4d4d8;
   --tf-text-muted: #9aa4b2;
   --tf-text-dim: #6a737d;
   --tf-scrollbar-thumb: #3a4049;
@@ -242,16 +243,18 @@ body {
 }
 
 .md-header__title {
+  color: var(--tf-wordmark);
   font-family: "Figtree", sans-serif;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin-left: 8px;
 }
 
 .tf-wordmark {
+  color: var(--tf-wordmark);
   font-family: "Figtree", sans-serif;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .md-typeset h1 {
