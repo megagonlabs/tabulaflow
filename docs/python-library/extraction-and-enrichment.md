@@ -42,10 +42,8 @@ as `registry` and set `enable_run_query_tool=True`.
 For enrichment that writes results back to a database table,
 [`RunSubagentForEachRowTool`](api/agents.md#extraction-and-enrichment-tools)
 uses the same row execution runtime and writes each result as it completes.
-Its browser option also includes workspace extraction and canonicalization tools;
-its nested-subagent option enables further table tasks. Individual row failures
-are recorded while other rows continue. `DataFrameEnricher` raises on a row
-failure and cancels pending work, leaving the input DataFrame unchanged.
+Its nested-subagent option enables multiple levels of task decomposition.
+Individual row failures are recorded while other rows continue.
 
 ## Extract records from documents
 

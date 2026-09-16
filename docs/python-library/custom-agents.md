@@ -13,7 +13,8 @@ and opens a support ticket.
 --8<-- "examples/custom_agents.py:example"
 ```
 
-Expect order **1001** and ticket **SUP-1**. Wording and tool-call order may vary.
+Expect the agent to identify order **1001**, use the FAQ and PDF guide, and open
+ticket **SUP-1**. Wording and tool-call order may vary.
 
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
 
@@ -21,6 +22,7 @@ Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete ex
 uv run https://megagonlabs.github.io/tabulaflow/examples/custom_agents.py
 ```
 
-The script creates the database and temporary document directory, loads the
-bundled FAQ and PDF guide, and closes its resources. Use a model with PDF input
-support; tickets are stored in memory for this example.
+The example intentionally keeps application concerns lightweight: the signed-in
+customer is fixed, and tickets are stored in memory. In a real application,
+derive customer identity from authentication and persist tickets in your support
+system. Use a model with PDF input support.
