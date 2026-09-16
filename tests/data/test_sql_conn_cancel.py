@@ -106,6 +106,88 @@ async def test_aclose_is_safe_with_nothing_in_flight(tmp_path: Path) -> None:
     await t_eng2.aclose()
 
 
+async def test_throttle_releases_partial_acquisition_on_cancel(tmp_path: Path) -> None:
+    t_eng = ThrottledEngine.from_url(f"sqlite:///{tmp_path / 'throttle.sqlite'}")
+    shared = asyncio.Semaphore(1)
+    blocked = asyncio.Semaphore(1)
+    await blocked.acquire()
+    t_eng.dbms_semaphore = shared
+    t_eng.db_semaphore = blocked
+
+    async def enter_throttle() -> None:
+        async with t_eng.throttle():
+            pass
+
+    task = asyncio.create_task(enter_throttle())
+    while not shared.locked():
+        await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    await asyncio.wait_for(shared.acquire(), timeout=1)
+    shared.release()
+    blocked.release()
+    await t_eng.aclose()
+
+
+async def test_throttle_releases_ddl_lock_when_shared_acquisition_is_cancelled(tmp_path: Path) -> None:
+    t_eng = ThrottledEngine.from_url(f"sqlite:///{tmp_path / 'ddl-throttle.sqlite'}")
+    shared = asyncio.Semaphore(1)
+    await shared.acquire()
+    t_eng.dbms_semaphore = shared
+    assert t_eng._ddl_lock is not None
+
+    async def enter_throttle() -> None:
+        async with t_eng.throttle(ddl=True):
+            pass
+
+    task = asyncio.create_task(enter_throttle())
+    while not t_eng._ddl_lock.locked():
+        await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    await asyncio.wait_for(t_eng._ddl_lock.acquire(), timeout=1)
+    t_eng._ddl_lock.release()
+    shared.release()
+    await t_eng.aclose()
+
+
+async def test_sync_cancel_waits_for_worker_completion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    t_eng = ThrottledEngine.from_url(
+        f"sqlite:///{tmp_path / 'worker.sqlite'}",
+        max_concurrency_per_db=1,
+    )
+    worker_started = threading.Event()
+    release_worker = threading.Event()
+    abort_called = asyncio.Event()
+
+    def block_worker(_conn: sqlalchemy.engine.Connection) -> None:
+        worker_started.set()
+        release_worker.wait()
+
+    async def record_abort(_handle: Any) -> None:
+        abort_called.set()
+
+    monkeypatch.setattr(t_eng, "_abort_handle", record_abort)
+    task = asyncio.create_task(t_eng.run_with_conn_async(block_worker))
+    await asyncio.wait_for(asyncio.to_thread(worker_started.wait), timeout=5)
+
+    task.cancel()
+    await asyncio.wait_for(abort_called.wait(), timeout=1)
+    await asyncio.sleep(0)
+    assert not task.done()
+    assert t_eng.db_semaphore is not None and t_eng.db_semaphore.locked()
+
+    release_worker.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert not t_eng.db_semaphore.locked()
+    await t_eng.aclose()
+
+
 async def test_load_files_cancel_then_retry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A cancelled load must leave no DuckDB state and allow a fresh retry."""
     import pandas as pd

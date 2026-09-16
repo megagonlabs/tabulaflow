@@ -59,9 +59,9 @@ environment variables, then defaults. Pass `DataSourceConnectorConfigs` to
 `connect_data_source` when the source's backend is selected at runtime.
 
 SQL connectors support both sync and async drivers through the same awaited
-API. A query's `timeout` argument overrides the configured deadline. Supported
-backends cancel the database query on timeout or task cancellation; timeouts
-appear in `ExecResult.error`, while task cancellation propagates as
+API. A query's `timeout` argument overrides the configured deadline and
+requests cancellation of the underlying query. Timeouts appear in
+`ExecResult.error`, while task cancellation propagates as
 `asyncio.CancelledError`.
 
 Schema and query caches are off by default. Enable them for reusable database

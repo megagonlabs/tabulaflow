@@ -40,7 +40,16 @@ def test_canonicalize_dtype_composites() -> None:
 
 @pytest.mark.parametrize(
     ("backend", "dialect"),
-    [("postgresql", "postgresql"), ("mssql", "tsql"), ("awsathena", "athena"), ("duckdb", "duckdb")],
+    [
+        ("postgresql", "postgresql"),
+        ("cockroachdb", "postgresql"),
+        ("yugabytedb", "postgresql"),
+        ("mysql", "mysql"),
+        ("mariadb", "mysql"),
+        ("mssql", "tsql"),
+        ("awsathena", "athena"),
+        ("duckdb", "duckdb"),
+    ],
 )
 def test_sql_backend_maps_to_query_dialect(backend: str, dialect: str) -> None:
     assert _sql_dialect_for_backend(backend) == dialect

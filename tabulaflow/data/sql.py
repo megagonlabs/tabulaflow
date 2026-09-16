@@ -18,9 +18,9 @@ browsers) see one structure across all backends.
 **Timeout and cancellation.**  ``SQLConnector.run_query_async(...,
 timeout=N)`` and ``task.cancel()`` share one path: a per-dialect
 cancel primitive (``interrupt()``, ``cancel()``, ``KILL QUERY``,
-``cursor.cancel()``, ...) actually stops the running query.  Covers
-14+ sync dialects and the async variants that don't self-cancel on
-``asyncio.Task.cancel()``.
+``cursor.cancel()``, ...) requests that the database stop the running
+query. The call retains its connection and concurrency permit until the
+underlying operation finishes.
 
 **Concurrency control.**  Per-DB and shared per-DBMS asyncio
 semaphores (independent of pool size) for shaping request rate across
@@ -135,7 +135,10 @@ _UNSET = object()
 _SQL_DIALECT_ADAPTER: TypeAdapter[SQLDialect] = TypeAdapter(SQLDialect)
 _SQL_DIALECT_BY_BACKEND: dict[str, str] = {
     "awsathena": "athena",
+    "cockroachdb": "postgresql",
+    "mariadb": "mysql",
     "mssql": "tsql",
+    "yugabytedb": "postgresql",
 }
 
 # Keywords that mark a statement as data-modifying.  Used by the
@@ -1178,13 +1181,10 @@ class ThrottledEngine:
             locks.append(self.dbms_semaphore)
         if self.db_semaphore is not None:
             locks.append(self.db_semaphore)
-        for lock in locks:
-            await lock.acquire()
-        try:
+        async with contextlib.AsyncExitStack() as stack:
+            for lock in locks:
+                await stack.enter_async_context(lock)
             yield
-        finally:
-            for lock in reversed(locks):
-                lock.release()
 
     async def execute_async(
         self,
@@ -1199,9 +1199,9 @@ class ThrottledEngine:
 
         Cancellation / timeout contract:
 
-        * ``CancelledError`` and ``timeout=`` share one code path —
-          timeout is "cancel after N seconds."  Both abort the
-          in-flight query via the dialect's strategy, then unwind.
+        * ``CancelledError`` and ``timeout=`` share one code path. The
+          deadline requests cancellation; both paths wait for the
+          underlying operation to finish before releasing its resources.
         * Statements run inside ``engine.begin()`` — on cancel, the
           transaction rolls back **if the dialect is transactional**.
           Postgres / DuckDB / SQLite / MSSQL-in-explicit-txn: full
@@ -1295,20 +1295,16 @@ class ThrottledEngine:
     ) -> _T:
         """Run an inner worker (sync via executor, async via task) with
         the cancel-handle dance: shield from outer cancel propagation,
-        abort the captured handle on cancel/timeout, then drain the
-        inner.
+        abort the captured handle on cancel/timeout, then wait for the
+        underlying operation to finish.
 
         Both ``sync_inner`` and ``async_inner`` receive a
         ``cancel_handle_box`` (a single-element list) into which they
         publish the dialect's cancel handle once captured.
 
-        Shielding the inner is essential: without it, ``Task.cancel()``
-        cascades into the inner's ``async with engine.begin()``
-        ``__aexit__``, whose rollback can raise ``OperationalError``
-        *over* our ``CancelledError``.  With shield we (1) see the
-        cancel cleanly, (2) abort via the strategy first so the
-        connection is in a known state, then (3) cancel the inner
-        explicitly so it unwinds.
+        Shielding the inner is essential. It lets us abort first, then
+        wait until transaction cleanup is complete without allowing a
+        worker thread to outlive the throttle permit that owns it.
         """
         cancel_handle_box: list[Any] = [None]
         inner: asyncio.Future[Any]
@@ -1321,11 +1317,10 @@ class ThrottledEngine:
             return await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
         except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
             await self._abort_handle(cancel_handle_box[0])
-            if not inner.done():
+            if self.engine_type == "async" and not inner.done():
                 inner.cancel()
-            # Drain to suppress "Task was destroyed but it is pending".
             with contextlib.suppress(BaseException):
-                await inner
+                await asyncio.shield(inner)
             if isinstance(exc, asyncio.TimeoutError):
                 raise TimeoutError(f"{timeout_label} timed out after {timeout} seconds") from exc
             raise

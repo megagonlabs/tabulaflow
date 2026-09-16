@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Coroutine
+from typing import Any
+
 from tabulaflow.data.protocols import DataConnector, validate_global_id
 
 
@@ -57,7 +61,32 @@ class DataConnectorRegistry:
         return list(self._connectors.keys())
 
     async def close_all_async(self) -> None:
-        """Close all registered connectors and clear the registry."""
-        for connector in self._connectors.values():
-            await connector.close_async()
-        self._connectors.clear()
+        """Remove and close every connector, reporting all close failures."""
+        connectors = self._connectors
+        self._connectors = {}
+
+        async def close_all() -> None:
+            errors: list[Exception] = []
+            for alias, connector in connectors.items():
+                try:
+                    await connector.close_async()
+                except Exception as exc:
+                    exc.add_note(f"Connector alias: {alias}")
+                    errors.append(exc)
+            if errors:
+                raise ExceptionGroup("Failed to close data connectors", errors)
+
+        await _finish_on_cancel(close_all())
+
+
+async def _finish_on_cancel(cleanup: Coroutine[Any, Any, None]) -> None:
+    """Finish an async cleanup operation before propagating cancellation."""
+    task = asyncio.create_task(cleanup)
+    try:
+        await asyncio.shield(task)
+    except asyncio.CancelledError as cancelled:
+        try:
+            await task
+        except Exception as exc:
+            raise cancelled from exc
+        raise
