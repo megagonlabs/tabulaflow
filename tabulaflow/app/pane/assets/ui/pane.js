@@ -19,13 +19,18 @@ function hasText(value) {
 }
 
 function setFavicon() {
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">'
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
     + '<defs><clipPath id="rounded"><rect width="64" height="64" rx="14"/></clipPath></defs>'
-    + '<g clip-path="url(#rounded)"><rect width="64" height="64" fill="#283629"/>'
-    + '<rect x="8" y="0" width="48" height="14" fill="#5FAF87"/>'
-    + '<rect x="8" y="14" width="48" height="14" fill="#121212"/>'
-    + '<rect x="25" y="14" width="14" height="36" fill="#5FAF87"/>'
-    + '<rect x="25" y="50" width="14" height="14" fill="#121212"/></g>'
+    + '<g clip-path="url(#rounded)"><rect width="64" height="64" fill="#1A212C"/>'
+    + '<g fill="#5FAF87"><rect x="10" y="10" width="12" height="12" rx="2"/>'
+    + '<rect x="26" y="10" width="12" height="12" rx="2"/>'
+    + '<rect x="42" y="10" width="12" height="12" rx="2"/>'
+    + '<rect x="26" y="26" width="12" height="12" rx="2"/>'
+    + '<rect x="26" y="42" width="12" height="12" rx="2"/></g>'
+    + '<g fill="#2C3441"><rect x="10" y="26" width="12" height="12" rx="2"/>'
+    + '<rect x="42" y="26" width="12" height="12" rx="2"/>'
+    + '<rect x="10" y="42" width="12" height="12" rx="2"/>'
+    + '<rect x="42" y="42" width="12" height="12" rx="2"/></g></g>'
     + '</svg>';
   var link = document.querySelector('link[rel="icon"]');
   if (!link) {
