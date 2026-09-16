@@ -1,0 +1,4 @@
+HDMI cable and USB-C dock are below their reorder points.
+
+Tool: run_query
+Order 8 HDMI cables and 7 USB-C docks.

@@ -100,5 +100,4 @@ Run the complete example without a database server or API key:
 uv run https://megagonlabs.github.io/tabulaflow/examples/structured_outputs.py
 ```
 
-The script prints data and graph structure and closes its connector. See
-[result storage](api/output.md#result-storage) for persistence and cache behavior.
+See [result storage](api/output.md#result-storage) for persistence and cache behavior.

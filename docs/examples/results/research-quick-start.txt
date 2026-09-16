@@ -1,0 +1,6 @@
+Question: Which schools match the requested criteria?
+Predicted SQL: SELECT school_name FROM schools WHERE ...
+Query result:
+         school_name
+0  Example High School
+Execution accuracy: 0.6667

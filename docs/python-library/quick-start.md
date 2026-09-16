@@ -14,16 +14,15 @@ chart and table.
 --8<-- "examples/quick_start.py:example"
 ```
 
-Expect revenue of **West: $2,000** and **East: $1,500**, plus open high-priority
-tickets **201** and **202**. `result.text` contains the answer; `result.output`
-contains the chart and table specifications. See [Structured outputs](structured-outputs.md)
-for parameter-driven outputs.
-
 ??? example-details no-copy "Sample output"
 
     ```text
     --8<-- "examples/results/library-quick-start.txt"
     ```
+
+`result.text` contains the answer; `result.output` contains the chart and table
+specifications. See [Structured outputs](structured-outputs.md) for
+parameter-driven outputs.
 
 ## Try it yourself
 
@@ -35,9 +34,9 @@ export OPENAI_API_KEY="your-api-key"
 uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
 ```
 
-The script creates the sample databases, prints the answer and artifact data,
-and closes its resources. It makes paid model calls; wording and artifact labels
-may vary. For a local example without an API key, try [Data connectors](data-connectors.md).
+The script creates the sample databases and closes its resources. It makes paid
+model calls; wording and artifact labels may vary. For a local example without
+an API key, try [Data connectors](data-connectors.md).
 
 ??? info "Run from a source checkout"
 

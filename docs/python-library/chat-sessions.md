@@ -36,8 +36,13 @@ Ask how much to order, using the previous turn's context:
 --8<-- "examples/chat_sessions.py:stream"
 ```
 
-Expect **8 HDMI cables** and **7 USB-C docks**. `turn_finished` provides the
-complete result, including its output artifacts and usage. See the
+??? example-details no-copy "Sample output"
+
+    ```text
+    --8<-- "examples/results/library-chat-sessions.txt"
+    ```
+
+`turn_finished` provides the complete result, including its output artifacts and usage. See the
 [event reference](api/agents.md#events-and-turn-results) for all event types.
 
 Inspect the completed turn's token usage and estimated API cost:

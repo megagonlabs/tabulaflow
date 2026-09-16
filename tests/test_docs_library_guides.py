@@ -418,6 +418,9 @@ async def test_chat_sessions_keep_history_and_stream_followup(
     await runpy.run_path(str(EXAMPLES / "chat_sessions.py"))["main"]()
 
     printed = capsys.readouterr().out
+    sample_output = (EXAMPLES / "results/library-chat-sessions.txt").read_text()
+    for line in filter(None, sample_output.splitlines()):
+        assert line in printed
     assert "HDMI cable and USB-C dock are below their reorder points." in printed
     assert "Tool: run_query" in printed
     assert "Order 8 HDMI cables and 7 USB-C docks." in printed
@@ -518,6 +521,9 @@ async def test_custom_agent_finds_order_reads_documents_and_opens_ticket(
     assert result.df is not None
     assert result.df["order_id"].tolist() == [1003, 1001, 1004]
     printed = capsys.readouterr().out
+    sample_output = (EXAMPLES / "results/library-custom-agent.txt").read_text()
+    for line in filter(None, sample_output.splitlines()):
+        assert line in printed
     assert "I found order 1001 and opened ticket SUP-1" in printed
     assert str({"ticket_id": "SUP-1", "order_id": 1001, "issue": issue}) in printed
     assert len(closed_connectors) == 1

@@ -38,8 +38,6 @@ runs/full-schema/
     --8<-- "examples/results/agent-trace-excerpt.txt"
     ```````
 
-Reports include queries, tabular results, and scores. Trajectory files contain
-agent messages and tool calls, when available.
 To continue execution or evaluation, reload the original benchmark split with
 `qids=[task.qid for task in result.tasks]` and the same database snapshot.
 

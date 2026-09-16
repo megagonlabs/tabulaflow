@@ -13,8 +13,13 @@ and opens a support ticket.
 --8<-- "examples/custom_agents.py:example"
 ```
 
-Expect the agent to identify order **1001**, use the FAQ and PDF guide, and open
-ticket **SUP-1**. Wording and tool-call order may vary.
+??? example-details no-copy "Sample output"
+
+    ```text
+    --8<-- "examples/results/library-custom-agent.txt"
+    ```
+
+Wording and tool-call order may vary.
 
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
 
