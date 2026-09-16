@@ -75,6 +75,7 @@ datasets) by materializing into DuckDB.
 import hashlib
 import importlib
 import json
+from functools import partial
 import re
 import logging
 import threading
@@ -476,6 +477,27 @@ def _is_async_url(url: str | SQLAlchemyURL) -> bool:
     return any(d in driver for d in _ASYNC_DRIVERS)
 
 
+def _mysql_cancel_connection_factory(
+    *,
+    url: SQLAlchemyURL,
+    dialect: sqlalchemy.engine.Dialect,
+    connect_args: Mapping[str, Any],
+    creator: Callable[[], Any] | None,
+) -> Callable[[], Any]:
+    """Build a pool-independent connection factory for ``KILL QUERY``."""
+    if creator is not None:
+        return creator
+
+    cargs, ckwargs = dialect.create_connect_args(url)
+    ckwargs.update(connect_args)
+    if dialect.is_async:
+        driver = importlib.import_module(url.get_driver_name())
+        return partial(driver.connect, *cargs, **ckwargs)
+    if dialect.dbapi is None:
+        raise RuntimeError("MySQL DBAPI is not configured")
+    return partial(dialect.dbapi.connect, *cargs, **ckwargs)
+
+
 # ---------------------------------------------------------------------------
 # Per-dialect cancellation strategies
 # ---------------------------------------------------------------------------
@@ -496,8 +518,8 @@ def _is_async_url(url: str | SQLAlchemyURL) -> bool:
 #     Snowflake it's a SQLAlchemy connection id used to look up a
 #     captured cursor.
 #   * ``abort(handle)`` — called from another thread to abort the query
-#     identified by ``handle``.  Idempotent; exceptions are swallowed
-#     by the caller.
+#     identified by ``handle``. Idempotent; failures are handled by the
+#     engine so they do not replace the original cancellation.
 #   * ``abort_from_dbapi_conn(raw)`` — bulk-cancel hook for ``aclose``,
 #     which only knows raw DBAPI connections.  Defaults to ``abort`` for
 #     dialects whose handle == raw conn; explicitly ``None`` for
@@ -505,11 +527,10 @@ def _is_async_url(url: str | SQLAlchemyURL) -> bool:
 #     cancel becomes a no-op there and ``aclose`` falls back to
 #     waiting for natural completion.
 #
-# Dialects without a registered strategy fall back to a no-op cancel —
-# the asyncio task's ``CancelledError`` propagates immediately but the
-# executor thread runs the query to completion (and any transaction
-# commits).  Map new dialects to an existing mechanism below, adding a
-# strategy only when their cancellation behavior genuinely differs.
+# Dialects without a registered strategy cannot request a database abort;
+# the worker runs to completion before cancellation propagates. Map new
+# dialects to an existing mechanism below, adding a strategy only when
+# their cancellation behavior genuinely differs.
 
 
 class _CancelStrategy:
@@ -562,12 +583,7 @@ class _CancelStrategy:
         return raw.driver_connection
 
     async def aabort(self, handle: Any) -> None:
-        """Abort the query identified by ``handle``.  Override per dialect.
-
-        Implementations should swallow and debug-log any errors — the
-        caller (which is itself usually in a cancellation flow) doesn't
-        want to see secondary exceptions.
-        """
+        """Abort the query identified by ``handle``. Override per dialect."""
         raise NotImplementedError
 
     async def acancel_all(self) -> None:
@@ -582,17 +598,14 @@ class _CancelStrategy:
         with self.engine._inflight_sync_lock:
             conns = list(self.engine._inflight_sync_conns)
         for raw in conns:
-            await self.aabort(raw)
+            await self.aabort(getattr(raw, "driver_connection", raw))
 
 
 class _InterruptCancel(_CancelStrategy):
     """Cancel through a connection's fast in-process ``interrupt()``."""
 
     async def aabort(self, handle: Any) -> None:
-        try:
-            handle.interrupt()  # μs, no thread needed
-        except Exception:
-            logger.debug("interrupt failed for %s", self.dialect_name, exc_info=True)
+        handle.interrupt()
 
 
 class _ConnectionCancel(_CancelStrategy):
@@ -603,10 +616,7 @@ class _ConnectionCancel(_CancelStrategy):
     """
 
     async def aabort(self, handle: Any) -> None:
-        try:
-            await asyncio.to_thread(handle.cancel)
-        except Exception:
-            logger.debug("cancel failed for %s", self.dialect_name, exc_info=True)
+        await asyncio.to_thread(handle.cancel)
 
     async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
@@ -660,10 +670,7 @@ class _CursorTrackingCancel(_CancelStrategy):
         cursor = self._cursors.get(handle)
         if cursor is None:
             return
-        try:
-            await asyncio.to_thread(self._cancel_cursor, cursor)
-        except Exception:
-            logger.debug("cursor cancel failed for %s", self.dialect_name, exc_info=True)
+        await asyncio.to_thread(self._cancel_cursor, cursor)
 
     async def acancel_all(self) -> None:
         cursors = list(self._cursors.values())
@@ -735,10 +742,7 @@ class _KillQueryCancel(_CancelStrategy):
     async def aabort(self, handle: Any) -> None:
         if handle is None:
             return
-        try:
-            await self._kill_one(int(handle))
-        except Exception:
-            logger.debug("KILL QUERY failed", exc_info=True)
+        await self._kill_one(int(handle))
 
     async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
@@ -746,6 +750,7 @@ class _KillQueryCancel(_CancelStrategy):
         thread_ids: list[int] = []
         for raw in conns:
             try:
+                raw = getattr(raw, "driver_connection", raw)
                 thread_ids.append(int(raw.thread_id()))
             except Exception:
                 logger.debug("could not read thread_id", exc_info=True)
@@ -767,12 +772,10 @@ class _MySQLCancel(_KillQueryCancel):
         await asyncio.to_thread(self._kill_sync, thread_id)
 
     def _kill_sync(self, thread_id: int) -> None:
-        sync_engine = self.engine.engine
-        cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
-        dbapi = sync_engine.dialect.dbapi
-        if dbapi is None:
-            return
-        side = dbapi.connect(*cargs, **ckwargs)
+        connect = self.engine._cancel_connection_factory
+        if connect is None:
+            raise RuntimeError("MySQL cancellation connection is not configured")
+        side = connect()
         try:
             cur = side.cursor()
             try:
@@ -795,16 +798,10 @@ class _AsyncMySQLCancel(_KillQueryCancel):
     """
 
     async def _kill_one(self, thread_id: int) -> None:
-        url = self.engine.engine.url  # AsyncEngine.url
-        driver = url.get_driver_name()  # "asyncmy" / "aiomysql" / ...
-        module = importlib.import_module(driver)
-        side = await module.connect(
-            host=url.host,
-            port=url.port or 3306,
-            user=url.username,
-            password=url.password or "",
-            db=url.database,
-        )
+        connect = self.engine._cancel_connection_factory
+        if connect is None:
+            raise RuntimeError("MySQL cancellation connection is not configured")
+        side = await connect()
         try:
             async with side.cursor() as cur:
                 await cur.execute(f"KILL QUERY {thread_id}")
@@ -856,10 +853,7 @@ class _MSSQLCancel(_CancelStrategy):
     async def aabort(self, handle: Any) -> None:
         if handle is None:
             return
-        try:
-            await asyncio.to_thread(self._kill, int(handle))
-        except Exception:
-            logger.debug("KILL failed for mssql", exc_info=True)
+        await asyncio.to_thread(self._kill, int(handle))
 
     async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
@@ -897,10 +891,7 @@ class _AsyncOracleCancel(_CancelStrategy):
     """
 
     async def aabort(self, handle: Any) -> None:
-        try:
-            await handle.cancel()
-        except Exception:
-            logger.debug("cancel failed for oracle (async)", exc_info=True)
+        await handle.cancel()
 
 
 class _AsyncSqliteCancel(_CancelStrategy):
@@ -919,10 +910,7 @@ class _AsyncSqliteCancel(_CancelStrategy):
     """
 
     async def aabort(self, handle: Any) -> None:
-        try:
-            await handle.interrupt()
-        except Exception:
-            logger.debug("interrupt failed for aiosqlite", exc_info=True)
+        await handle.interrupt()
 
 
 # Sync-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
@@ -973,11 +961,14 @@ class ThrottledEngine:
         engine: AsyncEngine | sqlalchemy.engine.Engine,
         dbms_semaphore: asyncio.Semaphore | None,
         db_semaphore: asyncio.Semaphore | None,
+        *,
+        cancel_connection_factory: Callable[[], Any] | None = None,
     ) -> None:
         self.engine_type = engine_type
         self.engine = engine
         self.dbms_semaphore = dbms_semaphore
         self.db_semaphore = db_semaphore
+        self._cancel_connection_factory = cancel_connection_factory
         self._ddl_lock = asyncio.Lock() if engine.dialect.name in _DDL_SERIAL_DIALECTS else None
         self._inflight_sync_conns: set[Any] = set()
         self._inflight_sync_lock = threading.Lock()
@@ -1024,6 +1015,7 @@ class ThrottledEngine:
         dbms_semaphore: asyncio.Semaphore | None = None,
         read_only: bool = True,
         duckdb_init_sql: list[str] | None = None,
+        connect_args: Mapping[str, Any] | None = None,
         **engine_kwargs: Any,
     ) -> "ThrottledEngine":
         """Build a SQLAlchemy engine from ``url`` and wrap it.
@@ -1049,6 +1041,7 @@ class ThrottledEngine:
             duckdb_init_sql: Optional list of SQL statements to run on
                 every fresh DuckDB connection (e.g.
                 ``"INSTALL spatial; LOAD spatial;"``).
+            connect_args: Options passed to each driver connection.
             **engine_kwargs: Extra kwargs forwarded to
                 :func:`sqlalchemy.create_engine` /
                 :func:`sqlalchemy.ext.asyncio.create_async_engine`.
@@ -1062,6 +1055,7 @@ class ThrottledEngine:
         url = make_url(url)
         backend = url.get_backend_name()
         in_memory = _is_memory_url(url)
+        connect_args = dict(connect_args or {})
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
 
         if backend == "duckdb" and in_memory:
@@ -1076,7 +1070,6 @@ class ThrottledEngine:
 
         # Open DuckDB in native read-only mode so it doesn't hold a file lock.
         if read_only and backend == "duckdb" and not in_memory:
-            connect_args = engine_kwargs.setdefault("connect_args", {})
             connect_args.setdefault("read_only", True)
 
         engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
@@ -1086,15 +1079,29 @@ class ThrottledEngine:
             pool_class = engine_kwargs.setdefault("poolclass", StaticPool)
             if not issubclass(pool_class, StaticPool):
                 raise ValueError("In-memory SQLite requires StaticPool")
-            engine_kwargs.setdefault("connect_args", {}).setdefault("check_same_thread", False)
+            connect_args.setdefault("check_same_thread", False)
             max_concurrency_per_db = 1
         else:
             engine_kwargs["pool_size"] = max_concurrency_per_db
+
+        if connect_args:
+            engine_kwargs["connect_args"] = connect_args
         engine: AsyncEngine | sqlalchemy.engine.Engine
         if engine_type == "async":
             engine = create_async_engine(url, **engine_kwargs)
         else:
             engine = create_engine(url, **engine_kwargs)
+
+        cancel_connection_factory: Callable[[], Any] | None = None
+        if backend in {"mysql", "mariadb"}:
+            sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
+            cancel_creator = engine_kwargs.get("async_creator" if engine_type == "async" else "creator")
+            cancel_connection_factory = _mysql_cancel_connection_factory(
+                url=url,
+                dialect=sync_engine.dialect,
+                connect_args=connect_args,
+                creator=cancel_creator,
+            )
 
         # DuckDB prints a noisy progress bar to stdout for long-running
         # queries; suppress it so it doesn't pollute pipeline logs.
@@ -1115,7 +1122,13 @@ class ThrottledEngine:
             event.listen(sync_engine, "connect", _duckdb_on_connect)
 
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
-        return cls(engine_type, engine, dbms_semaphore, db_semaphore)
+        return cls(
+            engine_type,
+            engine,
+            dbms_semaphore,
+            db_semaphore,
+            cancel_connection_factory=cancel_connection_factory,
+        )
 
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
@@ -1458,7 +1471,10 @@ class ThrottledEngine:
         """
         if handle is None or self._cancel_strategy is None:
             return
-        await self._cancel_strategy.aabort(handle)
+        try:
+            await self._cancel_strategy.aabort(handle)
+        except Exception:
+            logger.warning("Failed to cancel %s query", self._cancel_strategy.dialect_name, exc_info=True)
 
     async def _cancel_inflight(self) -> None:
         """Abort every in-flight sync-driver query on this engine.
@@ -1473,7 +1489,10 @@ class ThrottledEngine:
         """
         if self._cancel_strategy is None:
             return
-        await self._cancel_strategy.acancel_all()
+        try:
+            await self._cancel_strategy.acancel_all()
+        except Exception:
+            logger.debug("Failed to cancel all %s queries", self._cancel_strategy.dialect_name, exc_info=True)
 
 
 class AsyncInspector:
@@ -2313,6 +2332,7 @@ class SQLConnector:
         dbms_semaphore: asyncio.Semaphore | None = None,
         description: str | None = None,
         duckdb_init_sql: Sequence[str] = (),
+        connect_args: Mapping[str, Any] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -2354,6 +2374,7 @@ class SQLConnector:
                 and persisted to the schema cache.
             duckdb_init_sql: SQL statements to run on each new DuckDB
                 connection.
+            connect_args: Options passed to each driver connection.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -2388,6 +2409,7 @@ class SQLConnector:
             dbms_semaphore=dbms_semaphore,
             read_only=read_only,
             duckdb_init_sql=list(duckdb_init_sql),
+            connect_args=connect_args,
             **engine_kwargs,
         )
         # If anything below raises (or the awaiting task is cancelled

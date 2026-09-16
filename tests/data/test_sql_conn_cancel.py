@@ -8,6 +8,8 @@ configuration than existing connections"``.
 """
 
 import asyncio
+import importlib
+import logging
 from pathlib import Path
 import threading
 from typing import Any, cast
@@ -186,6 +188,142 @@ async def test_sync_cancel_waits_for_worker_completion(tmp_path: Path, monkeypat
         await task
     assert not t_eng.db_semaphore.locked()
     await t_eng.aclose()
+
+
+async def test_abort_failure_is_logged_and_suppressed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    t_eng = ThrottledEngine.from_url(f"sqlite:///{tmp_path / 'abort.sqlite'}")
+    strategy = t_eng._cancel_strategy
+    assert strategy is not None
+
+    async def fail_abort(_handle: Any) -> None:
+        raise RuntimeError("abort failed")
+
+    monkeypatch.setattr(strategy, "aabort", fail_abort)
+    with caplog.at_level(logging.WARNING, logger=sql_module.__name__):
+        await t_eng._abort_handle(object())
+
+    assert "Failed to cancel sqlite query" in caplog.text
+    assert "abort failed" in caplog.text
+    await t_eng.aclose()
+
+
+async def test_sync_mysql_cancel_preserves_connection_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    pymysql = importlib.import_module("pymysql")
+    calls: list[dict[str, Any]] = []
+    statements: list[str] = []
+
+    class Cursor:
+        def execute(self, statement: str) -> None:
+            statements.append(statement)
+
+        def close(self) -> None:
+            pass
+
+    class Connection:
+        def cursor(self) -> Cursor:
+            return Cursor()
+
+        def close(self) -> None:
+            pass
+
+    def connect(*_args: Any, **kwargs: Any) -> Connection:
+        calls.append(kwargs)
+        return Connection()
+
+    monkeypatch.setattr(pymysql, "connect", connect)
+    t_eng = ThrottledEngine.from_url(
+        "mysql+pymysql://user:password@localhost/database?charset=utf8mb4",
+        connect_args={"unix_socket": "/tmp/mysql.sock", "ssl": {"ca": "/tmp/ca.pem"}},
+    )
+    strategy = t_eng._cancel_strategy
+    assert isinstance(strategy, sql_module._MySQLCancel)
+
+    await strategy._kill_one(42)
+
+    assert len(calls) == 1
+    expected = {
+        "host": "localhost",
+        "database": "database",
+        "user": "user",
+        "password": "password",
+        "charset": "utf8mb4",
+        "unix_socket": "/tmp/mysql.sock",
+        "ssl": {"ca": "/tmp/ca.pem"},
+    }
+    assert all(calls[0].get(key) == value for key, value in expected.items())
+    assert statements == ["KILL QUERY 42"]
+    await t_eng.aclose()
+
+
+async def test_async_mysql_cancel_preserves_connection_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncmy = importlib.import_module("asyncmy")
+    calls: list[dict[str, Any]] = []
+    statements: list[str] = []
+
+    class Cursor:
+        async def __aenter__(self) -> "Cursor":
+            return self
+
+        async def __aexit__(self, *_args: Any) -> None:
+            pass
+
+        async def execute(self, statement: str) -> None:
+            statements.append(statement)
+
+    class Connection:
+        def cursor(self) -> Cursor:
+            return Cursor()
+
+        async def ensure_closed(self) -> None:
+            pass
+
+    async def connect(**kwargs: Any) -> Connection:
+        calls.append(kwargs)
+        return Connection()
+
+    monkeypatch.setattr(asyncmy, "connect", connect)
+    t_eng = ThrottledEngine.from_url(
+        "mysql+asyncmy://user:password@localhost/database?charset=utf8mb4",
+        connect_args={"unix_socket": "/tmp/mysql.sock", "ssl": {"ca": "/tmp/ca.pem"}},
+    )
+    strategy = t_eng._cancel_strategy
+    assert isinstance(strategy, sql_module._AsyncMySQLCancel)
+
+    await strategy._kill_one(42)
+
+    assert len(calls) == 1
+    expected = {
+        "host": "localhost",
+        "db": "database",
+        "user": "user",
+        "password": "password",
+        "charset": "utf8mb4",
+        "unix_socket": "/tmp/mysql.sock",
+        "ssl": {"ca": "/tmp/ca.pem"},
+    }
+    assert all(calls[0].get(key) == value for key, value in expected.items())
+    assert statements == ["KILL QUERY 42"]
+    await t_eng.aclose()
+
+
+async def test_mysql_cancel_uses_custom_connection_creators() -> None:
+    def creator() -> object:
+        return object()
+
+    async def async_creator() -> object:
+        return object()
+
+    sync_engine = ThrottledEngine.from_url("mysql+pymysql://localhost/database", creator=creator)
+    async_engine = ThrottledEngine.from_url("mysql+asyncmy://localhost/database", async_creator=async_creator)
+
+    assert sync_engine._cancel_connection_factory is creator
+    assert async_engine._cancel_connection_factory is async_creator
+    await sync_engine.aclose()
+    await async_engine.aclose()
 
 
 async def test_load_files_cancel_then_retry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
