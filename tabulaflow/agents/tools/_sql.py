@@ -1,11 +1,41 @@
-"""Shared SQL lookup, quoting, and error-formatting helpers for agent tools."""
+"""Shared SQL schema, quoting, and error-formatting helpers for agent tools."""
 
 import re
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Literal, TypeAlias
 
 import sqlalchemy
+from pydantic import BaseModel, create_model
 
 from tabulaflow.core.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
+
+
+_ScalarType: TypeAlias = type[str] | type[int] | type[float] | type[bool] | type[date] | type[datetime]
+
+# ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to each Python
+# type. The schema stores *canonical* SQLAlchemy visit-names (e.g. DuckDB ``BIGINT`` →
+# ``BIG_INTEGER``, ``VARCHAR`` → ``STRING``, ``DOUBLE`` → ``FLOAT``, ``DECIMAL`` →
+# ``NUMERIC``), so these sets must list the canonical forms — raw SQL names (``BIGINT``)
+# are kept too as a harmless cross-dialect fallback. Remaining text-castable tokens (TIME,
+# UUID, ENUM, CHAR variants, …) fall through to ``str``; non-scalar tokens are rejected.
+_INT_DTYPES = {
+    "TINY_INTEGER", "SMALL_INTEGER", "INTEGER", "BIG_INTEGER",  # canonical (DuckDB workspace)
+    "TINYINT", "SMALLINT", "INT", "INT2", "INT4", "INT8", "BIGINT",  # raw-SQL fallback
+}  # fmt: skip
+_FLOAT_DTYPES = {
+    "FLOAT", "DOUBLE", "NUMERIC", "DECIMAL",  # canonical
+    "REAL", "DOUBLE_PRECISION", "BIGNUMERIC",  # raw-SQL fallback
+}  # fmt: skip
+_BOOL_DTYPES = {"BOOLEAN", "BOOL"}
+
+# Non-scalar column types these tools refuse to target. Structured output yields flat
+# scalar values, so semi-structured (JSON/variant/array/struct/map) and binary columns are
+# a category error — stringifying into them is fragile and aborts the write on strict
+# backends. Rejected with an actionable error instead of a silent str fallback.
+UNSUPPORTED_DTYPES = {
+    "JSON", "JSONB", "VARIANT", "OBJECT", "ARRAY", "STRUCT", "MAP", "SUPER", "SQL_VARIANT",
+    "BINARY", "VARBINARY", "BYTES", "BLOB", "BYTEA",  # BYTEA: DuckDB/Postgres canonical for BLOB
+}  # fmt: skip
 
 
 def _unquote_identifier(identifier: str) -> str:
@@ -38,6 +68,59 @@ def find_column(table: SQLTableSchema, column_name: str) -> SQLColumnSchema | No
     requested_column = _unquote_identifier(column_name)
     matches = [column for column in table.columns if _identifiers_equal(column.name, requested_column)]
     return matches[0] if len(matches) == 1 else None
+
+
+def _python_type_for_dtype(dtype: str) -> _ScalarType:
+    """Map a canonical SQL dtype token to the Python type the LLM should emit.
+
+    Numeric, boolean, and date/timestamp columns get a native type; ``TIMESTAMP*``
+    variants all flatten to a naive ``datetime`` (timezone precision is out of scope).
+    Unknown or non-scalar tokens map to ``str``, so the default arm covers every type the
+    model can't represent natively (TIME, JSON/ARRAY/STRUCT, UUID, BINARY, …) without
+    regressing them.
+    """
+    token = dtype.upper()
+    if token in _BOOL_DTYPES:
+        return bool
+    if token in _INT_DTYPES:
+        return int
+    if token in _FLOAT_DTYPES:
+        return float
+    if token == "DATE":
+        return date
+    if token == "DATETIME" or token.startswith("TIMESTAMP"):
+        return datetime
+    return str
+
+
+def create_column_model(
+    schema: SQLSchema,
+    schema_name: str | None,
+    table_name: str,
+    output_columns: list[str],
+    *,
+    name: str,
+) -> type[BaseModel]:
+    """Build nullable output fields from SQL column types and native enum choices.
+
+    Reject non-scalar columns. Unresolved column types default to strings.
+    """
+    if not output_columns or any(not column or column.startswith("_") for column in output_columns):
+        raise ValueError("output_columns must contain names without leading underscores")
+    table = find_table(schema, schema_name, table_name)
+    columns = {column.name: column for column in table.columns} if table is not None else {}
+    fields: dict[str, Any] = {}
+    for column_name in output_columns:
+        column = columns.get(column_name)
+        dtype: Any = str
+        if column is not None:
+            if column.dtype in UNSUPPORTED_DTYPES:
+                raise TypeError(f"cannot target non-scalar column {column_name!r} ({column.dtype}) in {table_name}")
+            dtype = _python_type_for_dtype(column.dtype)
+            if column.enum_values is not None:
+                dtype = Literal[tuple(column.enum_values)] if column.enum_values else Literal[None]
+        fields[column_name] = (dtype | None, None)
+    return create_model(name, **fields)
 
 
 def format_sqlalchemy_error_msg(error_msg: str) -> str:

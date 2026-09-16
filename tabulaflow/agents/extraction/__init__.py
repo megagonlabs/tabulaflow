@@ -1,13 +1,13 @@
-"""Structured extraction from document text."""
+"""Structured extraction from documents."""
 
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from tabulaflow.agents.extraction.entity import EntityExtractor
+    from tabulaflow.agents.extraction.extractor import EntityExtractor
 
 _LAZY_EXPORTS = {
-    "EntityExtractor": ("tabulaflow.agents.extraction.entity", "EntityExtractor"),
+    "EntityExtractor": ("tabulaflow.agents.extraction.extractor", "EntityExtractor"),
 }
 
 __all__ = ["EntityExtractor"]

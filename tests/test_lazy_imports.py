@@ -20,7 +20,7 @@ def test_layer_package_imports_are_lightweight() -> None:
     assert "tabulaflow.data.sql" not in modules
     assert "tabulaflow.output.formatting.sql_ddl" not in modules
     assert "tabulaflow.agents.tools.browser.tool" not in modules
-    assert "tabulaflow.agents.extraction.entity" not in modules
+    assert "tabulaflow.agents.extraction.extractor" not in modules
 
 
 def test_lazy_public_exports_load_only_their_owners() -> None:

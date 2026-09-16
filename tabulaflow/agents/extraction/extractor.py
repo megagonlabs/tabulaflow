@@ -1,9 +1,13 @@
-"""DB-free engine that extracts structured entities from documents via an LLM.
+"""Extract structured entities from documents via an LLM.
 
 Usable standalone, without any database or workspace::
 
-    extractor = EntityExtractor({"name": str, "price_usd": float})
-    entities = await extractor.extract(page_text, instruction="Extract every product...")
+    class Product(BaseModel):
+        name: str
+        price_usd: float | None = None
+
+    extractor = EntityExtractor()
+    entities = await extractor.extract(page_text, record_type=Product, instruction="Extract every product...")
 
 The companion ``ExtractRowsFromDocumentsTool`` is a thin database adapter around this:
 it reads documents with SQL, calls :meth:`EntityExtractor.extract` per document, and
@@ -16,16 +20,15 @@ import asyncio
 import logging
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Literal, get_args, get_origin
+from typing import Any, TypeVar, cast
 
-from pydantic import create_model
+from pydantic import BaseModel
 from pydantic_ai.messages import BinaryContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.trace import Trajectory
-from tabulaflow.agents.extraction.column_types import ALLOWED_COLUMN_TYPES
 from tabulaflow.agents.extraction.markdown import (
     DEFAULT_MAX_CHARS,
     DEFAULT_TARGET_CHARS,
@@ -36,6 +39,7 @@ from tabulaflow.agents.extraction.markdown import (
 logger = logging.getLogger(__name__)
 
 _PDF_PAGES_PER_CHUNK = 20
+_EntityT = TypeVar("_EntityT", bound=BaseModel)
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -107,36 +111,18 @@ def _media_prompts(
     return prompts
 
 
-def _is_supported_field_type(annotation: object) -> bool:
-    if annotation in ALLOWED_COLUMN_TYPES:
-        return True
-    choices = get_args(annotation)
-    return (
-        get_origin(annotation) is Literal
-        and bool(choices)
-        and all(isinstance(value, str) or value is None for value in choices)
-    )
-
-
 class EntityExtractor:
     """Extract structured entities from document text or media with an LLM.
 
-    A single document is split into non-overlapping, structure-aware chunks (see
-    :func:`tabulaflow.agents.extraction.markdown.split_markdown`); a leaf subagent
-    extracts a list of entities from each chunk concurrently (bounded by
-    ``max_concurrency``), and the union is returned. Entities are flat dicts keyed by
-    ``fields``; each value has its declared Python type or is ``None`` when missing.
-    No deduplication is performed — a record whose evidence straddles a chunk boundary may still be reported by
-    neighboring chunks, so dedup downstream with full semantic context if needed.
-
-    The pydantic output model, the extraction Agent, and the concurrency semaphore are
-    built once at construction and reused across ``extract`` calls, so build one
-    instance per field schema and reuse it for many documents.
+    Long documents are split into chunks and processed concurrently. Each result
+    is an instance of the supplied model, preserving its validation and defaults.
+    Records are returned in chunk order; duplicates across chunks are not removed.
+    The concurrency limit is shared across calls, while each call owns its record type
+    and agent.
     """
 
     def __init__(
         self,
-        fields: dict[str, Any],
         *,
         llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
@@ -148,10 +134,6 @@ class EntityExtractor:
         """Initialize the extractor.
 
         Args:
-            fields: Output field names mapped to their Python types. Must be non-empty.
-                Supported types are ``str``, ``int``, ``float``, ``bool``, ``date``,
-                ``datetime``, and string-valued ``Literal`` choices. Missing
-                values are returned as ``None``.
             llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run.
@@ -167,66 +149,42 @@ class EntityExtractor:
                 filesystem sink for local debugging; independent of the returned data.
 
         Raises:
-            ValueError: If ``fields`` is empty or contains an unsupported type,
-                or a size argument is invalid.
+            ValueError: If a concurrency or chunk size argument is not positive.
         """
-        if not fields:
-            raise ValueError("fields must be non-empty")
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
         if chunk_target <= 0 or chunk_max <= 0:
             raise ValueError("chunk_target and chunk_max must be greater than 0")
-        bad_types = {name: dtype for name, dtype in fields.items() if not _is_supported_field_type(dtype)}
-        if bad_types:
-            raise ValueError(
-                f"field types must be str/int/float/bool/date/datetime or string Literal choices; got {bad_types}"
-            )
-
         self.llm = llm
         self.model_settings = model_settings
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
         self.trajectory_log_dir = trajectory_log_dir
 
-        entity_model = create_model(
-            "ExtractedEntity",
-            **{name: (dtype | None, None) for name, dtype in fields.items()},  # type: ignore[call-overload]
-        )
-        self._result_model = create_model(
-            "ExtractionResult",
-            entities=(list[entity_model], ...),  # type: ignore[valid-type]
-        )
-        self._agent = self._build_agent()
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
     def apply_llm_profile(self, *, llm: str | Model, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by per-chunk extraction subagents."""
         self.llm = llm
         self.model_settings = model_settings
-        self._agent = self._build_agent()
-
-    def _build_agent(self) -> Any:
-        return make_agent(
-            self.llm,
-            output_type=self._result_model,
-            model_settings=self.model_settings,
-            instructions=_EXTRACTION_SYSTEM_PROMPT,
-        )
 
     async def extract(
         self,
         content: str | BinaryContent | Sequence[BinaryContent],
         *,
+        record_type: type[_EntityT],
         instruction: str,
         doc_context: str | None = None,
         on_chunk_complete: Callable[[int], None] | None = None,
         trajectory_label: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Extract entities from one document.
+    ) -> list[_EntityT]:
+        """Extract validated records from one document.
 
         Args:
             content: Document text, validated image/PDF media, or an ordered
                 collection of validated image/PDF media.
+            record_type: Pydantic model class describing one record. Required values,
+                defaults, constraints, and nullability are preserved.
             instruction: Natural-language description of what one entity is and how
                 to populate the declared fields.
             doc_context: Optional document-level context (e.g. ``"Source: <title> (<url>)"``)
@@ -240,9 +198,14 @@ class EntityExtractor:
                 documents don't collide. Only used when ``trajectory_log_dir`` is set.
 
         Returns:
-            One dict per extracted entity, keyed by the declared fields. Empty if the
-            document is blank or contains no matching entities.
+            Instances of ``record_type``, in chunk order. Empty if the document is blank
+            or contains no matching records.
+
+        Raises:
+            TypeError: If ``record_type`` is not a Pydantic model class.
         """
+        if not isinstance(record_type, type) or not issubclass(record_type, BaseModel):
+            raise TypeError("record_type must be a Pydantic model class")
         prompts: Sequence[str | Sequence[UserContent]]
         if isinstance(content, str):
             if not content.strip():
@@ -261,23 +224,34 @@ class EntityExtractor:
                 item_context = "\n".join(part for part in (doc_context, f"Media item {index} of {total}") if part)
                 prompts.extend(_media_prompts(item, instruction, item_context))
 
+        if not prompts:
+            return []
+        agent = make_agent(
+            self.llm,
+            output_type=list[record_type],  # type: ignore[valid-type]
+            model_settings=self.model_settings,
+            instructions=_EXTRACTION_SYSTEM_PROMPT,
+        )
         prefix = f"{trajectory_label}-" if trajectory_label else ""
 
-        async def _run(chunk_idx: int, prompt: str | Sequence[UserContent]) -> list[dict[str, Any]]:
-            entities = await self._extract_chunk(prompt, f"{prefix}chunk-{chunk_idx}")
+        async def _run(chunk_idx: int, prompt: str | Sequence[UserContent]) -> list[_EntityT]:
+            async with self._semaphore:
+                result = await agent.run(prompt)
+            self._write_trajectory(f"{prefix}chunk-{chunk_idx}", result)
+            entities = cast(list[_EntityT], result.output)
             if on_chunk_complete is not None:
                 on_chunk_complete(len(entities))
             return entities
 
-        chunk_results = await asyncio.gather(*(_run(i, prompt) for i, prompt in enumerate(prompts, start=1)))
-        return [entity for chunk in chunk_results for entity in chunk]
-
-    async def _extract_chunk(self, prompt: str | Sequence[UserContent], traj_name: str) -> list[dict[str, Any]]:
-        async with self._semaphore:
-            result = await self._agent.run(prompt)
-        self._write_trajectory(traj_name, result)
-        output: Any = result.output  # dynamic create_model; fields not statically known
-        return [e.model_dump() for e in output.entities]
+        tasks = [asyncio.create_task(_run(i, prompt)) for i, prompt in enumerate(prompts, start=1)]
+        try:
+            chunk_results = await asyncio.gather(*tasks)
+            return [entity for chunk in chunk_results for entity in chunk]
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def _write_trajectory(self, traj_name: str, result: Any) -> None:
         """Persist one chunk subagent's trajectory as ``<trajectory_log_dir>/<traj_name>.md``.

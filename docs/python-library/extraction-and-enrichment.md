@@ -29,6 +29,9 @@ Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
 ```
 
+Already have a DataFrame? [DataFrameEnricher](api/agents.md#dataframe-enrichment)
+adds typed columns directly, using the same row execution and validation.
+
 ## Extract records from documents
 
 Build a list of places to visit from a travel guide, with a category and a short
@@ -40,30 +43,32 @@ from pathlib import Path
 from typing import Literal
 
 import pandas as pd
+from pydantic import BaseModel
 
 from tabulaflow.agents.extraction import EntityExtractor
 
+
+class Place(BaseModel):
+    name: str
+    city: str
+    category: Literal["food", "culture", "outdoors", "shopping"]
+    why_visit: str
+
+
 guide = Path("travel_guide.txt").read_text(encoding="utf-8")
-extractor = EntityExtractor(
-    {
-        "name": str,
-        "city": str,
-        "category": Literal["food", "culture", "outdoors", "shopping"],
-        "why_visit": str,
-    },
-    llm="openai-responses:gpt-5-mini",
-)
+extractor = EntityExtractor(llm="openai-responses:gpt-5-mini")
 # Long documents are split into chunks and processed concurrently.
-# Results are combined into one list of typed, validated records.
+# Results are combined into one list of validated Place instances.
 places = await extractor.extract(
     guide,
+    record_type=Place,
     instruction=(
         "Extract one record per recommended place. Use the city from its section. "
         "Choose the category that best fits the main reason to visit, and summarize "
         "that reason in at most eight words. Skip background mentions and travel logistics."
     ),
 )
-df = pd.DataFrame(places)
+df = pd.DataFrame([place.model_dump() for place in places])
 assert df["category"].dropna().isin(["food", "culture", "outdoors", "shopping"]).all()
 print(df.to_string(index=False))
 ```

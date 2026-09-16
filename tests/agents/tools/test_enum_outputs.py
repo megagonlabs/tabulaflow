@@ -36,7 +36,7 @@ async def test_tools_retry_invalid_enum_before_writing(tmp_path: Path, operation
             assert any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
         category = "unknown" if calls == 1 else "billing"
         answer: dict[str, object] = (
-            {"entities": [{"category": category}]} if operation == "extraction" else {"category": category}
+            {"response": [{"category": category}]} if operation == "extraction" else {"category": category}
         )
         return ModelResponse(parts=[ToolCallPart(tool.name, answer)])
 

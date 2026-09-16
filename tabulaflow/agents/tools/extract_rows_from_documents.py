@@ -20,11 +20,10 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.protocols import ToolProgressUpdate
-from tabulaflow.agents.extraction.column_types import resolve_column_types
-from tabulaflow.agents.extraction.entity import EntityExtractor
+from tabulaflow.agents.extraction import EntityExtractor
 from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
-from tabulaflow.agents.tools._sql import qualified_table
+from tabulaflow.agents.tools._sql import create_column_model, qualified_table
 
 logger = logging.getLogger(__name__)
 
@@ -286,24 +285,15 @@ class ExtractRowsFromDocumentsTool:
         if missing:
             raise ValueError(f"output_columns not found in table {qualified_target}: {missing}")
 
-        # Resolve each output column's target type so the LLM emits a native value
-        # (int/float/bool/date) instead of a string the database must coerce on INSERT —
-        # an unparseable string would otherwise abort the whole batch append. Best-effort
-        # off the connector's introspected schema; unresolved columns default to str.
-        column_types, unsupported = resolve_column_types(self.connector.schema, schema_name, table_name, output_columns)
-        if unsupported:
-            raise TypeError(
-                f"cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
-                "target scalar, text, or date columns — for list/nested values, use a text column "
-                "holding a JSON string"
-            )
+        record_type = create_column_model(
+            self.connector.schema, schema_name, table_name, output_columns, name="ExtractedEntity"
+        )
 
         # Per-execution trajectory directory, shared across documents;
         # EntityExtractor creates it lazily on first write.
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
 
         extractor = EntityExtractor(
-            {col: column_types.get(col, str) for col in output_columns},
             llm=self.subagent_llm,
             model_settings=self.model_settings,
             max_concurrency=self.max_concurrency,
@@ -334,12 +324,14 @@ class ExtractRowsFromDocumentsTool:
                 if content is None:
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
-                entities = await extractor.extract(
+                records = await extractor.extract(
                     content,
+                    record_type=record_type,
                     instruction=instruction,
                     on_chunk_complete=_on_chunk_complete,
                     trajectory_label=f"doc-{doc_idx}",
                 )
+                entities = [record.model_dump() for record in records]
             except asyncio.CancelledError:
                 raise
             except Exception as e:

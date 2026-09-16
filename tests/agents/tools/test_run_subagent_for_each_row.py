@@ -8,6 +8,7 @@ behavior.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import json
@@ -17,6 +18,7 @@ from collections.abc import Callable
 from typing import Any, AsyncGenerator
 
 import pytest
+from pydantic import BaseModel
 from PIL import Image
 from pydantic_ai.messages import (
     BinaryContent,
@@ -29,8 +31,16 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+import tabulaflow.agents.enrichment as enrichment_module
+import pandas as pd
 import tabulaflow.agents.tools.run_subagent_for_each_row as run_subagent_module
+from tabulaflow.agents.enrichment import DataFrameEnricher
+from tabulaflow.agents.message_store import MessageStore
+from tabulaflow.agents.tools.browser.tool import WebBrowserTool
+from tabulaflow.agents.tools.protocols import ToolProgressUpdate
+from tabulaflow.agents.trace import Trajectory
 from tabulaflow.data.config import SQLConnectorConfig
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
@@ -90,7 +100,10 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
-    yield connector
+    try:
+        yield connector
+    finally:
+        await connector.close_async()
 
 
 def _tool(conn: SQLConnector, value: object = "OUT", *, store_metadata: bool = False) -> RunSubagentForEachRowTool:
@@ -331,7 +344,7 @@ class TestMediaInput:
     )
     def test_path_backed_media_fails_with_actionable_guidance(self, value: object, source: str) -> None:
         with pytest.raises(ValueError) as exc_info:
-            run_subagent_module._prepare_task_row(1, {"images": value})  # noqa: SLF001
+            enrichment_module._prepare_rows(pd.DataFrame({"images": [value]}), "inspect")  # noqa: SLF001
 
         message = str(exc_info.value)
         assert f"column '{source}'" in message
@@ -344,7 +357,7 @@ class TestMediaInput:
     ) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, image VARCHAR, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1, 'data:image/png;base64,MTIzNDU=', NULL)")
-        monkeypatch.setattr(run_subagent_module, "_MAX_MEDIA_BYTES_PER_ROW", 4)
+        monkeypatch.setattr(enrichment_module, "_MAX_MEDIA_BYTES_PER_ROW", 4)
 
         def fail_decode(*_args: object, **_kwargs: object) -> None:
             raise AssertionError("oversized Data URI was decoded")
@@ -471,7 +484,7 @@ class TestTemplateValidation:
                 key_columns=["id"],
                 output_columns=["label"],
             )
-            assert summary.startswith("(error:") and "not in the task_query result" in summary
+            assert summary.startswith("(error:") and "not in the input columns" in summary
         assert all(r["label"] is None for r in await _rows(conn, "SELECT label FROM t"))
 
     async def test_valid_placeholder_accepted(self, conn: SQLConnector) -> None:
@@ -487,3 +500,185 @@ class TestTemplateValidation:
             output_columns=["label"],
         )
         assert "succeeded for 1 rows" in summary
+
+
+async def test_writes_completed_rows_before_batch_finishes_and_keeps_partial_success(
+    conn: SQLConnector, tmp_path: Path
+) -> None:
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL),(2,NULL)")
+    first_saved = asyncio.Event()
+    release_second = asyncio.Event()
+    progress: list[tuple[int, int | None]] = []
+
+    async def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        if prompt == "2":
+            await release_second.wait()
+            raise RuntimeError("source unavailable")
+        return ModelResponse(parts=[ToolCallPart("submit_answer", {"label": "DONE"})])
+
+    def on_progress(update: ToolProgressUpdate) -> None:
+        progress.append((update.completed, update.total))
+        if update.completed == 1:
+            first_saved.set()
+
+    tool = RunSubagentForEachRowTool(
+        conn, subagent_llm=FunctionModel(respond), store_metadata=True, trajectory_log_dir=tmp_path / "traces"
+    )
+    tool.on_progress = on_progress
+    async with asyncio.timeout(5):
+        task = asyncio.create_task(
+            tool.execute(
+                None,
+                "t",
+                task_query="SELECT id FROM t ORDER BY id",
+                task_instruction="{{ id }}",
+                key_columns=["id"],
+                output_columns=["label"],
+            )
+        )
+        try:
+            await first_saved.wait()
+            assert not task.done()
+            rows = await _rows(conn, "SELECT label, _subagent_trajectory FROM t ORDER BY id")
+            assert rows[0]["label"] == "DONE" and rows[0]["_subagent_trajectory"] is not None
+            assert rows[1]["label"] is None
+        finally:
+            release_second.set()
+        summary = await task
+    assert "succeeded for 1 rows, failed for 1 rows" in summary
+    rows = await _rows(conn, "SELECT label, _subagent_exception FROM t ORDER BY id")
+    assert rows == [
+        {"label": "DONE", "_subagent_exception": None},
+        {"label": None, "_subagent_exception": "RuntimeError: source unavailable"},
+    ]
+    assert progress == [(0, 2), (1, 2), (2, 2)]
+    assert len(list((tmp_path / "traces").glob("*/row-1.md"))) == 1
+
+
+async def test_unrecorded_enrichment_does_not_depend_on_trajectory_conversion(
+    conn: SQLConnector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_conversion(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Unrecorded enrichment should not convert trajectories")
+
+    monkeypatch.setattr(Trajectory, "from_pydantic_ai_messages", fail_conversion)
+
+    class Label(BaseModel):
+        label: str
+
+    enricher = DataFrameEnricher(llm=FunctionModel(_emit_const("DONE")))
+    result = await enricher.enrich(pd.DataFrame({"id": [1]}), record_type=Label, instruction="classify {{ id }}")
+    assert result["label"].tolist() == ["DONE"]
+
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
+    summary = await _tool(conn, "DONE").execute(
+        None,
+        "t",
+        task_query="SELECT id FROM t",
+        task_instruction="classify {{ id }}",
+        key_columns=["id"],
+        output_columns=["label"],
+    )
+    assert "succeeded for 1 rows, failed for 0 rows" in summary
+    assert await _rows(conn, "SELECT label FROM t") == [{"label": "DONE"}]
+
+
+async def test_optional_tools_and_browser_cleanup_on_cancellation(
+    conn: SQLConnector, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1,NULL),(2,NULL),(3,NULL)")
+    browsers: list[WebBrowserTool] = []
+    closed: list[WebBrowserTool] = []
+    ready = asyncio.Event()
+    never = asyncio.Event()
+    calls = 0
+
+    class TrackingBrowser(WebBrowserTool):
+        def __init__(self) -> None:
+            super().__init__()
+            browsers.append(self)
+
+        async def close(self) -> None:
+            await super().close()
+            closed.append(self)
+
+    async def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        nonlocal calls
+        names = {tool.name for tool in info.function_tools}
+        assert {
+            "browser_navigate",
+            "run_query",
+            "run_subagent_for_each_row",
+            "extract_rows_from_documents",
+            "add_canonical_name",
+        } <= names
+        calls += 1
+        if calls == 2:
+            ready.set()
+        await never.wait()
+        raise AssertionError("cancelled model resumed")
+
+    monkeypatch.setattr(run_subagent_module, "WebBrowserTool", TrackingBrowser)
+    registry = DataConnectorRegistry()
+    registry.register("workspace", conn)
+    tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(respond), registry=registry, max_concurrency=2)
+    async with asyncio.timeout(5):
+        task = asyncio.create_task(
+            tool.execute(
+                None,
+                "t",
+                task_query="SELECT id FROM t ORDER BY id",
+                task_instruction="{{ id }}",
+                key_columns=["id"],
+                output_columns=["label"],
+                enable_browser_tools=True,
+                enable_nested_subagents=True,
+                enable_run_query_tool=True,
+            )
+        )
+        await ready.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert len(browsers) == 2 and set(closed) == set(browsers)
+    assert await _rows(conn, "SELECT label FROM t") == [{"label": None}] * 3
+
+
+async def test_nested_agent_truncation_keeps_inline_media(conn: SQLConnector, monkeypatch: pytest.MonkeyPatch) -> None:
+    image = _png()
+    await conn.run_query_async("CREATE TABLE t(id INTEGER PRIMARY KEY, image BLOB, label VARCHAR)")
+    await conn.run_query_async("INSERT INTO t VALUES (1, ?, NULL)", (image,))
+    monkeypatch.setattr(run_subagent_module, "MESSAGE_THRESHOLD_CHARS", 10)
+    registry = DataConnectorRegistry()
+    registry.register("workspace", conn)
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, list) and isinstance(prompt[0], str)
+        assert "M1" in prompt[0]
+        assert any(isinstance(item, BinaryContent) and item.data == image for item in prompt)
+        assert "run_query" in {tool.name for tool in info.function_tools}
+        return ModelResponse(parts=[ToolCallPart("submit_answer", {"label": "image"})])
+
+    tool = RunSubagentForEachRowTool(
+        conn, subagent_llm=FunctionModel(respond), registry=registry, message_store=MessageStore(conn)
+    )
+    summary = await tool.execute(
+        None,
+        "t",
+        task_query="SELECT id, image FROM t",
+        task_instruction="Describe this attached image: {{ image }}",
+        key_columns=["id"],
+        output_columns=["label"],
+        enable_nested_subagents=True,
+    )
+    assert "succeeded for 1 rows, failed for 0 rows" in summary
+    assert await _rows(conn, "SELECT label FROM t") == [{"label": "image"}]

@@ -10,11 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
-import jinja2
-import jinja2.meta
 import sqlalchemy
-from pydantic import BaseModel, Field, create_model
-from pydantic_ai import NativeOutput, PromptedOutput, RunContext, Tool, ToolOutput
+from pydantic_ai import AgentRunResult, RunContext, Tool
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.messages import UserContent
 from pydantic_ai.models import Model
@@ -26,9 +23,8 @@ from tabulaflow.core.schema import SQLDialect
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.agents.tools.protocols import ToolProgressUpdate
-from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-from tabulaflow.agents.tools._sql import qualified_table, sa_table
+from tabulaflow.agents.tools._sql import create_column_model, qualified_table, sa_table
 from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
@@ -42,15 +38,12 @@ from tabulaflow.agents.tools.browser.tool import (
     WebBrowserTool,
     snapshot_snippet,
 )
-from tabulaflow.agents.llm import make_agent
-from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
+from tabulaflow.agents.enrichment import _RowResult, _RowRunner, _prepare_rows
 
 
 _COL_EXCEPTION = "_subagent_exception"
 _COL_TRAJECTORY = "_subagent_trajectory"
 _INTERNAL_COLUMNS = [_COL_EXCEPTION, _COL_TRAJECTORY]
-_MAX_MEDIA_ITEMS_PER_ROW = 10
-_MAX_MEDIA_BYTES_PER_ROW = 25 * 1024 * 1024
 
 # Dialects that support a native JSON column type and the SQL type name to use.
 _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
@@ -66,100 +59,7 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
 # Dialects that require PARSE_JSON() to store a JSON string into a native column.
 _DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
-_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
-
-
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class _TaskRow:
-    values: dict[str, object]
-    prompt_values: dict[str, object]
-    media: tuple[UserContent, ...]
-
-
-def _prepare_task_row(row_idx: int, row: dict[str, object]) -> _TaskRow:
-    prompt_values = dict(row)
-    media: list[UserContent] = []
-    attached = 0
-    total_bytes = 0
-    for column, value in row.items():
-        try:
-            items = inspect_inline_media(value)
-        except ValueError as exc:
-            raise ValueError(
-                f"task_query returned an invalid media collection in row {row_idx}, column {column!r}: {exc}"
-            ) from exc
-        if items is None:
-            continue
-        if attached + len(items) > _MAX_MEDIA_ITEMS_PER_ROW:
-            raise ValueError(f"task_query returned more than {_MAX_MEDIA_ITEMS_PER_ROW} media items in row {row_idx}")
-        descriptors: list[str] = []
-        for item in items:
-            try:
-                content = materialize_inline_media(item.candidate, max_bytes=_MAX_MEDIA_BYTES_PER_ROW)
-            except ValueError as exc:
-                source = column if item.index is None else f"{column}[{item.index}]"
-                raise ValueError(
-                    f"task_query returned unusable binary data in row {row_idx}, column {source!r}: {exc}; "
-                    "provide valid inline image/PDF bytes or omit the column"
-                ) from exc
-            if total_bytes + len(content.data) > _MAX_MEDIA_BYTES_PER_ROW:
-                raise ValueError(
-                    f"media in row {row_idx} exceeds the {_MAX_MEDIA_BYTES_PER_ROW}-byte total per-row limit"
-                )
-            attached += 1
-            total_bytes += len(content.data)
-            descriptors.append(f"[Media #{attached}: {content.media_type}, {len(content.data)} bytes]")
-            source = column if item.index is None else f"{column}[{item.index}]"
-            media.extend((f"Media #{attached} from column {source}:", content))
-        prompt_values[column] = descriptors[0] if len(descriptors) == 1 else "[" + ", ".join(descriptors) + "]"
-    return _TaskRow(values=row, prompt_values=prompt_values, media=tuple(media))
-
-
-class AbortTask(BaseModel):
-    """Terminal output indicating the task could not be completed."""
-
-    message: str = Field(
-        description="Reason the task cannot be completed. Be specific about the reason and what you need in order to complete the task."
-    )
-
-
-def _terminal_output_type(llm: str | Model, answer_model: type[BaseModel]) -> object:
-    """Build the provider-compatible success/abort output contract."""
-    if isinstance(llm, str):
-        is_anthropic = llm.startswith("anthropic:") or llm.startswith("google-cloud:claude")
-        supports_native = False
-        if is_anthropic:
-            from pydantic_ai.profiles.anthropic import anthropic_model_profile
-
-            profile = anthropic_model_profile(llm.split(":", 1)[1])
-            supports_native = bool(profile and profile.get("supports_json_schema_output", False))
-    else:
-        is_anthropic = llm.system == "anthropic"
-        supports_native = bool(llm.profile and llm.profile.get("supports_json_schema_output", False))
-
-    outputs: list[Any] = [answer_model, AbortTask]
-    if is_anthropic:
-        output_cls: Any = NativeOutput if supports_native else PromptedOutput
-        return output_cls(
-            outputs,
-            name="task_result",
-            description="Return Answer on success or AbortTask when the task cannot be completed.",
-        )
-    return [
-        ToolOutput(
-            answer_model,
-            name="submit_answer",
-            description="Submit your answer for this task. Calling this tool ends the task successfully.",
-        ),
-        ToolOutput(
-            AbortTask,
-            name="abort_task",
-            description="Abort the task with a human-readable reason. Calling this tool ends the task.",
-        ),
-    ]
 
 
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
@@ -497,27 +397,12 @@ class RunSubagentForEachRowTool:
         if missing_output:
             raise ValueError(f"output_columns not found in table {qualified_target}: {missing_output}")
 
-        # Resolve each output column's type so the subagent emits a native value
-        # (int/float/bool/date) instead of a string the database must coerce on write —
-        # an unparseable string would otherwise fail the row's UPDATE. Best-effort off
-        # the connector's introspected schema; unresolved columns default to str. The
-        # subagent's terminal output is one ``submit_answer`` call filling these fields.
-        column_types, unsupported = resolve_column_types(
-            self.connector.schema, schema_name, table_name, output_columns
+        record_type = create_column_model(self.connector.schema, schema_name, table_name, output_columns, name="Answer")
+        runner = _RowRunner(
+            llm=self.subagent_llm,
+            model_settings=self.model_settings,
+            max_concurrency=self.max_concurrency,
         )
-        if unsupported:
-            raise TypeError(
-                f"cannot write into non-scalar columns {unsupported} in {qualified_target}; "
-                "target scalar, text, or date columns — for list/nested values, use a text column "
-                "holding a JSON string"
-            )
-        try:
-            answer_model = create_model(
-                "Answer",
-                **{c: (column_types.get(c, str) | None, None) for c in output_columns},  # type: ignore[call-overload]
-            )
-        except Exception as e:
-            raise ValueError(f"cannot build an output schema from output_columns {output_columns}: {e}") from e
 
         # Validate that each key_column can address exactly one target row on
         # write-back (UPDATE ... WHERE key = value). A key that is not a real
@@ -544,24 +429,7 @@ class RunSubagentForEachRowTool:
                 "key, or add a row-id column before fan-out."
             )
 
-        # Compile the task instruction as a Jinja2 template, and require every
-        # placeholder it references to be a task_query column. Catching the mismatch
-        # here (vs. StrictUndefined at render time) fails fast before spawning the
-        # fan-out and also covers the silent ``{{ x | default(...) }}`` / ``is defined``
-        # cases that would otherwise render empty.
-        try:
-            parsed = _JINJA_ENV.parse(task_instruction)
-        except jinja2.TemplateSyntaxError as e:
-            raise ValueError(f"invalid Jinja2 syntax in task_instruction: {e}") from e
-        unknown = sorted(jinja2.meta.find_undeclared_variables(parsed) - set(all_columns))
-        if unknown:
-            raise ValueError(
-                f"task_instruction references placeholders not in the task_query result: {unknown}; "
-                f"available columns: {all_columns}"
-            )
-        task_template = _JINJA_ENV.from_string(task_instruction)
-
-        rows = [_prepare_task_row(row_idx, row) for row_idx, row in enumerate(df.to_dict(orient="records"), start=1)]
+        rows = _prepare_rows(df, task_instruction)
         total = len(rows)
 
         # Ensure _subagent_* columns exist on the target table.
@@ -669,11 +537,10 @@ class RunSubagentForEachRowTool:
             if res.error is not None:
                 logger.warning("Failed to write subagent metadata for %s: %s", key_payload, res.error.message)
 
-        async def _write_row_output(key_payload: dict[str, object], output: Any) -> str | None:
+        async def _write_row_output(key_payload: dict[str, object], output: dict[str, Any]) -> str | None:
             """Write the subagent's structured output across ``output_columns``.
 
-            ``output`` is a dynamically-built ``submit_answer`` model (one field per
-            output column). Sets every output column in one UPDATE (a field left
+            Sets every output column in one UPDATE (a field left
             ``None`` is written as NULL). Returns ``None`` on success or the
             database error message if the write failed (e.g. a value's type can't
             be stored), so the caller can record the row as failed instead of
@@ -682,7 +549,7 @@ class RunSubagentForEachRowTool:
             stmt = (
                 sqlalchemy.update(sa_target)
                 .where(_key_where_clause(key_columns, key_payload))
-                .values({sa_target.c[c]: getattr(output, c) for c in output_columns})
+                .values({sa_target.c[c]: output[c] for c in output_columns})
             )
             res = await self.connector.run_query_async(stmt)
             if res.error is not None:
@@ -713,112 +580,88 @@ class RunSubagentForEachRowTool:
             except Exception:
                 logger.exception("Failed to write subagent trajectory file: %s", path)
 
-        async def _process_one_row(row_idx: int, task_row: _TaskRow) -> str | None:
-            nonlocal completed
-            tools: list[Tool] = []
+        async def _run_agent(position: int, prompt: str | list[UserContent]) -> AgentRunResult[Any]:
+            row_idx = position + 1
             browser_tool: WebBrowserTool | None = None
-            if enable_browser_tools:
-                browser_tool = WebBrowserTool()
-                tools.extend(browser_tool.as_pydantic_ai_tools())
-            if extract_pa_tool is not None:
-                tools.append(extract_pa_tool)
-            if canonical_pa_tool is not None:
-                tools.append(canonical_pa_tool)
-            if nested_pa_tool is not None:
-                tools.append(nested_pa_tool)
-            if run_query_pa_tool is not None:
-                tools.append(run_query_pa_tool)
-
-            capabilities: list[AbstractCapability[Any]] = []
-            if browser_tool is not None:
-                capabilities.append(browser_tool.lifecycle_capability())
-                # If this subagent can both browse and fan out, suspend its
-                # browser around any nested fan-out so it holds no page permits
-                # while awaiting nested rows that need them (deadlock avoidance).
-                if nested_pa_tool is not None:
-                    capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
-            subagent_scope = None
-            if store_enabled:
-                assert self.message_store is not None
-                subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
-                capabilities.append(
-                    MessageStoreCapability(
-                        store=subagent_scope,
-                        tool_allowlist=BROWSER_TOOL_NAMES,
-                        truncate=truncate_enabled,
-                        snippet_fn=snapshot_snippet,
-                        threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
-                    )
-                )
-
-            subagent = make_agent(
-                self.subagent_llm,
-                tools=tools,
-                capabilities=capabilities or None,
-                output_type=_terminal_output_type(self.subagent_llm, answer_model),
-                model_settings=self.model_settings,
-            )
-            key_payload = {col: task_row.values.get(col) for col in key_columns}
-            error_msg: str | None = None
-            metadata: tuple[str | None, str | None] | None = None
-            cancelled = False
             try:
-                prompt = task_template.render(task_row.prompt_values)
-                # The prompt is not an allowlisted tool return, so it follows the
-                # truncation path only: stored and snippet-replaced when oversized
-                # for truncate-enabled subagents, left untouched otherwise.
+                tools: list[Tool] = []
+                if enable_browser_tools:
+                    browser_tool = WebBrowserTool()
+                    tools.extend(browser_tool.as_pydantic_ai_tools())
+                if extract_pa_tool is not None:
+                    tools.append(extract_pa_tool)
+                if canonical_pa_tool is not None:
+                    tools.append(canonical_pa_tool)
+                if nested_pa_tool is not None:
+                    tools.append(nested_pa_tool)
+                if run_query_pa_tool is not None:
+                    tools.append(run_query_pa_tool)
+
+                capabilities: list[AbstractCapability[Any]] = []
+                if browser_tool is not None:
+                    capabilities.append(browser_tool.lifecycle_capability())
+                    # If this subagent can both browse and fan out, suspend its
+                    # browser around any nested fan-out so it holds no page permits
+                    # while awaiting nested rows that need them (deadlock avoidance).
+                    if nested_pa_tool is not None:
+                        capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
+                subagent_scope = None
+                if store_enabled:
+                    assert self.message_store is not None
+                    subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
+                    capabilities.append(
+                        MessageStoreCapability(
+                            store=subagent_scope,
+                            tool_allowlist=BROWSER_TOOL_NAMES,
+                            truncate=truncate_enabled,
+                            snippet_fn=snapshot_snippet,
+                            threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
+                        )
+                    )
+
                 if subagent_scope is not None and truncate_enabled:
-                    message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
-                    if message_id is not None and len(prompt) > MESSAGE_THRESHOLD_CHARS:
-                        prompt = make_snippet(message_id, prompt)
-                user_prompt: str | list[UserContent] = [prompt, *task_row.media] if task_row.media else prompt
-                result = await subagent.run(user_prompt)
-                traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
-                _write_trajectory_file(row_idx, traj)
-                if isinstance(result.output, AbortTask):
-                    exception_msg = f"AbortTask: {result.output.message}"
-                    error_msg = f"row {row_idx}: {exception_msg}"
-                    metadata = (exception_msg, traj.model_dump_json())
-                else:
-                    write_error = await _write_row_output(key_payload, result.output)
-                    if write_error is not None:
-                        exception_msg = f"write-back failed: {write_error}"
-                        error_msg = f"row {row_idx}: {exception_msg}"
-                        metadata = (exception_msg, traj.model_dump_json())
-                    else:
-                        metadata = (None, traj.model_dump_json())
-            except asyncio.CancelledError:
-                cancelled = True
-                raise
-            except Exception as e:
-                exception_msg = f"{type(e).__name__}: {e}"
-                error_msg = f"row {row_idx}: {exception_msg}"
-                metadata = (exception_msg, None)
+                    text = prompt if isinstance(prompt, str) else str(prompt[0])
+                    message_id = await subagent_scope.add(kind="user_prompt", content=text)
+                    if message_id is not None and len(text) > MESSAGE_THRESHOLD_CHARS:
+                        snippet = make_snippet(message_id, text)
+                        prompt = snippet if isinstance(prompt, str) else [snippet, *prompt[1:]]
+                agent = runner.create_agent(record_type, tools=tools, capabilities=capabilities)
+                return await agent.run(prompt)
             finally:
                 if browser_tool is not None:
                     await browser_tool.close()
-                if not cancelled:
-                    if self.store_metadata and metadata is not None:
-                        await _save_row_metadata(key_payload, *metadata)
-                    completed += 1
-                    if self.on_progress is not None:
-                        self.on_progress(
-                            ToolProgressUpdate(completed=completed, total=total, tool_call_id=tool_call_id)
-                        )
-                        await asyncio.sleep(0)
-            return error_msg
 
-        semaphore = asyncio.Semaphore(self.max_concurrency)
-        # Emit a 0/total tick up front so the UI shows the counter immediately
-        # rather than sitting empty until the first row finishes (often seconds).
+        errors: list[str | None] = [None] * total
+
+        async def _save_result(position: int, result: _RowResult) -> None:
+            nonlocal completed
+            row_idx = position + 1
+            key_payload = {column: rows[position].values[column] for column in key_columns}
+            error = result.error
+            trajectory = None
+            try:
+                if result.run_result is not None and (self.store_metadata or traj_dir is not None):
+                    trajectory = Trajectory.from_pydantic_ai_messages(result.run_result.all_messages())
+                    _write_trajectory_file(row_idx, trajectory)
+                if result.values is not None:
+                    write_error = await _write_row_output(key_payload, result.values)
+                    if write_error is not None:
+                        error = f"write-back failed: {write_error}"
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+            if self.store_metadata:
+                await _save_row_metadata(
+                    key_payload, error, trajectory.model_dump_json() if trajectory is not None else None
+                )
+            errors[position] = f"row {row_idx}: {error}" if error is not None else None
+            completed += 1
+            if self.on_progress is not None:
+                self.on_progress(ToolProgressUpdate(completed=completed, total=total, tool_call_id=tool_call_id))
+                await asyncio.sleep(0)
+
         if self.on_progress is not None and total > 0:
             self.on_progress(ToolProgressUpdate(completed=0, total=total, tool_call_id=tool_call_id))
-
-        async def _throttled(row_idx: int, row: _TaskRow) -> str | None:
-            async with semaphore:
-                return await _process_one_row(row_idx, row)
-
-        errors = await asyncio.gather(*(_throttled(row_idx, row) for row_idx, row in enumerate(rows, start=1)))
+        await runner.run(rows, record_type=record_type, on_result=_save_result, run_agent=_run_agent)
         await self.connector.refresh_schema_async()
 
         error_messages = [e for e in errors if e is not None]

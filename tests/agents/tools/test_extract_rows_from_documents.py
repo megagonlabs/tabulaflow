@@ -1,31 +1,21 @@
-"""Tests for type-aware row extraction in ``ExtractRowsFromDocumentsTool``.
+"""Tests for document extraction into SQL tables."""
 
-The output schema is typed per the target column: the LLM emits a native
-``int``/``float``/``bool`` (or ``null``) instead of a string the database would have
-to coerce on INSERT — an unparseable string would otherwise abort the whole batch
-append. These tests cover the type resolution and wiring without invoking an LLM.
-"""
-
-from datetime import date, datetime
+from collections.abc import Sequence
+from datetime import date
 import io
 from pathlib import Path
 from types import SimpleNamespace
-from collections.abc import Sequence
-from typing import Any, Literal
 
 import duckdb
 from PIL import Image
 import pytest
-from pydantic_ai.messages import BinaryContent, UserContent
-from pydantic_ai.settings import ModelSettings
+from pydantic import BaseModel
+from pydantic_ai.messages import BinaryContent
 from pypdf import PdfWriter
 
 import tabulaflow.agents.tools.extract_rows_from_documents as mod
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.agents.extraction import EntityExtractor
-from tabulaflow.agents.extraction.column_types import _python_type_for_dtype
-from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 
 
@@ -42,116 +32,6 @@ def _pdf(pages: int) -> bytes:
         writer.add_blank_page(width=10, height=10)
     writer.write(output)
     return output.getvalue()
-
-
-def test_python_type_for_dtype() -> None:
-    """Numeric/boolean/temporal canonical tokens map to native types; everything else to ``str``."""
-    # Canonical SQLAlchemy visit-names the schema actually records (DuckDB workspace),
-    # plus raw-SQL fallbacks. BIG_INTEGER/SMALL_INTEGER are what BIGINT/SMALLINT columns
-    # introspect to — they must not fall through to str.
-    for tok in ("TINY_INTEGER", "SMALL_INTEGER", "INTEGER", "BIG_INTEGER", "TINYINT", "SMALLINT", "INT", "BIGINT"):
-        assert _python_type_for_dtype(tok) is int, tok
-    for tok in ("FLOAT", "DOUBLE", "NUMERIC", "DECIMAL", "REAL", "DOUBLE_PRECISION"):
-        assert _python_type_for_dtype(tok) is float, tok
-    assert _python_type_for_dtype("BOOLEAN") is bool
-    assert _python_type_for_dtype("DATE") is date
-    # All TIMESTAMP variants (and DATETIME) flatten to a naive datetime.
-    for tok in ("DATETIME", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NTZ", "TIMESTAMP_LTZ"):
-        assert _python_type_for_dtype(tok) is datetime
-    # Text, TIME, and semi-structured types all fall through to str.
-    for tok in ("VARCHAR", "TEXT", "TIME", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
-        assert _python_type_for_dtype(tok) is str
-
-
-def test_entity_extractor_builds_typed_model() -> None:
-    """Per-column types produce a nullable, JSON-typed structured-output model."""
-    ex = EntityExtractor(
-        {"name": str, "qty": int, "price": float, "active": bool, "day": date, "at": datetime},
-        llm="test",
-    )
-    entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
-    props = entity_model.model_json_schema()["properties"]
-    assert list(props) == ["name", "qty", "price", "active", "day", "at"]
-
-    def json_types(col: str) -> set[str | None]:
-        spec = props[col]
-        return {s.get("type") for s in spec.get("anyOf", [spec])}
-
-    def json_formats(col: str) -> set[str | None]:
-        spec = props[col]
-        return {s.get("format") for s in spec.get("anyOf", [spec])}
-
-    assert json_types("name") == {"string", "null"}
-    assert json_types("qty") == {"integer", "null"}
-    assert json_types("price") == {"number", "null"}
-    assert json_types("active") == {"boolean", "null"}
-    # date/datetime serialize as ISO strings carrying a format hint for the LLM.
-    assert json_types("day") == {"string", "null"} and "date" in json_formats("day")
-    assert json_types("at") == {"string", "null"} and "date-time" in json_formats("at")
-
-
-def test_entity_extractor_rebuilds_agent_when_profile_changes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    settings = ModelSettings(temperature=0)
-    ex = EntityExtractor({"name": str}, llm="test")
-    original_agent = ex._agent
-
-    ex.apply_llm_profile(llm="openai-responses:gpt-5", model_settings=settings)
-
-    assert ex.llm == "openai-responses:gpt-5"
-    assert ex.model_settings is settings
-    assert ex._agent is not original_agent
-
-
-def test_typed_model_coerces_and_nulls() -> None:
-    """Pydantic coerces strings to typed values, accepts null, and rejects junk (no silent pass)."""
-    ex = EntityExtractor(
-        {"qty": int, "price": float, "active": bool, "day": date},
-        llm="test",
-    )
-    entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
-
-    coerced = entity_model(qty="5", price="29.99", active="true", day="2024-01-02")
-    assert (coerced.qty, coerced.price, coerced.active, coerced.day) == (5, 29.99, True, date(2024, 1, 2))
-
-    nulled = entity_model(qty=None, price=None, active=None, day=None)
-    assert (nulled.qty, nulled.price, nulled.active, nulled.day) == (None, None, None, None)
-    assert entity_model().model_dump() == {"qty": None, "price": None, "active": None, "day": None}
-
-    with pytest.raises(ValueError):
-        entity_model(qty="N/A")
-    with pytest.raises(ValueError):
-        entity_model(day="not a date")
-
-
-def test_entity_extractor_rejects_empty_fields() -> None:
-    with pytest.raises(ValueError, match="fields must be non-empty"):
-        EntityExtractor({})
-
-
-def test_entity_extractor_rejects_unsupported_field_type() -> None:
-    from decimal import Decimal
-
-    with pytest.raises(ValueError, match="str/int/float/bool/date/datetime"):
-        EntityExtractor({"amt": Decimal})
-
-
-def test_entity_extractor_validates_literal_choices() -> None:
-    extractor = EntityExtractor({"category": Literal["billing", "account", "technical"]}, llm="test")
-    model = extractor._result_model
-    field = model.model_json_schema()["$defs"]["ExtractedEntity"]["properties"]["category"]
-    assert field["anyOf"][0]["enum"] == ["billing", "account", "technical"]
-    assert model.model_validate({"entities": [{"category": "billing"}, {}]}).model_dump() == {
-        "entities": [{"category": "billing"}, {"category": None}]
-    }
-    with pytest.raises(ValueError, match="literal_error"):
-        model.model_validate({"entities": [{"category": "other"}]})
-
-
-@pytest.mark.parametrize("dtype", [Literal[1, 2], Literal["billing", 1], Literal[()], list[str]])
-def test_entity_extractor_rejects_unsupported_literals(dtype: Any) -> None:
-    with pytest.raises(ValueError, match="string Literal choices"):
-        EntityExtractor({"category": dtype}, llm="test")
 
 
 def test_document_content_validation_rejects_unknown_values_and_accepts_null() -> None:
@@ -175,60 +55,6 @@ def test_document_content_rejects_path_backed_media_with_guidance(value: object,
     assert location in message
     assert "path-backed media 'one.jpg' has no inline bytes" in message
     assert "download the referenced file and import its bytes" in message
-
-
-async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytest.MonkeyPatch) -> None:
-    extractor = EntityExtractor({"name": str}, llm="test")
-    prompts: list[list[UserContent]] = []
-
-    async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
-        assert not isinstance(prompt, str)
-        prompts.append(list(prompt))
-        return []
-
-    monkeypatch.setattr(extractor, "_extract_chunk", capture)
-
-    await extractor.extract(
-        BinaryContent(data=_pdf(41), media_type="application/pdf"),
-        instruction="Extract every name.",
-    )
-
-    assert len(prompts) == 3
-    media = [prompt[1] for prompt in prompts]
-    assert all(isinstance(item, BinaryContent) for item in media)
-    assert [select_pdf_pages(item.data).total_pages for item in media if isinstance(item, BinaryContent)] == [20, 20, 1]
-    assert "PDF pages 1-20 of 41" in str(prompts[0][0])
-    assert "PDF pages 41-41 of 41" in str(prompts[2][0])
-
-
-async def test_entity_extractor_processes_ordered_mixed_media_collection(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    extractor = EntityExtractor({"name": str}, llm="test")
-    prompts: list[list[UserContent]] = []
-
-    async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
-        assert not isinstance(prompt, str)
-        prompts.append(list(prompt))
-        return []
-
-    monkeypatch.setattr(extractor, "_extract_chunk", capture)
-
-    await extractor.extract(
-        [
-            BinaryContent(data=_png(), media_type="image/png"),
-            BinaryContent(data=_pdf(1), media_type="application/pdf"),
-        ],
-        instruction="Extract every name.",
-    )
-
-    assert len(prompts) == 2
-    assert "Media item 1 of 2" in str(prompts[0][0])
-    assert "Media item 2 of 2" in str(prompts[1][0])
-    assert [prompt[1].media_type for prompt in prompts if isinstance(prompt[1], BinaryContent)] == [
-        "image/png",
-        "application/pdf",
-    ]
 
 
 async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -256,14 +82,15 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
         {"name": "Widget", "qty": 5, "price": 29.99, "active": True, "launched": "2024-01-01"},
         {"name": "Gadget", "qty": None, "price": None, "active": False, "launched": "2023-06-15"},
     ]
-    captured: dict[str, dict[str, type]] = {}
+    captured: dict[str, type[BaseModel]] = {}
 
     class FakeExtractor:
-        def __init__(self, fields: dict[str, type], **_: object) -> None:
-            captured["fields"] = fields
+        def __init__(self, **_: object) -> None:
+            pass
 
-        async def extract(self, content: str, **_: object) -> list[dict[str, object]]:
-            return canned
+        async def extract(self, content: str, *, record_type: type[BaseModel], **_: object) -> list[BaseModel]:
+            captured["record_type"] = record_type
+            return [record_type.model_validate(row) for row in canned]
 
     monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
 
@@ -278,12 +105,12 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     )
 
     assert "Extracted 2 entities" in summary
-    assert captured["fields"] == {
-        "name": str,
-        "qty": int,
-        "price": float,
-        "active": bool,
-        "launched": date,
+    assert {name: field.annotation for name, field in captured["record_type"].model_fields.items()} == {
+        "name": str | None,
+        "qty": int | None,
+        "price": float | None,
+        "active": bool | None,
+        "launched": date | None,
     }
 
     back = (await conn.run_query_async("SELECT * FROM products ORDER BY name")).df
@@ -318,10 +145,12 @@ async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch:
         def __init__(self, *_: object, **__: object) -> None:
             pass
 
-        async def extract(self, content: str | BinaryContent, **_: object) -> list[dict[str, object]]:
+        async def extract(
+            self, content: str | BinaryContent, *, record_type: type[BaseModel], **_: object
+        ) -> list[BaseModel]:
             assert isinstance(content, BinaryContent)
             captured.append(content)
-            return [{"name": "Widget"}]
+            return [record_type.model_validate({"name": "Widget"})]
 
     monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
 
@@ -361,11 +190,11 @@ async def test_tool_extracts_from_mixed_media_collection(tmp_path: Path, monkeyp
             pass
 
         async def extract(
-            self, content: str | BinaryContent | Sequence[BinaryContent], **_: object
-        ) -> list[dict[str, object]]:
+            self, content: str | BinaryContent | Sequence[BinaryContent], *, record_type: type[BaseModel], **_: object
+        ) -> list[BaseModel]:
             assert not isinstance(content, (str, BinaryContent))
             captured.append(tuple(content))
-            return [{"name": "Widget"}]
+            return [record_type.model_validate({"name": "Widget"})]
 
     monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
 

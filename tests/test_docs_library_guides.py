@@ -193,7 +193,7 @@ async def test_enrichment_finds_remote_jobs_with_matching_experience(
             )
         return await original_write(self, df, table_name, **kwargs)
 
-    monkeypatch.setattr("tabulaflow.agents.tools.run_subagent_for_each_row.make_agent", make_test_agent)
+    monkeypatch.setattr("tabulaflow.agents.enrichment.make_agent", make_test_agent)
     monkeypatch.setattr(SQLConnector, "write_dataframe_async", write_jobs)
     await runpy.run_path(str(EXAMPLES / "data_enrichment.py"))["main"]()
 
@@ -229,8 +229,8 @@ async def test_extraction_turns_travel_guide_into_categorized_places(
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         tool = info.output_tools[0]
-        fields = tool.parameters_json_schema["$defs"]["ExtractedEntity"]["properties"]
-        assert fields["category"]["anyOf"][0]["enum"] == ["food", "culture", "outdoors", "shopping"]
+        fields = tool.parameters_json_schema["$defs"]["Place"]["properties"]
+        assert fields["category"]["enum"] == ["food", "culture", "outdoors", "shopping"]
         prompt = next(
             part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
         )
@@ -238,13 +238,13 @@ async def test_extraction_turns_travel_guide_into_categorized_places(
         prompts.append(prompt)
         normalized = " ".join(prompt.split())
         return ModelResponse(
-            parts=[ToolCallPart(tool.name, {"entities": [place for place in expected if place["name"] in normalized]})]
+            parts=[ToolCallPart(tool.name, {"response": [place for place in expected if place["name"] in normalized]})]
         )
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
 
-    monkeypatch.setattr("tabulaflow.agents.extraction.entity.make_agent", make_test_agent)
+    monkeypatch.setattr("tabulaflow.agents.extraction.extractor.make_agent", make_test_agent)
     monkeypatch.chdir(EXAMPLES / "support")
     page = EXAMPLES.parent / "python-library/extraction-and-enrichment.md"
     snippet = page.read_text().split("```python\n", 1)[1].split("```", 1)[0]
@@ -253,7 +253,8 @@ async def test_extraction_turns_travel_guide_into_categorized_places(
     await eval(code, namespace)
 
     assert len(prompts) > 1
-    assert namespace["places"] == expected
+    assert all(isinstance(place, namespace["Place"]) for place in namespace["places"])
+    assert [place.model_dump() for place in namespace["places"]] == expected
     assert (EXAMPLES / "results/library-extraction.txt").read_text().strip() == capsys.readouterr().out.strip()
 
 
