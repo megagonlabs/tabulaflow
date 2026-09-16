@@ -20,7 +20,7 @@ from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, Re
 async def test_quick_start(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], reverse_artifacts: bool
 ) -> None:
-    script = Path(__file__).resolve().parents[1] / "docs/examples/quick_start.py"
+    script = Path(__file__).resolve().parents[1] / "tabulaflow/examples/quick_start.py"
     example = runpy.run_path(str(script))
     chart_spec = {
         "mark": "bar",

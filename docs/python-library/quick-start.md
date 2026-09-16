@@ -11,7 +11,7 @@ region and find open high-priority tickets in one request, with an inspectable
 chart and table.
 
 ```python title="quick_start.py"
---8<-- "examples/quick_start.py:example"
+--8<-- "tabulaflow/examples/quick_start.py:example"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -30,11 +30,14 @@ Set your API key and run the complete example with
 [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
+uv init tabulaflow-examples
+cd tabulaflow-examples
+uv add tabulaflow
 export OPENAI_API_KEY="your-api-key"
-uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
+uv run tabulaflow examples run quick-start
 ```
 
-For a local example without
+This project and its environment can be reused for the other examples. For an example without
 an API key, try [Data connectors](data-connectors.md).
 
 ## Use in your project

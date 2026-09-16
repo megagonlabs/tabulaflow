@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0"]
-# ///
-
 import asyncio
 
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime

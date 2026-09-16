@@ -9,24 +9,24 @@ and metrics.
 This example selects relevant tables, then generates SQL with execution feedback:
 
 ```python title="table_linking_agent.py"
---8<-- "examples/table_linking_agent.py:agent-imports"
+--8<-- "tabulaflow/examples/table_linking_agent.py:agent-imports"
 
---8<-- "examples/table_linking_agent.py:agent"
+--8<-- "tabulaflow/examples/table_linking_agent.py:agent"
 ```
 
 The same pipeline accepts your agent class directly:
 
 ```python
---8<-- "examples/table_linking_agent.py:pipeline-imports"
+--8<-- "tabulaflow/examples/table_linking_agent.py:pipeline-imports"
 
---8<-- "examples/table_linking_agent.py:integration"
+--8<-- "tabulaflow/examples/table_linking_agent.py:integration"
 ```
 
 After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
 run directly:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/table_linking_agent.py
+uv run tabulaflow examples run table-linking-agent
 ```
 
 The script runs three BIRD-SQL tasks and saves results under `runs/table_linking/`.

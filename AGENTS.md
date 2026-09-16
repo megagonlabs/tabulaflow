@@ -54,6 +54,7 @@ tabulaflow/
 │   ├── extraction/    # reusable structured document extraction
 │   ├── enrichment.py  # reusable typed DataFrame enrichment
 │   └── tools/         # model-facing tools grouped by implementation domain
+├── examples/        # runnable examples and their packaged support files
 ├── research/        # NL2SQL research — a leaf consumer of the platform layers
 │   ├── agents/  benchmarks/  metrics/  pipelines/  preprocessing/
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)

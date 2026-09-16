@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
-# ///
-
 import asyncio
 
 # --8<-- [start:data-imports]
@@ -28,7 +23,7 @@ from tabulaflow.output.specs import GraphArtifactSpec, OutputSpec, TableArtifact
 # --8<-- [end:artifact-imports]
 
 
-async def load_sample_data(logistics):
+async def load_sample_data(logistics: SQLConnector) -> None:
     # --8<-- [start:sample-data]
     await logistics.write_dataframe_async(
         pd.DataFrame(
@@ -45,7 +40,7 @@ async def load_sample_data(logistics):
     # --8<-- [end:sample-data]
 
 
-async def main():
+async def main() -> None:
     # --8<-- [start:connect]
     logistics = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]

@@ -40,7 +40,7 @@ final prediction matches any valid reference interpretation. Inspect the scores
 for the first ARCS task from the [ambiguity example](agents.md#ambiguity-aware-agents):
 
 ```python
---8<-- "examples/ambiguity_aware_queries.py:evaluation-output"
+--8<-- "tabulaflow/examples/ambiguity_aware_queries.py:evaluation-output"
 ```
 
 ??? example-details no-copy "Sample evaluation result"

@@ -40,17 +40,17 @@ transfer size.
 ??? example-details "Create the sample database"
 
     ```python
-    --8<-- "examples/structured_outputs.py:data-imports"
+    --8<-- "tabulaflow/examples/structured_outputs.py:data-imports"
 
-    --8<-- "examples/structured_outputs.py:connect"
-    --8<-- "examples/structured_outputs.py:registry"
-    --8<-- "examples/structured_outputs.py:sample-data"
+    --8<-- "tabulaflow/examples/structured_outputs.py:connect"
+    --8<-- "tabulaflow/examples/structured_outputs.py:registry"
+    --8<-- "tabulaflow/examples/structured_outputs.py:sample-data"
     ```
 
 ```python
---8<-- "examples/structured_outputs.py:store-imports"
+--8<-- "tabulaflow/examples/structured_outputs.py:store-imports"
 
---8<-- "examples/structured_outputs.py:store"
+--8<-- "tabulaflow/examples/structured_outputs.py:store"
 ```
 
 ## Add interactive controls
@@ -59,9 +59,9 @@ Declare a minimum transfer size and a query that uses it. Creating the source
 does not execute the query:
 
 ```python
---8<-- "examples/structured_outputs.py:parameter-imports"
+--8<-- "tabulaflow/examples/structured_outputs.py:parameter-imports"
 
---8<-- "examples/structured_outputs.py:source"
+--8<-- "tabulaflow/examples/structured_outputs.py:source"
 ```
 
 `NumberParameter` provides the bounds and default for a slider or numeric input.
@@ -74,18 +74,18 @@ Share the source between a table and a graph. Origin and destination values
 become graph nodes; each transfer becomes a directed edge:
 
 ```python
---8<-- "examples/structured_outputs.py:artifact-imports"
+--8<-- "tabulaflow/examples/structured_outputs.py:artifact-imports"
 
---8<-- "examples/structured_outputs.py:artifacts"
+--8<-- "tabulaflow/examples/structured_outputs.py:artifacts"
 ```
 
 Change the selection without another model call. Both artifacts share one
 query result, and returning to an earlier selection reuses that result:
 
 ```python
---8<-- "examples/structured_outputs.py:resolve-imports"
+--8<-- "tabulaflow/examples/structured_outputs.py:resolve-imports"
 
---8<-- "examples/structured_outputs.py:resolve"
+--8<-- "tabulaflow/examples/structured_outputs.py:resolve"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -94,10 +94,11 @@ query result, and returning to an earlier selection reuses that result:
     --8<-- "examples/results/library-transfers.txt"
     ```
 
-Run the complete example without a database server or API key:
+After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
+example without a database server or API key:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/structured_outputs.py
+uv run tabulaflow examples run structured-outputs
 ```
 
 See [result storage](api/output.md#result-storage) for persistence and cache behavior.

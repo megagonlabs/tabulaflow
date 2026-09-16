@@ -1,14 +1,8 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "pydantic>=2.12", "httpx>=0.28.1"]
-# ///
-
 # --8<-- [start:example]
 import asyncio
-from pathlib import Path
+from importlib.resources import files
 from typing import Literal
 
-import httpx
 import pandas as pd
 from pydantic import BaseModel
 
@@ -23,14 +17,7 @@ class Place(BaseModel):
 
 
 async def main() -> None:
-    bundled = Path(__file__).with_name("support") / "travel_guide.txt"
-    if bundled.is_file():
-        guide = bundled.read_text()
-    else:
-        async with httpx.AsyncClient() as client:
-            response = await client.get("https://megagonlabs.github.io/tabulaflow/examples/support/travel_guide.txt")
-            response.raise_for_status()
-        guide = response.text
+    guide = files("tabulaflow.examples.support").joinpath("travel_guide.txt").read_text()
 
     extractor = EntityExtractor(llm="openai-responses:gpt-5-mini")
     # Long documents are split into chunks and processed concurrently.

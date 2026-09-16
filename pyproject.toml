@@ -85,6 +85,7 @@ include = ["tabulaflow*"]
 [tool.setuptools.package-data]
 tabulaflow = [
     "agents/chat/*.md",
+    "examples/support/*",
     "app/tui/*.tcss",
     "app/assets/samples/*",
     "app/pane/assets/fonts/figtree/*",

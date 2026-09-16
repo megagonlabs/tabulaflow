@@ -7,7 +7,6 @@ from pathlib import Path
 import runpy
 from typing import Any
 
-import httpx
 from pandas.testing import assert_frame_equal
 from pydantic_ai import models
 from pydantic_ai.messages import (
@@ -38,7 +37,9 @@ from tabulaflow.output.specs import GraphArtifactSpec, NumberParameter, OutputSp
 from tabulaflow.output.store import MaterializedResult, OutputStore
 
 
-EXAMPLES = Path(__file__).resolve().parents[1] / "docs/examples"
+ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES = ROOT / "tabulaflow/examples"
+RESULTS = ROOT / "docs/examples/results"
 
 
 @pytest.fixture(autouse=True)
@@ -111,7 +112,7 @@ async def test_working_with_data(
     assert_frame_equal(restored.df, result.df, check_dtype=False)
     assert restored.model_dump(exclude={"df"}) == result.model_dump(exclude={"df"})
     output = capsys.readouterr().out
-    assert (EXAMPLES / "results/library-inventory.txt").read_text().strip() in output
+    assert (RESULTS / "library-inventory.txt").read_text().strip() in output
     for expected in (
         "Table: inventory",
         "Columns: [('product', 'TEXT'), ('on_hand', 'BIGINT'), ('reorder_point', 'BIGINT')]",
@@ -305,7 +306,7 @@ async def test_structured_outputs_resolve_lazily_and_reuse_results(
         ]
         assert all(edge.directed for edge in graph.graph.edges)
     printed = capsys.readouterr().out
-    assert (EXAMPLES / "results/library-transfers.txt").read_text().strip() in printed
+    assert (RESULTS / "library-transfers.txt").read_text().strip() in printed
     assert printed.count("Result ID: R1") == 2
     assert "Unavailable:" not in printed
     assert printed.count("Graph nodes:") == printed.count("Graph edges:") == 3
@@ -531,39 +532,12 @@ async def test_support_example_cleans_up_after_model_failure(
     assert not directories[0].exists()
 
 
-@pytest.mark.parametrize("status", [200, 404])
-async def test_remote_support_example_prepares_bundled_assets(
-    status: int,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    requested: list[str] = []
-    original_client = httpx.AsyncClient
-
-    def download(request: httpx.Request) -> httpx.Response:
-        requested.append(str(request.url))
-        name = request.url.path.rsplit("/", 1)[1]
-        return httpx.Response(status, content=(EXAMPLES / "support" / name).read_bytes())
-
-    def make_client(**kwargs: Any) -> httpx.AsyncClient:
-        return original_client(transport=httpx.MockTransport(download), **kwargs)
-
-    monkeypatch.setattr(httpx, "AsyncClient", make_client)
+async def test_support_example_prepares_packaged_assets(tmp_path: Path) -> None:
     example = runpy.run_path(str(EXAMPLES / "custom_agents.py"))
-    monkeypatch.setitem(example["prepare_example"].__globals__, "__file__", str(tmp_path / "custom_agents.py"))
     orders = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        if status == 404:
-            with pytest.raises(httpx.HTTPStatusError):
-                await example["prepare_example"](orders, tmp_path)
-            assert len(requested) == 1
-        else:
-            await example["prepare_example"](orders, tmp_path)
-            assert (tmp_path / "faq.txt").read_text().startswith("Customer support FAQ")
-            assert (tmp_path / "dock-guide.pdf").read_bytes().startswith(b"%PDF")
-            assert requested == [
-                f"https://megagonlabs.github.io/tabulaflow/examples/support/{name}"
-                for name in ("faq.txt", "dock-guide.pdf")
-            ]
+        await example["prepare_example"](orders, tmp_path)
+        assert (tmp_path / "faq.txt").read_text().startswith("Customer support FAQ")
+        assert (tmp_path / "dock-guide.pdf").read_bytes().startswith(b"%PDF")
     finally:
         await orders.close_async()

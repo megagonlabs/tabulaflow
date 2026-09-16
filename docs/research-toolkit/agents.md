@@ -36,9 +36,9 @@ Inspect the structured agent's detected ambiguities, selected interpretations,
 and predicted SQL on the first ARCS task:
 
 ```python
---8<-- "examples/ambiguity_aware_queries.py:load"
+--8<-- "tabulaflow/examples/ambiguity_aware_queries.py:load"
 
---8<-- "examples/ambiguity_aware_queries.py:prediction"
+--8<-- "tabulaflow/examples/ambiguity_aware_queries.py:prediction"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -51,7 +51,7 @@ After [setting up ARCS](benchmarks.md#arcs) and setting
 `OPENAI_API_KEY`, run directly:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/ambiguity_aware_queries.py
+uv run tabulaflow examples run ambiguity-aware-queries
 ```
 
 See [ambiguity evaluation](evaluation.md#evaluate-ambiguity) for accuracy, coverage,

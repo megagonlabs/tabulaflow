@@ -28,7 +28,7 @@ Run a full-schema agent on three BIRD-SQL tasks concurrently, execute its
 queries, and measure execution accuracy:
 
 ```python title="research_quick_start.py"
---8<-- "examples/research_quick_start.py:example"
+--8<-- "tabulaflow/examples/research_quick_start.py:example"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -45,18 +45,21 @@ Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or
 Linux. Download BIRD-SQL and set an OpenAI API key:
 
 ```bash
-uvx --python 3.11 --from tabulaflow==0.1.0 tabulaflow benchmark download bird-sql
+uv init tabulaflow-examples
+cd tabulaflow-examples
+uv add tabulaflow
+uv run tabulaflow benchmark download bird-sql
 export OPENAI_API_KEY="your-api-key"
 ```
 
 Run the example directly:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/research_quick_start.py
+uv run tabulaflow examples run research-quick-start
 ```
 
-uv downloads the script and prepares Python and its dependencies. No project
-setup or manual file creation is needed.
+The bundled example uses the TabulaFlow version installed in your project. No manual file
+creation is needed.
 The example makes paid model calls; predictions and scores vary between runs.
 
 ## Use in your project

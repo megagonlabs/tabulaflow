@@ -5,6 +5,7 @@ from typer import rich_utils
 
 from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel, run_chat
 from tabulaflow.app.theme import ACCENT
+from tabulaflow.examples.cli import examples_app
 from tabulaflow.research.cli import benchmark_app
 
 
@@ -33,6 +34,7 @@ app = typer.Typer(
     rich_markup_mode="rich",
 )
 app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(examples_app, name="examples")
 
 
 @app.callback(invoke_without_command=True)

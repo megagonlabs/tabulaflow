@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
-# ///
-
 import asyncio
 
 import pandas as pd

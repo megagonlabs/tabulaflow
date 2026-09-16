@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
-# ///
-
 # --8<-- [start:example]
 import asyncio
 
@@ -10,9 +5,10 @@ import pandas as pd
 
 from tabulaflow.agents import ChatSession
 from tabulaflow.data import DataConnectorRegistry, SQLConnector
+from tabulaflow.output.specs import ChartArtifactSpec, TableArtifactSpec
 
 
-async def load_sample_data(sales, support):
+async def load_sample_data(sales: SQLConnector, support: SQLConnector) -> None:
     await sales.write_dataframe_async(
         pd.DataFrame(
             columns=["order_id", "region", "revenue_usd"],
@@ -39,7 +35,7 @@ async def load_sample_data(sales, support):
     )
 
 
-async def main():
+async def main() -> None:
     async with DataConnectorRegistry() as registry:
         sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
         # The registry closes registered connectors when this block exits.
@@ -61,7 +57,7 @@ async def main():
             print("Answer:", result.text)
 
             for artifact in result.output.artifacts:
-                if artifact.kind in ("table", "chart"):
+                if isinstance(artifact, (TableArtifactSpec, ChartArtifactSpec)):
                     data = await session.output_store.resolve_artifact_source(artifact.source_id)
                     print("Artifact:", artifact.label)
                     print("Source:", data.metadata.connector_alias)

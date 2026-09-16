@@ -122,7 +122,7 @@ async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.Monk
 
         monkeypatch.setattr("tabulaflow.research.benchmarks.BirdSQLDatasetLoader", LocalLoader)
         monkeypatch.setattr("tabulaflow.agents.llm.make_agent", make_test_agent)
-        script = Path(__file__).resolve().parents[1] / "docs/examples/table_linking_agent.py"
+        script = Path(__file__).resolve().parents[1] / "tabulaflow/examples/table_linking_agent.py"
         await runpy.run_path(str(script))["main"]()
         assert closed == [connector]
         assert connector.schema.model_dump_json() == original_schema
@@ -167,7 +167,7 @@ async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.Monk
 
 
 def test_research_run_summary() -> None:
-    script = Path(__file__).resolve().parents[1] / "docs/examples/compare_research_agents.py"
+    script = Path(__file__).resolve().parents[1] / "tabulaflow/examples/compare_research_agents.py"
     comparison = runpy.run_path(str(script))
     tracked = NL2QRunResult.model_construct(
         agent="example",

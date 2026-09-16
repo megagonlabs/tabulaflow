@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
-# ///
-
 import asyncio
 
 # --8<-- [start:result-imports]
@@ -22,7 +17,7 @@ from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.output.formatting import format_dataframe
 
 
-async def load_sample_data(stock):
+async def load_sample_data(stock: SQLConnector) -> None:
     # --8<-- [start:sample-data]
     await stock.write_dataframe_async(
         pd.DataFrame(
@@ -38,7 +33,7 @@ async def load_sample_data(stock):
     # --8<-- [end:sample-data]
 
 
-async def main():
+async def main() -> None:
     # --8<-- [start:connect]
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]

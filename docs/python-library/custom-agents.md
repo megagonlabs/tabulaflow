@@ -10,7 +10,7 @@ order number. Build an agent that finds the order, consults product guides,
 and opens a support ticket.
 
 ```python title="custom_agents.py"
---8<-- "examples/custom_agents.py:example"
+--8<-- "tabulaflow/examples/custom_agents.py:example"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -22,7 +22,7 @@ and opens a support ticket.
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/custom_agents.py
+uv run tabulaflow examples run custom-agents
 ```
 
 The example intentionally keeps application concerns lightweight: the signed-in

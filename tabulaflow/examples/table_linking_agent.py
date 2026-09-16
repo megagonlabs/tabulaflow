@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pydantic>=2.12"]
-# ///
-
 import asyncio
 
 # --8<-- [start:agent-imports]

@@ -1,8 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "pydantic>=2.12"]
-# ///
-
 # --8<-- [start:example]
 import asyncio
 from typing import Literal

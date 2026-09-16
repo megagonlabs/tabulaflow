@@ -10,7 +10,7 @@ work arrangement, and experience requirements into typed columns so you can
 filter the roles.
 
 ```python title="data_enrichment.py"
---8<-- "examples/data_enrichment.py:example"
+--8<-- "tabulaflow/examples/data_enrichment.py:example"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -26,7 +26,7 @@ into new DataFrame columns.
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
+uv run tabulaflow examples run data-enrichment
 ```
 
 For enrichment that needs web information, enable browser tools directly:
@@ -47,11 +47,12 @@ Individual row failures are recorded while other rows continue.
 
 ## Extract records from documents
 
-Build a list of places to visit from a [sample travel guide](../examples/support/travel_guide.txt),
+Build a list of places to visit from a
+[sample travel guide](https://github.com/megagonlabs/tabulaflow/blob/dev/tabulaflow/examples/support/travel_guide.txt),
 with a category and a short reason for each recommendation. The script loads the guide automatically:
 
 ```python title="document_extraction.py"
---8<-- "examples/document_extraction.py:example"
+--8<-- "tabulaflow/examples/document_extraction.py:example"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -63,7 +64,7 @@ with a category and a short reason for each recommendation. The script loads the
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/document_extraction.py
+uv run tabulaflow examples run document-extraction
 ```
 
 The extractor splits long text at natural boundaries where possible, keeping

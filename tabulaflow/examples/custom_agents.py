@@ -1,14 +1,9 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "httpx>=0.28.1"]
-# ///
-
 # --8<-- [start:example]
 import asyncio
+from importlib.resources import files
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import httpx
 import pandas as pd
 
 from tabulaflow.agents.llm import make_agent
@@ -29,17 +24,9 @@ async def prepare_example(orders: SQLConnector, support_dir: Path) -> None:
         ),
         "orders",
     )
-    bundled = Path(__file__).with_name("support")
-    async with httpx.AsyncClient() as client:
-        for name in ("faq.txt", "dock-guide.pdf"):
-            if bundled.is_dir():
-                data = (bundled / name).read_bytes()
-            else:
-                url = f"https://megagonlabs.github.io/tabulaflow/examples/support/{name}"
-                response = await client.get(url)
-                response.raise_for_status()
-                data = response.content
-            (support_dir / name).write_bytes(data)
+    bundled = files("tabulaflow.examples.support")
+    for name in ("faq.txt", "dock-guide.pdf"):
+        (support_dir / name).write_bytes(bundled.joinpath(name).read_bytes())
 
 
 async def run_support_agent(orders: SQLConnector, support_dir: Path) -> None:

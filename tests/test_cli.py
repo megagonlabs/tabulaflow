@@ -1,3 +1,6 @@
+import importlib
+from types import SimpleNamespace
+
 from pytest import MonkeyPatch
 from rich.highlighter import NullHighlighter
 from rich.text import Text
@@ -27,6 +30,42 @@ def test_root_cli_exposes_chat_options_and_research_commands() -> None:
     assert "--install-completion" not in output
     assert "--show-completion" not in output
     assert "benchmark" in output
+    assert "examples" in output
+
+
+def test_examples_cli_lists_bundled_examples() -> None:
+    result = CliRunner().invoke(app, ["examples", "list"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines() == [
+        "ambiguity-aware-queries",
+        "chat-sessions",
+        "compare-research-agents",
+        "custom-agents",
+        "data-enrichment",
+        "document-extraction",
+        "quick-start",
+        "research-quick-start",
+        "structured-outputs",
+        "table-linking-agent",
+        "working-with-data",
+    ]
+
+
+def test_examples_cli_runs_selected_example(monkeypatch: MonkeyPatch) -> None:
+    called = False
+
+    async def main() -> None:
+        nonlocal called
+        called = True
+
+    module = SimpleNamespace(main=main)
+    monkeypatch.setattr(importlib, "import_module", lambda name: module)
+
+    result = CliRunner().invoke(app, ["examples", "run", "quick-start"])
+
+    assert result.exit_code == 0
+    assert called
 
 
 def test_root_cli_help_only_uses_mint() -> None:

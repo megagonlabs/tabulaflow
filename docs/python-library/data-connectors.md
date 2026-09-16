@@ -10,16 +10,16 @@ You're preparing a stock order. Find products below their reorder points and
 calculate how many units to buy.
 
 ```python
---8<-- "examples/working_with_data.py:data-imports"
+--8<-- "tabulaflow/examples/working_with_data.py:data-imports"
 
---8<-- "examples/working_with_data.py:connect"
---8<-- "examples/working_with_data.py:sample-data"
+--8<-- "tabulaflow/examples/working_with_data.py:connect"
+--8<-- "tabulaflow/examples/working_with_data.py:sample-data"
 ```
 
 Query it and read the result as a DataFrame:
 
 ```python
---8<-- "examples/working_with_data.py:query"
+--8<-- "tabulaflow/examples/working_with_data.py:query"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -32,9 +32,9 @@ Schema discovery includes columns, relationships, and sample values. Format
 that schema for an LLM prompt or inspection:
 
 ```python
---8<-- "examples/working_with_data.py:format-imports"
+--8<-- "tabulaflow/examples/working_with_data.py:format-imports"
 
---8<-- "examples/working_with_data.py:schema"
+--8<-- "tabulaflow/examples/working_with_data.py:schema"
 ```
 
 ??? example-details no-copy "Sample output"
@@ -46,15 +46,16 @@ that schema for an LLM prompt or inspection:
 Save and restore the result, including its DataFrame and execution metadata:
 
 ```python
---8<-- "examples/working_with_data.py:result-imports"
+--8<-- "tabulaflow/examples/working_with_data.py:result-imports"
 
---8<-- "examples/working_with_data.py:serialize"
+--8<-- "tabulaflow/examples/working_with_data.py:serialize"
 ```
 
-Run the complete example without a database server or API key:
+After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
+example without a database server or API key:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/working_with_data.py
+uv run tabulaflow examples run working-with-data
 ```
 
 Connectors are async context managers, so `async with stock:` guarantees cleanup

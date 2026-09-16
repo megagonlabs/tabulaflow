@@ -48,7 +48,7 @@ SETTINGS = """
 
 
 async def main() -> None:
-    destination = Path(__file__).resolve().parents[2] / "docs/examples/support/dock-guide.pdf"
+    destination = Path(__file__).resolve().parents[2] / "tabulaflow/examples/support/dock-guide.pdf"
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch()
         try:
