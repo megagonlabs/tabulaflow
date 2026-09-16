@@ -117,8 +117,17 @@ class TestBuildChartData:
         assert self._chart(df, spec)["spec"]["mark"]["color"] == "#e11d48"
 
     def test_unit_spec_gets_responsive_width(self) -> None:
-        spec = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)["spec"]
-        assert spec["width"] == "container"
+        chart = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
+        assert chart["spec"]["width"] == "container"
+        assert chart["spec"]["height"] == "container"
+        assert chart["wrapClass"] == "fill"
+
+    def test_explicit_chart_height_uses_content_sizing(self) -> None:
+        spec = {**SIMPLE_BAR, "width": 800, "height": 150}
+        chart = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), spec)
+        assert chart["spec"]["width"] == "container"
+        assert chart["spec"]["height"] == 150
+        assert chart["wrapClass"] == "content"
 
     def test_facet_channel_not_forced_width(self) -> None:
         df = pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]})

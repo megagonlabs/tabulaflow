@@ -630,6 +630,73 @@ def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneCard]:
     return cards
 
 
+def _palette_comparison_card(pane_dir: Path) -> PaneCard:
+    previous = ["#5FAF87", "#5AC8FA", "#F5A623", "#BD6CF0", "#F06292", "#4DD0E1", "#AED581", "#FF8A65"]
+    current = ["#5FAF87", "#6FA8DC", "#D5A65A", "#A78BD4", "#D47C9E", "#62B8B0", "#9BBF72", "#D4866A"]
+    palettes = [("Previous", previous), ("Current", current)]
+    df = pd.DataFrame(
+        [
+            {"palette": palette, "category": category, "hex": color, "swatch_id": f"{palette.lower()}-{category}"}
+            for palette, colors in palettes
+            for category, color in enumerate(colors)
+        ]
+    )
+    domain = [f"{palette.lower()}-{category}" for palette, colors in palettes for category in range(len(colors))]
+    spec: dict[str, object] = {
+        "title": {
+            "text": "Output pane categorical palette",
+            "subtitle": "Previous and current colors, category order 0–7",
+        },
+        "width": 800,
+        "height": 150,
+        "encoding": {
+            "x": {"field": "category", "type": "ordinal", "sort": list(range(8)), "axis": {"title": "Category"}},
+            "y": {"field": "palette", "type": "nominal", "sort": ["Previous", "Current"], "axis": {"title": None}},
+        },
+        "layer": [
+            {
+                "mark": {"type": "rect", "cornerRadius": 5, "stroke": "#1a212c", "strokeWidth": 4},
+                "encoding": {
+                    "color": {
+                        "field": "swatch_id",
+                        "type": "nominal",
+                        "scale": {"domain": domain, "range": previous + current},
+                        "legend": None,
+                    },
+                    "tooltip": [
+                        {"field": "palette", "type": "nominal"},
+                        {"field": "category", "type": "ordinal"},
+                        {"field": "hex", "type": "nominal"},
+                    ],
+                },
+            },
+            {
+                "mark": {
+                    "type": "text",
+                    "font": "ui-monospace, SFMono-Regular, Menlo, monospace",
+                    "fontSize": 12,
+                    "fontWeight": 600,
+                    "color": "#101318",
+                },
+                "encoding": {"text": {"field": "hex", "type": "nominal"}},
+            },
+        ],
+        "config": {"view": {"stroke": None}},
+    }
+    card = render_result_data(
+        _result_input(
+            result_id="palette-comparison",
+            label="chart palette comparison",
+            query="SELECT palette, category, hex FROM chart_palette_comparison ORDER BY palette, category",
+            df=df,
+            chart_spec=spec,
+        ),
+        pane_dir,
+    )
+    assert card is not None
+    return card
+
+
 def _many_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
     if not cards:
         return []
@@ -763,8 +830,7 @@ def _long_text_json_result() -> ResultCardInput:
         "It should wrap naturally, preserve the complete value when opened, and remain easy to copy. "
     ) * 6
     multiline = "\n".join(
-        f"Line {line:02d}: multiline content for dialog scrolling and preserved line breaks."
-        for line in range(1, 25)
+        f"Line {line:02d}: multiline content for dialog scrolling and preserved line breaks." for line in range(1, 25)
     )
     nested = {
         "request": {"id": "req-1042", "source": "preview", "flags": {"reviewed": True, "priority": False}},
@@ -776,8 +842,7 @@ def _long_text_json_result() -> ResultCardInput:
     large = {
         "metadata": {"fixture": "large-json", "count": 200},
         "records": [
-            {"id": item, "status": ["ready", "review", "hold"][item % 3], "value": item * 17}
-            for item in range(200)
+            {"id": item, "status": ["ready", "review", "hold"][item % 3], "value": item * 17} for item in range(200)
         ],
     }
     df = pd.DataFrame(
@@ -999,6 +1064,17 @@ def _populate_pane(
                 "visualization, the backing rows, and the generated SQL."
             ),
             cards=chart_cards[:1],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Chart palette comparison",
+            user="Compare the previous and current categorical chart palettes.",
+            assistant=(
+                "The first row shows the previous categorical palette and the second shows the current, calmer "
+                "palette. This chart also exercises explicit-height content sizing and responsive pane width."
+            ),
+            cards=[_palette_comparison_card(pane_dir)],
         )
         _push_turn(
             pane,

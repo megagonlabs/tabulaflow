@@ -160,11 +160,11 @@ def build_chart_data(
     has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
     is_single_cell = ("mark" in spec or "layer" in spec) and not has_facet_channel
     if is_single_cell and not _has_input_binding(spec):
-        spec.setdefault("width", "container")
+        spec["width"] = "container"
         spec.setdefault("height", "container")
-        wrap_class = "fill"
+        wrap_class = "fill" if spec["height"] == "container" else "content"
     elif is_single_cell:
-        spec.setdefault("width", "container")
+        spec["width"] = "container"
         spec.setdefault("height", 460)
         wrap_class = "content"
     else:
