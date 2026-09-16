@@ -246,7 +246,7 @@ body {
   color: var(--tf-wordmark);
   font-family: "Figtree", sans-serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
   margin-left: 8px;
 }
 
@@ -254,7 +254,7 @@ body {
   color: var(--tf-wordmark);
   font-family: "Figtree", sans-serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
 }
 
 .md-typeset h1 {
