@@ -27,7 +27,7 @@ async def test_missing_chromium_has_actionable_error_and_stops_playwright(
     _mock_playwright(monkeypatch, playwright)
     manager = WebBrowserManager()
 
-    with pytest.raises(RuntimeError, match="uv tool run --from playwright playwright install chromium"):
+    with pytest.raises(RuntimeError, match="obtain their permission"):
         await manager.shared_context()
 
     chromium.launch.assert_not_awaited()

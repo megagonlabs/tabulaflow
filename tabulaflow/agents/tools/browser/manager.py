@@ -135,9 +135,11 @@ class WebBrowserManager:
         try:
             if not Path(self._playwright.chromium.executable_path).is_file():
                 raise RuntimeError(
-                    "Chromium is not installed. Run `playwright install chromium` in the environment where "
-                    "TabulaFlow is installed. For `uv tool install`, run "
-                    "`uv tool run --from playwright playwright install chromium`."
+                    "Chromium is not installed. Ask the user to install it, or obtain their permission before "
+                    "running an installation command with the shell tool. Run `playwright install chromium` in "
+                    "the environment where TabulaFlow is installed. For `uv tool install`, run "
+                    "`uv tool run --from playwright playwright install chromium`. After installation, retry the "
+                    "browser action; restarting TabulaFlow is not required."
                 )
             if not self._headless:
                 logger.info("Launching Chromium in headed mode")
