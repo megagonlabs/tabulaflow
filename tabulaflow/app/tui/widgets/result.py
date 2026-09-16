@@ -593,9 +593,12 @@ class AgentResultWidget(Widget):
             line.append_text(Text(" " * pad))
             col += pad
 
+        current_index = self._view_indices[self.current_card]
+        position = f"{current_index + 1}/{len(card.views)}"
+
         prev_x = col
         if view_interactive:
-            line.append_text(Text("◂", style=chevron_style))
+            line.append_text(Text("‹", style=chevron_style))
         else:
             line.append_text(Text(" "))
         col += 1
@@ -605,9 +608,16 @@ class AgentResultWidget(Widget):
         col += len(cur_kind)
         line.append_text(Text(" "))
         col += 1
+        if view_interactive:
+            line.append_text(Text(position, style="dim"))
+        else:
+            line.append_text(Text(" " * len(position)))
+        col += len(position)
+        line.append_text(Text(" "))
+        col += 1
         next_x = col
         if view_interactive:
-            line.append_text(Text("▸", style=chevron_style))
+            line.append_text(Text("›", style=chevron_style))
         else:
             line.append_text(Text(" "))
         col += 1
@@ -622,7 +632,7 @@ class AgentResultWidget(Widget):
         """Render hint affordances below the preview.
 
         The hint cluster is right-aligned. For data views, the truncation
-        caption ('showing N of M rows/cols') is left-aligned on the same
+        caption ('N/M rows · N/M cols') is left-aligned on the same
         line. Hints read left-to-right as the user's natural progression:
         navigate to a card (↑↓), then inspect it (Enter).
         """
@@ -669,10 +679,10 @@ class AgentResultWidget(Widget):
         shown_cols = view.shown_cols if view.shown_cols is not None else num_cols
         parts: list[str] = []
         if num_rows > DATA_PREVIEW_MAX_ROWS:
-            parts.append(f"showing {DATA_PREVIEW_MAX_ROWS} of {num_rows} rows")
+            parts.append(f"{DATA_PREVIEW_MAX_ROWS}/{num_rows} rows")
         if num_cols > shown_cols:
-            parts.append(f"showing {shown_cols} of {num_cols} columns")
-        return " | ".join(parts)
+            parts.append(f"{shown_cols}/{num_cols} cols")
+        return " · ".join(parts)
 
     def _update_content(self) -> None:
         view = self._current_view_or_none()

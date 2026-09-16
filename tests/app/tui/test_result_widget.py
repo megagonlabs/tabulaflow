@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import pandas as pd
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from tabulaflow.app.tui.rendering import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
+from tabulaflow.app.tui.rendering import VIEW_KIND_DATA, VIEW_KIND_QUERY, ViewItem, build_resolved_output_card_views
 from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
@@ -157,6 +158,32 @@ async def test_view_selection_is_per_result() -> None:
         await pilot.pause()
         assert widget.current_card == 0
         assert _current_kind(widget) == VIEW_KIND_QUERY
+
+
+async def test_view_stepper_shows_position() -> None:
+    app = _ResultWidgetApp()
+
+    async with app.run_test(size=(100, 30)) as pilot:
+        widget = app.result_widget
+        await pilot.pause()
+        assert widget._view_stepper_widget is not None
+        content = widget._view_stepper_widget.content
+        assert isinstance(content, Text)
+        assert content.plain.endswith("‹ Data 1/2 ›")
+
+        await pilot.press("right_square_bracket")
+        await pilot.pause()
+
+        content = widget._view_stepper_widget.content
+        assert isinstance(content, Text)
+        assert content.plain.endswith("‹ Query 2/2 ›")
+
+
+def test_data_preview_caption_uses_compact_fractions() -> None:
+    widget = AgentResultWidget(ChatResult(text="x"), [])
+    view = ViewItem(kind=VIEW_KIND_DATA, renderable=Text(), data_shape=(30, 7), shown_cols=5)
+
+    assert widget._data_preview_caption(view) == "5/30 rows · 5/7 cols"
 
 
 async def test_number_control_keyboard_adjusts_pending_then_space_applies() -> None:
