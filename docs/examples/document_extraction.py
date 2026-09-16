@@ -5,6 +5,7 @@
 
 # --8<-- [start:example]
 import asyncio
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -22,10 +23,14 @@ class Place(BaseModel):
 
 
 async def main() -> None:
-    async with httpx.AsyncClient() as client:
-        response = await client.get("https://megagonlabs.github.io/tabulaflow/examples/support/travel_guide.txt")
-        response.raise_for_status()
-    guide = response.text
+    bundled = Path(__file__).with_name("support") / "travel_guide.txt"
+    if bundled.is_file():
+        guide = bundled.read_text()
+    else:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://megagonlabs.github.io/tabulaflow/examples/support/travel_guide.txt")
+            response.raise_for_status()
+        guide = response.text
 
     extractor = EntityExtractor(llm="openai-responses:gpt-5-mini")
     # Long documents are split into chunks and processed concurrently.

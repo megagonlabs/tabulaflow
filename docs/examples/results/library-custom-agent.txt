@@ -1,2 +1,26 @@
-I found order 1001 and opened ticket SUP-1. Sources: faq.txt and dock-guide.pdf, page 1.
-Tickets: [{'ticket_id': 'SUP-1', 'order_id': 1001, 'issue': 'USB-C dock still not charging after enabling Laptop charging and reconnecting the USB-C cable.'}]
+Thanks — I opened a technical-support ticket for your newest USB-C dock (order 1001).
+
+Summary (from your report and our checks)
+- Product/order: USB-C dock — order 1001 (purchased 2026-08-18). I looked this up in your orders list (orders table).
+- Reported issue: Dock will not charge the laptop.
+- Troubleshooting already tried (per your message): You enabled Laptop charging in Dock settings and reconnected the host USB-C cable (matches steps 1–2 in the dock guide).
+- Guide consulted: dock-guide.pdf (USB-C dock: charging help).
+- FAQ consulted: faq.txt (USB-C dock not charging a laptop).
+
+Support ticket
+- Ticket ID: SUP-1
+- Included in ticket: product, order number, reported issue, and steps already tried.
+
+Next steps
+- Our support team will follow up on ticket SUP-1. If you can, please reply with:
+  - The laptop make/model and operating system,
+  - Whether the dock’s external power adapter is connected and showing any LEDs,
+  - Any error messages or indicators on the dock or laptop.
+These details speed diagnosis.
+
+Files I used
+- faq.txt (customer-support FAQ, troubleshooting instructions)
+- dock-guide.pdf (USB-C dock: charging help)
+
+Anything else you’d like me to add to the ticket before I hand it over?
+Tickets: [{'ticket_id': 'SUP-1', 'order_id': 1001, 'issue': "USB-C dock not charging laptop. Customer reports they enabled 'Laptop charging' in Dock settings > Power and disconnected/reconnected the host USB-C cable, but laptop still will not charge. Requested a technical-support ticket for order 1001 (USB-C dock)."}]

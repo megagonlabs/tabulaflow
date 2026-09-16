@@ -1,13 +1,25 @@
-Answer: West: $2,000. East: $1,500. Two high-priority tickets remain open.
+Answer: Revenue by region is shown in the bar chart card. West: $2,000; East: $1,500.
+
+Open high-priority support tickets (table card):
+- Ticket 201 — Checkout payment failures — priority: high — status: open
+- Ticket 202 — Invoice downloads unavailable — priority: high — status: open
 Artifact: Revenue by region
 Source: sales
+SQL: SELECT region, SUM(revenue_usd) AS total_revenue_usd
+FROM sales
+GROUP BY region
+ORDER BY total_revenue_usd DESC;
 DataFrame:
-  region  revenue
-0   East     1500
-1   West     2000
-Artifact: Open high-priority tickets
+   region  total_revenue_usd
+0   West               2000
+1   East               1500
+Artifact: Open high-priority support tickets
 Source: support
+SQL: SELECT ticket_id, subject, priority, status
+FROM support
+WHERE lower(priority) = 'high' AND lower(status) != 'resolved'
+ORDER BY ticket_id;
 DataFrame:
-   ticket_id                       subject priority status
-0        201     Checkout payment failures     high   open
+    ticket_id                        subject priority status
+0        201      Checkout payment failures     high   open
 1        202  Invoice downloads unavailable     high   open

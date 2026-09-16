@@ -1,4 +1,8 @@
-HDMI cable and USB-C dock are below their reorder points.
+The following products are below their reorder point:
 
-Tool: run_query
-Order 8 HDMI cables and 7 USB-C docks.
+- HDMI cable — on hand: 4, reorder point: 12 (short by 8)
+- USB-C dock — on hand: 3, reorder point: 10 (short by 7)
+Order quantities to reach each product's reorder point:
+
+- HDMI cable — order 8 units (reorder point 12 minus on hand 4)
+- USB-C dock — order 7 units (reorder point 10 minus on hand 3)

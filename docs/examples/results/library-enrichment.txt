@@ -1,4 +1,4 @@
            title    business_domain work_mode  min_experience_years
-Backend Engineer financial services    remote                     2
+Backend Engineer Financial services    remote                     2
     Data Analyst             Retail    hybrid                     3
      ML Engineer         Healthcare    remote                     5
