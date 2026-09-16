@@ -40,43 +40,43 @@ class DataBrowserScreen(Screen[None]):
     DataBrowserScreen .data-browser-grid {
         height: 1fr;
         margin: 0 1;
-        border: solid #3EB489;
+        border: solid #5FAF87;
         background: $background;
         color: $text;
         scrollbar-color: #666666;
-        scrollbar-color-hover: #3EB489;
-        scrollbar-color-active: #3EB489;
+        scrollbar-color-hover: #5FAF87;
+        scrollbar-color-active: #5FAF87;
         scrollbar-background: transparent;
         scrollbar-background-hover: transparent;
         scrollbar-background-active: transparent;
     }
 
     DataBrowserScreen .data-browser-grid > .datatable--cursor {
-        background: #3EB489;
+        background: #5FAF87;
         color: black;
         text-style: bold;
     }
 
     DataBrowserScreen .data-browser-grid:focus {
-        border: solid #3EB489;
+        border: solid #5FAF87;
         outline: none;
         background-tint: transparent 0%;
     }
 
     DataBrowserScreen .data-browser-grid > .datatable--fixed-cursor {
-        background: #3EB489;
+        background: #5FAF87;
         color: black;
         text-style: bold;
     }
 
     DataBrowserScreen .data-browser-grid:focus > .datatable--cursor {
-        background: #3EB489;
+        background: #5FAF87;
         color: black;
         text-style: bold;
     }
 
     DataBrowserScreen .data-browser-grid:focus > .datatable--fixed-cursor {
-        background: #3EB489;
+        background: #5FAF87;
         color: black;
         text-style: bold;
     }
@@ -88,19 +88,19 @@ class DataBrowserScreen(Screen[None]):
 
     DataBrowserScreen .data-browser-grid > .datatable--header {
         background: transparent;
-        color: #3EB489;
+        color: #5FAF87;
         text-style: bold;
     }
 
     DataBrowserScreen .data-browser-grid > .datatable--header-hover {
         background: transparent;
-        color: #3EB489;
+        color: #5FAF87;
         text-style: bold;
     }
 
     DataBrowserScreen .data-browser-grid > .datatable--header-cursor {
         background: transparent;
-        color: #3EB489;
+        color: #5FAF87;
         text-style: bold;
     }
 
@@ -460,8 +460,8 @@ class CellBrowserScreen(Screen[None]):
         border: solid white;
         background: $background;
         scrollbar-color: #666666;
-        scrollbar-color-hover: #3EB489;
-        scrollbar-color-active: #3EB489;
+        scrollbar-color-hover: #5FAF87;
+        scrollbar-color-active: #5FAF87;
         scrollbar-background: transparent;
         scrollbar-background-hover: transparent;
         scrollbar-background-active: transparent;
@@ -664,8 +664,8 @@ class QueryBrowserScreen(Screen[None]):
         border: solid white;
         background: $background;
         scrollbar-color: #666666;
-        scrollbar-color-hover: #3EB489;
-        scrollbar-color-active: #3EB489;
+        scrollbar-color-hover: #5FAF87;
+        scrollbar-color-active: #5FAF87;
         scrollbar-background: transparent;
         scrollbar-background-hover: transparent;
         scrollbar-background-active: transparent;

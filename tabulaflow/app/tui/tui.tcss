@@ -13,8 +13,8 @@ TabulaflowApp {
 /* Scrollbar */
 #chat-log {
     scrollbar-color: #666666;
-    scrollbar-color-hover: #3EB489;
-    scrollbar-color-active: #3EB489;
+    scrollbar-color-hover: #5FAF87;
+    scrollbar-color-active: #5FAF87;
     scrollbar-background: transparent;
     scrollbar-background-hover: transparent;
     scrollbar-background-active: transparent;
@@ -37,7 +37,7 @@ TabulaflowApp {
     height: auto;
     max-height: 5;
     align-vertical: bottom;
-    border-left: heavy #3EB489;
+    border-left: heavy #5FAF87;
 }
 
 #input-suggestions {

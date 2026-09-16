@@ -107,7 +107,7 @@ function graphNodeElements(nodes) {
 
 function graphPalette() {
   return [
-    cssVar('--chart-category-0', '#3eb489'),
+    cssVar('--chart-category-0', '#5faf87'),
     cssVar('--chart-category-1', '#5ac8fa'),
     cssVar('--chart-category-2', '#f5a623'),
     cssVar('--chart-category-3', '#bd6cf0'),

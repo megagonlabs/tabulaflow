@@ -12,7 +12,7 @@ const EMPTY_STATE_HTML = '<div class="tf-empty-state tf-chart-empty" role="statu
   + '<div class="tf-empty-state-copy">No rows match this selection.</div></div>';
 
 function vegaDarkConfig() {
-  var accent = cssVar('--accent', '#3EB489');
+  var accent = cssVar('--accent', '#5FAF87');
   var card = cssVar('--card', '#1a212c');
   var text = cssVar('--text', '#e4e4e7');
   var muted = cssVar('--text-muted', '#9aa4b2');

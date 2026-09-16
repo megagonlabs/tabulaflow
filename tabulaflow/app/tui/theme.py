@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from textual.widgets import TextArea
 
 ACCENT_BOLD = f"bold {ACCENT}"
-ACCENT_RGB = (62, 180, 137)  # mint (RGB)
+ACCENT_RGB = (95, 175, 135)  # mint (RGB)
 
 # Error / danger red. An explicit hex (not the named ``red``) on purpose: Rich
 # resolves ``red`` to (128,0,0) but Textual resolves it to (255,0,0), so the same
@@ -74,7 +74,7 @@ MESSAGE_SURFACE = "#252525"
 
 # Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
 # Kept separate from ACCENT so the two can evolve independently.
-KEY_HINT_COLOR = "#3EB489"  # "#9EC8B2"
+KEY_HINT_COLOR = "#5FAF87"  # "#9EC8B2"
 KEY_HINT = f"bold {KEY_HINT_COLOR}"
 # Inactive hint keys use the same ``"dim"`` foreground as their labels so
 # the colors match exactly (e.g. "Enter" and "Inspect" share a color), but

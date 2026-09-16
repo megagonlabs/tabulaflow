@@ -131,7 +131,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
   - Even-row stripe: `#232b38` (lift above the panel)
   - Row hover: `#2c3441`
   - Border: `#21262d`
-  - Mint accent: `#3eb489` (headers, focus highlights, active pane tab)
+  - Mint accent: `#5faf87` (headers, focus highlights, active pane tab)
   - Text primary `#e4e4e7`; dim / row-numbers `#6a737d`
 - **Layout**:
   - Views render **bare** (no banner/page chrome), sized to their content, so they embed cleanly in the output pane (`app/pane.py`) — which frames each cited result as a card with a `Chart | Data | Query` tab strip and caps the stack width. The `tabulaflow` banner is reserved for standalone share exports.

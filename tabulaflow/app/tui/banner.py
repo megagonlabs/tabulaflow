@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 Color = str  # a "#rrggbb" hex color (Rich style token)
 
 # Flat palette, sampled from the original mint -> blue gradient:
-COLOR_TABULA: Color = ACCENT  # "#3EB489" mint — the "tabula" letters
+COLOR_TABULA: Color = ACCENT  # "#5FAF87" mint — the "tabula" letters
 COLOR_FLOW: Color = "#48b0ab"  # mint -> blue at 30% — the "flow" letters
 # ░ shade for the wordmark's lower half. A dim mint, but red is lifted just enough
 # that on a 256-color terminal (e.g. macOS Terminal.app) it quantizes straight to

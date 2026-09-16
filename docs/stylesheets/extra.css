@@ -15,7 +15,7 @@
 }
 
 :root {
-  --tf-accent: #3eb489;
+  --tf-accent: #5faf87;
   --tf-bg: #0f1117;
   --tf-card: #1a212c;
   --tf-hover: #2c3441;
@@ -257,7 +257,7 @@ body {
 }
 
 .md-typeset a {
-  text-decoration-color: rgba(62, 180, 137, 0.55);
+  text-decoration-color: rgba(95, 175, 135, 0.55);
   text-underline-offset: 0.15em;
 }
 
@@ -551,9 +551,9 @@ body {
   overflow: hidden;
   color: var(--tf-text-muted);
   background:
-    linear-gradient(rgba(62, 180, 137, 0.035), rgba(62, 180, 137, 0.035)),
+    linear-gradient(rgba(95, 175, 135, 0.035), rgba(95, 175, 135, 0.035)),
     var(--tf-card);
-  border: 1px dashed rgba(62, 180, 137, 0.5);
+  border: 1px dashed rgba(95, 175, 135, 0.5);
   border-radius: 8px;
 }
 

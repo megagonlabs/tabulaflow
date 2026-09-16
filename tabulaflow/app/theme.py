@@ -5,7 +5,7 @@ from __future__ import annotations
 from pygments.style import Style as PygmentsStyle
 from pygments.token import Token
 
-ACCENT = "#3EB489"  # mint
+ACCENT = "#5FAF87"  # mint
 
 # Project repository — shown in the TUI banner and browser output pane.
 GITHUB_SLUG = "megagonlabs/tabulaflow"

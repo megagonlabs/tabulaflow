@@ -7,7 +7,7 @@
 }
 
 :root {
-    --accent: #3EB489; /* Duplicated from the TUI brand accent; the pane owns browser presentation. */
+    --accent: #5FAF87; /* Duplicated from the TUI brand accent; the pane owns browser presentation. */
     --bg: #0f1117;
     --card: #1a212c;
     --stripe: #232b38;
@@ -33,7 +33,7 @@
     --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
     --chart-grid: #3a4352;
-    --chart-category-0: #3EB489;
+    --chart-category-0: #5FAF87;
     --chart-category-1: #5ac8fa;
     --chart-category-2: #f5a623;
     --chart-category-3: #bd6cf0;
@@ -158,7 +158,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 #empty { min-height: calc(100vh - 58px - 32px); display: grid; place-items: center; color: var(--text-muted); }
 .empty-state { display: grid; justify-items: center; gap: 12px; max-width: 400px; text-align: center; }
 .empty-mark { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
-              color: var(--accent); background: var(--card); box-shadow: inset 0 0 0 1px rgba(62, 180, 137, 0.18); }
+              color: var(--accent); background: var(--card); box-shadow: inset 0 0 0 1px rgba(95, 175, 135, 0.18); }
 .empty-mark svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
                   stroke-linecap: round; stroke-linejoin: round; }
 .empty-title { color: var(--text); font-size: 18px; font-weight: 600; letter-spacing: 0; }
@@ -204,7 +204,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message-body.md h4,
 .message-body.md h5,
 .message-body.md h6 { color: var(--text-muted); font-size: 1em; letter-spacing: 0; }
-.message-body.md a { color: var(--accent); text-decoration-color: rgba(62, 180, 137, 0.55);
+.message-body.md a { color: var(--accent); text-decoration-color: rgba(95, 175, 135, 0.55);
                        text-underline-offset: 2px; }
 .message-body.md a:hover { text-decoration-color: var(--accent); }
 .message-body.md .md-image-ref { display: inline-flex; max-width: 100%; align-items: baseline; gap: 6px;
@@ -327,7 +327,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message-body.md th,
 .message-body.md td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: left;
                       white-space: nowrap; }
-.message-body.md th { color: var(--accent); font-weight: 650; border-bottom-color: rgba(62, 180, 137, 0.5); }
+.message-body.md th { color: var(--accent); font-weight: 650; border-bottom-color: rgba(95, 175, 135, 0.5); }
 .message-body.md tbody tr:nth-child(even) { background: rgba(35, 43, 56, 0.55); }
 .message-body.md hr { height: 1px; margin: 1.2em 0; border: 0; background: var(--border); }
 .message-body.md eq { display: inline; }
@@ -468,7 +468,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 
 .tf-message-view { padding: 18px 20px; box-sizing: border-box; }
-.tf-message-view.tone-info { --artifact-bg: rgba(62, 180, 137, 0.06); }
+.tf-message-view.tone-info { --artifact-bg: rgba(95, 175, 135, 0.06); }
 .tf-message-view.tone-error { --artifact-bg: rgba(255, 138, 138, 0.06); }
 .tf-message-card { display: grid; gap: 8px; }
 .tf-message-label { color: var(--text-muted); font: 650 12px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.02em; }
