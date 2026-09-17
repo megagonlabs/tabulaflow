@@ -21,6 +21,11 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
 - For UI changes, ask me to verify it visually for you (without taking screenshot yourself) to save time.
 - Do not commit code unless I explicitly ask you to.
 - If there are unrelated changes in the repo that do not affect your work, just continue your work and preserve other changes.
+- When writing docs, be very careful when editting the opening content in each page as those
+  content has usually gone through extensive human polishing. Dont edit them unless explictly
+  requested. Keep docs clean and intuitive. Use focused code snippet and examples to showcase features.
+  Add sample output as collapsable if it strengthen the story. Dont add verbose text that describe
+  things that are already self-explanatory.
 
 ## Principles
 
