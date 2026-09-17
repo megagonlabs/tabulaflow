@@ -35,14 +35,6 @@ extra:
 
 nav:
   - Overview: index.md
-  - Examples:
-      - Compare spending by merchant: data-agent/examples/compare-spending.md
-      - Evaluate model performance: data-agent/examples/evaluate-model-performance.md
-      - Extract data from receipts: data-agent/examples/extract-receipts.md
-      - Combine multiple sources: data-agent/examples/combine-sources.md
-      - Build a dataset from the web: data-agent/examples/build-web-dataset.md
-      - Map geographic boundaries: data-agent/examples/map-boundaries.md
-      - Explore relationships: data-agent/examples/explore-relationships.md
   - Connecting data: data-agent/connecting-data.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
@@ -122,3 +114,4 @@ extra_css:
 extra_javascript:
   - javascripts/toc-selection.js
   - javascripts/copy-button.js
+  - javascripts/demo-gallery.js
