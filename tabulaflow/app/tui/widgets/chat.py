@@ -59,7 +59,7 @@ class UserMessage(Static):
 
     DEFAULT_CSS = f"""
     UserMessage {{
-        margin: 1 2 1 0;
+        margin: 1 1 1 0;
         padding: 0 1;
         border-left: heavy {ACCENT};
         background: {MESSAGE_SURFACE};
