@@ -181,7 +181,7 @@ class AgentTextBlock(Markdown):
 
     DEFAULT_CSS = f"""
     AgentTextBlock {{
-        padding: 0 1;
+        padding: 0 2 0 1;
         margin: 1 0 0 0;
         height: auto;
     }}

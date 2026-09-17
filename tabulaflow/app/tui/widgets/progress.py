@@ -431,7 +431,7 @@ class AgentProgressWidget(Widget):
 
     DEFAULT_CSS = """
     AgentProgressWidget {
-        padding: 0 1;
+        padding: 0 2 0 1;
         height: auto;
     }
     """
