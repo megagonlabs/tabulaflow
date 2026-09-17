@@ -13,6 +13,8 @@ building blocks you need:
 - [Data connectors](data-connectors.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
   async interface.
+- [Extraction and enrichment](extraction-and-enrichment.md): turn documents
+  into structured records and enrich DataFrames with new fields.
 - [Chat sessions](chat-sessions.md): use `ChatSession` to converse
   across multiple data sources, run tools, and stream answers and progress,
   with automatic context compaction for long conversations.
@@ -86,10 +88,3 @@ separately when web browsing is needed). Advanced library users who manage
 their own dependencies can instead run `uv pip install --no-deps tabulaflow` or
 `pip install --no-deps tabulaflow`, then install the packages required by the
 APIs and connectors they use.
-
-- [Data connectors](data-connectors.md): query sources and inspect schemas.
-- [Extraction and enrichment](extraction-and-enrichment.md): turn documents into records and enrich DataFrames.
-- [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
-- [Structured outputs](structured-outputs.md): resolve tables, charts, maps, and graphs.
-- [Custom agents](custom-agents.md): combine reusable tools with your own actions.
-- [API reference](api-reference.md): look up types, configuration, and contracts.
