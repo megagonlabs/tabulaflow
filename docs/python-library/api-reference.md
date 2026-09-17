@@ -1,5 +1,8 @@
 # API reference
 
+Start with the layer you need, whether you're querying a dataset, presenting
+results, or building an agent.
+
 | Layer | APIs |
 | --- | --- |
 | [Core](api/core.md) | Schemas, execution results, serialization, and class registry |

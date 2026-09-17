@@ -1,8 +1,9 @@
 # Structured outputs
 
-Work with tables, charts, maps, and graphs as typed specifications with query
-provenance. Resolve their data on demand, either from an agent's response or
-from specifications you create yourself.
+Work with an agent's results as data, not just text. Tables, charts, maps, and
+graphs have structured specifications that your application can inspect,
+serialize, and render. Their data can resolve on demand as parameter selections
+change. Use outputs from a chat session or construct them without an agent.
 
 ## Use outputs from a session
 

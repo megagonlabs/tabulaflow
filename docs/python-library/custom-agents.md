@@ -1,7 +1,7 @@
 # Build custom agents
 
-Combine TabulaFlow's reusable tools with your own functions and actions in a
-Pydantic AI agent.
+Build an agent around your workflow. Combine TabulaFlow's reusable tools with
+your own queries and actions, without adopting `ChatSession`.
 
 ## Example: Build a customer support agent
 

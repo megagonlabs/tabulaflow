@@ -1,7 +1,8 @@
 # Chat sessions
 
-Use `ChatSession` for conversations across data sources, with retained context,
-structured outputs, and streaming answers and tool progress.
+`ChatSession` combines source routing, tools, conversation history, and
+structured outputs. Reuse a session for follow-up questions, and stream
+answers and tool progress as they happen.
 
 ## Example: Ask a follow-up question
 

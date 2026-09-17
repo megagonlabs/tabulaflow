@@ -1,8 +1,17 @@
 # Data connectors
 
-Query SQL databases, Neo4j, SPARQL endpoints, files, and datasets through a
-common async interface. Each connector provides a structured schema and query
-results while keeping its backend's query language.
+Use connectors to inspect schemas and query SQL databases, Neo4j, and SPARQL
+endpoints directly, without an agent or model call.
+
+If you've used LiteLLM or Pydantic AI to work with different model providers,
+TabulaFlow brings a similar approach to databases: a unified
+async interface with structured schemas and query results. Queries stay in SQL,
+Cypher, or SPARQL, so LLMs can draw on their existing training rather than learn
+a new query language.
+
+For SQL databases, the same awaited API works with both sync and async drivers.
+Schema inspection gives you tables, columns, relationships, and sample values
+in a consistent structure across SQL backends.
 
 ## Example: Find products to restock
 
