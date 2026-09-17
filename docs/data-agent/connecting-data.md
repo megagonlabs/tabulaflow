@@ -1,7 +1,20 @@
 # Connecting data
 
-Run `/connect` in the Data Agent to add a file, database, graph, SPARQL
-endpoint, or public dataset:
+You can ask the agent to connect a supported data source for you, or connect it
+directly with `/connect`. Direct connections are useful when you want to choose
+the alias yourself, start browsing immediately, or run TabulaFlow with the LLM
+turned off. Once connected, you can browse the source directly with or without
+an active LLM.
+
+For example, ask the agent:
+
+```text
+Connect ./data/orders.parquet as orders.
+```
+
+## Connect directly
+
+Run `/connect` in TabulaFlow:
 
 ```text
 /connect <source...> [--alias name]
@@ -9,6 +22,18 @@ endpoint, or public dataset:
 
 Connections last for the current session. TabulaFlow creates an alias for each
 source; use `--alias` to choose your own.
+
+## Choose your source
+
+| You have | Connect with | Details |
+| --- | --- | --- |
+| CSV, Excel, Parquet, or JSON files | One or more file paths | [Local files](#local-files) |
+| SQLite or DuckDB database | A database file path | [Local databases](#local-databases) |
+| PostgreSQL, MySQL, Snowflake, or BigQuery | A connection URL | [SQL databases](#sql-databases) |
+| Neo4j graph database | A `neo4j` or `bolt` URL | [Neo4j](#neo4j) |
+| SPARQL endpoint | A `sparql+http` or `sparql+https` URL | [SPARQL](#sparql) |
+| Hugging Face dataset | A dataset or viewer URL | [Hugging Face](#hugging-face) |
+| Wikidata knowledge graph | The name `wikidata` | [Wikidata](#wikidata) |
 
 ## Local files
 
@@ -20,8 +45,8 @@ NDJSON files.
 ```
 
 Relative paths start from the directory where you launched TabulaFlow. Each
-file becomes a table named after the file. Connect related files together to
-group them under one source:
+file is imported into a session-owned DuckDB table named after the file.
+Connect related files together to group them under one source:
 
 ```text
 /connect ./data/customers.csv ./data/orders.csv --alias retail
@@ -36,10 +61,9 @@ path:
 /connect ./data/analytics.duckdb --alias analytics
 ```
 
-## Database and graph servers
+## SQL databases
 
-TabulaFlow includes PostgreSQL, MySQL, Snowflake, BigQuery, Neo4j, and SPARQL
-integrations.
+TabulaFlow includes PostgreSQL, MySQL, Snowflake, and BigQuery integrations.
 
 | Source | Example |
 | --- | --- |
@@ -47,35 +71,59 @@ integrations.
 | MySQL | `mysql://user@localhost/analytics` |
 | Snowflake | `snowflake://user@account/database` |
 | BigQuery | `bigquery://project/dataset` |
-| Neo4j | `neo4j+s://user@host?database=neo4j` |
-| SPARQL | `sparql+https://example.org/sparql` |
 
 ```text
 /connect postgresql://user@localhost/analytics --alias warehouse
 ```
 
-TabulaFlow selects async drivers for PostgreSQL, MySQL, and SQLite. For Neo4j,
-keep the exact `neo4j`, `neo4j+s`, `bolt`, or `bolt+s` scheme from your
-deployment; it controls routing and transport security.
+TabulaFlow automatically selects async drivers for PostgreSQL and MySQL.
 
-## Public datasets
+## Neo4j
 
-Connect Wikidata by name:
+Connect a Neo4j database with the URL provided by your deployment:
 
 ```text
-/connect wikidata
+/connect neo4j+s://user@host?database=neo4j --alias graph
 ```
 
-For a Hugging Face dataset, use its URL:
+Keep the exact `neo4j`, `neo4j+s`, `bolt`, or `bolt+s` scheme. It controls
+routing, transport security, and certificate verification.
+
+## SPARQL
+
+Prefix the endpoint URL with `sparql+`:
+
+```text
+/connect sparql+https://example.org/sparql --alias knowledge_graph
+```
+
+TabulaFlow does not infer that a plain HTTP URL is a SPARQL endpoint.
+
+## Hugging Face
+
+Connect a dataset with its Hugging Face URL:
 
 ```text
 /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/sst2/train
 ```
 
-If the dataset has multiple configurations, TabulaFlow asks you to choose one.
-Add `/viewer/<subset>/<split>` to select both in the URL.
+If a dataset has multiple configurations, TabulaFlow asks you to choose one.
+Add `/viewer/<subset>/<split>` to the URL to select both directly.
 
-## Source safety and the workspace
+## Wikidata
+
+Connect the Wikidata knowledge graph by name:
+
+```text
+/connect wikidata
+```
+
+TabulaFlow connects to the Wikidata Query Service as a SPARQL source and
+provides source-specific query guidance to the agent.
+
+## How connections work
+
+### Source safety and the workspace
 
 Connected sources are read-only. TabulaFlow writes derived tables, combined
 data, and extracted records to its local DuckDB workspace.
@@ -92,7 +140,7 @@ data, and extracted records to its local DuckDB workspace.
 To join sources with different aliases, ask the agent to combine them in the
 workspace.
 
-## Credentials
+### Credentials
 
 Use environment variables, cloud-provider configuration, or your driver's
 credential store. Keep passwords out of shell history, committed files,
@@ -103,7 +151,7 @@ TabulaFlow may send content needed for a prompt to your model provider. Review
 your provider's data-handling and retention policies before connecting
 sensitive data.
 
-## Disconnect a source
+### Disconnect a source
 
 ```text
 /disconnect warehouse
