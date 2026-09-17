@@ -7,21 +7,30 @@ limits, schema caching, and browser-pane networking.
 
 ## Installation
 
-The recommended installation keeps the `tabulaflow` command available from any
-directory in an isolated environment:
+Choose an installation method:
 
-```bash
-uv tool install tabulaflow
-```
-
-Upgrade it with `uv tool upgrade tabulaflow`.
-
-??? info "Install with pip"
+=== "uv (recommended)"
 
     ```bash
+    # Install as an isolated tool available from any directory
+    uv tool install tabulaflow
+
+    # Upgrade an existing installation
+    uv tool upgrade tabulaflow
+    ```
+
+=== "pip"
+
+    ```bash
+    # Create and activate a virtual environment
     python -m venv .venv
     source .venv/bin/activate
-    pip install tabulaflow
+
+    # Install TabulaFlow
+    python -m pip install tabulaflow
+
+    # Upgrade an existing installation
+    python -m pip install --upgrade tabulaflow
     ```
 
 ## Model setup
@@ -85,10 +94,13 @@ These options apply to one launch:
 
 Run `tabulaflow --help` to see the full syntax.
 
-!!! warning "Exposing the output pane"
-    Keep the default loopback host unless you need remote access. Output pages
-    may contain session data and query results. TabulaFlow adds a session token
-    to the public URL, but you must still secure the network and proxy.
+!!! warning "Secure remote output access"
+    Keep `--output-pane-host` set to its default, `127.0.0.1`, unless you
+    explicitly need remote access. The output pane may display prompts, source
+    data, and query results. TabulaFlow adds a session token to the URL as a
+    safety measure, so keep that URL private. When exposing the pane beyond a
+    trusted machine, also restrict network access and use an authenticated
+    HTTPS proxy.
 
 ## Environment variable reference
 
