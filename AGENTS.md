@@ -1,146 +1,15 @@
 # tabulaflow
 
-Minimalist Text-to-Query toolkit for NL2SQL research. Supports BIRD-SQL, Spider 2.0, Beaver, ARCS, and AMBROSIA datasets.
+TabulaFlow is an open-source data agent built on a modular Python library.
+It has three main product surface:
+- A data agent application (a TUI app with browser output pane for rich visualization) for everyone
+- A python library for developers build custom data applications
+- A research toolkit for AI researchers to run experiments
+They are organized into six layers: `core <- data <- output <- agents <- {app, research}`
 
-## Package Manager
+## Project Conventions
 
-Use `uv` for all Python operations:
-- Run scripts: `uv run <script.py>` (python interpreter at `.venv/bin/python`)
-- Add dependencies: `uv add <package>`
-- Sync dependencies: `make sync` (runs `uv sync --all-extras --all-packages --group dev`)
-
-## Common Commands
-
-```bash
-make test          # pytest with all caching disabled
-make format        # ruff format + ruff check --fix
-make lint          # ruff check
-make mypy          # mypy tabulaflow/ tests/ scripts/
-make sync          # sync uv dependencies
-```
-
-Key experiment targets (see Makefile for full list):
-```bash
-make test-bird-schema-linking           # bird-sql with schema_linking
-make test-arcs-structured      # arcs with ambig_structured_sql_agent
-make test-spider2-schema-linking        # spider2-snow with schema_linking
-make test-spider2-dbt-agent    # spider2-dbt with dbt_agent
-```
-
-Pipeline scripts (used directly):
-```bash
-uv run tabulaflow/research/pipelines/predict.py --agent <agent> --dataset <dataset> --output-dir output/test
-uv run tabulaflow/research/pipelines/execute.py output/test
-uv run tabulaflow/research/pipelines/evaluate.py output/test
-```
-
-## Project Structure
-
-The package is organized into dependency layers, enforced by `import-linter`
-(`make lint-arch`): **`core < data < output < agents < app`**. `research`
-is a separate leaf consumer of the platform layers; it may import
-`core`/`data`/`output`/`agents`, but neither `app` nor platform layers may
-import `research`, and `research` must not import `app`. `tabulaflow.cli` is the
-composition root above the sibling `app` and `research` leaves.
-
-```
-tabulaflow/
-├── cli.py           # top-level CLI composition root
-├── core/            # stable schema/result primitives, serialization, and class registry
-├── data/            # connectors, live DB registry, schema services, and external-data loaders
-├── output/          # output specs, result storage/resolution, formatting, and schema renderers
-├── agents/          # ChatSession, LLM/runtime infrastructure, extraction, enrichment, summarization, and tools
-│   ├── chat/          # reusable stateful chat runtime and semantic event stream
-│   ├── extraction/    # reusable structured document extraction
-│   ├── enrichment.py  # reusable typed DataFrame enrichment
-│   └── tools/         # model-facing tools grouped by implementation domain
-├── examples/        # runnable examples and their packaged support files
-├── research/        # NL2SQL research — a leaf consumer of the platform layers
-│   ├── agents/  benchmarks/  metrics/  pipelines/  preprocessing/
-│   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
-│   └── types.py reporting.py query_execution.py query_analysis.py ambiguity.py observability.py
-└── app/             # end-user TUI and browser output pane
-tests/               # pytest tests, organized by the same package layers
-scripts/             # utility scripts
-output/              # experiment results
-cache/               # schema and preprocessing cache
-```
-
-Stable core primitives are re-exported from `tabulaflow.core`; use explicit
-submodules for layer-specific APIs such as `tabulaflow.agents.trace` and
-`tabulaflow.output.specs`.
-
-## Environment Variables
-
-Managed via `direnv` (`.envrc` file, not committed):
-- `OPENAI_API_KEY`
-- `SF_USER`, `SF_PASSWORD`, `SF_ACCOUNT` — Snowflake (Spider 2.0)
-- `TABULAFLOW_CACHE_DIR` — shared cache root
-- `TABULAFLOW_SCHEMA_CACHE_MODE`, `TABULAFLOW_SQL_QUERY_CACHE_MODE`, `TABULAFLOW_PREPROCESSING_CACHE_MODE` — cache policies
-- `TABULAFLOW_MAX_RESULT_ROWS`, `TABULAFLOW_QUERY_TIMEOUT_SECONDS`, `TABULAFLOW_MAX_QUERY_CONCURRENCY` — shared connector limits
-- `TABULAFLOW_SQL_COLUMN_STATS_ENABLED`, `TABULAFLOW_GRAPH_SCHEMA_INTROSPECTION_MODE`, `TABULAFLOW_MAX_GRAPH_RESULT_NODES`, `TABULAFLOW_MAX_GRAPH_RESULT_EDGES`, `TABULAFLOW_MAX_SPARQL_RESPONSE_BYTES` — connector-specific settings
-- `TABULAFLOW_MAX_LLM_CONCURRENCY`, `TABULAFLOW_MAX_LLM_REQUESTS_PER_MINUTE` — LLM rate limiting
-- `TABULAFLOW_MAX_EMBEDDING_CONCURRENCY`, `TABULAFLOW_MAX_EMBEDDING_REQUESTS_PER_MINUTE` — embedding rate limiting
-- `TABULAFLOW_BROWSER_MAX_TABS`, `TABULAFLOW_BROWSER_HEADLESS` — browser runtime
-- `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_API_KEY` — Phoenix tracing (optional)
-- `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` — Langfuse tracing (optional)
-
-## LLM Identifiers
-
-- OpenAI: `openai-responses:gpt-5-mini`, `openai-responses:gpt-5`
-- Anthropic: `anthropic:claude-sonnet-4-5-20250929`
-- Google: `google-cloud:gemini-2.0-flash`, `google-cloud:gemini-2.5-flash`
-- Fireworks: `fireworks:accounts/fireworks/models/<model-name>`
-- Together: `together:<org>/<model>`
-
-## Key Datasets
-
-| Key | Description |
-|-----|-------------|
-| `bird-sql` | BIRD-SQL (splits: `dev_20240627`, `dev_20251106`, `train`) |
-| `spider2-snow` | Spider 2.0 Snowflake |
-| `beaver` | Beaver MySQL |
-| `arcs` | ARCS ambiguous NL2SQL |
-| `ambrosia-s` | AMBROSIA structured |
-| `cypherbench` | CypherBench text-to-Cypher (Neo4j; splits: `test`, `train`; install with `tabulaflow benchmark download cypherbench`) |
-
-## Tmux Sessions
-
-Run long experiments in tmux session `tabulaflow`:
-```bash
-tmux send-keys -t tabulaflow "<command>" Enter
-```
-
-For experiment scripts in `exp/`, run them in tmux session `tabulaflow`:
-```bash
-bash exp/123_xxx.sh &> log/123.out &
-```
-
-If (and only if) resuming an interrupted experiment, append to the log file:
-```bash
-bash exp/123_xxx.sh &>> log/123.out &
-```
-
-## Design Language (HTML rendering in `tabulaflow/app/render/`, shown in the output pane)
-
-Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
-
-- **Engine**: Tabulator (`tabulator_midnight.min.css` + overrides) for tables, Vega for charts. Keep custom CSS thin — let the bundled theme do the work.
-- **Palette**:
-  - Page bg: `#0f1117` (deepest)
-  - Card / panel surface: `#1a212c` (lifted clearly off the page so the borderless panel reads as a distinct surface)
-  - Even-row stripe: `#232b38` (lift above the panel)
-  - Row hover: `#2c3441`
-  - Border: `#21262d`
-  - Mint accent: `#5faf87` (headers, focus highlights, active pane tab)
-  - Text primary `#e4e4e7`; dim / row-numbers `#6a737d`
-- **Layout**:
-  - Views render **bare** (no banner/page chrome), sized to their content, so they embed cleanly in the output pane (`app/pane.py`) — which frames each cited result as a card with a `Chart | Data | Query` tab strip and caps the stack width. The `tabulaflow` banner is reserved for standalone share exports.
-  - When developing the output pane, preview fast fixtures with `uv run scripts/app/preview_output_pane.py --port 61211`; add `--full` only for stress fixtures.
-  - Table layout `fitColumns`: columns stretch to panel width with renderer-assigned `minWidth` values.
-  - Height: only force a pixel height when row count > 100 (so virtual scroll engages); otherwise free-flow at content height.
-- **No double boxes**: kill midnight's inner `.tabulator` border, the only frame is the outer card.
-- **Row separators**: none on body cells; vertical 1px dividers on header cells only.
+- Use `uv` for all Python operations
 
 ## Guidelines
 
