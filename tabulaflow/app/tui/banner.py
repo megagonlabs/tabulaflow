@@ -1,4 +1,4 @@
-"""Welcome banner: a seam-free block ``tabulaflow`` wordmark and starter questions.
+"""Welcome banner with a seam-free block ``tabulaflow`` wordmark.
 
 The wordmark is the half-block "pagga" art, but rendered so it stays seamless in
 macOS Terminal.app — whose renderer leaves a hairline between vertically-stacked
@@ -18,7 +18,6 @@ interpolated) colors have nothing to band, so the banner also looks identical on
 
 from __future__ import annotations
 
-import textwrap
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -44,35 +43,6 @@ COLOR_SHADE: Color = "#283629"
 # widget's own effective background so the carves match the chat log exactly.
 COLOR_PAGE: Color = "#121212"
 
-# Hard-wrap example lines at this column so wrapping is identical on every terminal
-# width (rather than reflowing at the terminal edge).
-_EXAMPLE_WRAP = 70
-
-# Starter questions grouped by category, shown under the banner.
-_EXAMPLES: list[tuple[str, list[str]]] = [
-    (
-        "Large-scale data collection",
-        [
-            "Find every direct flight from SFO to NYC in the next 10 days",
-            "Pull all remote software-engineer jobs posted this week",
-            "Collect Hugging Face papers with 20+ upvotes this past month",
-        ],
-    ),
-    (
-        "Data enrichment",
-        [
-            "Tag each review's sentiment and flag any mentioning a refund",
-            "Label each failed sample's error pattern as retrieval, reasoning, or output formatting, then visualize the distribution",
-            "Extract the vendor, date, and total from each sample expense document",
-        ],
-    ),
-    (
-        "Analysis and visualization",
-        [
-            "Analyze and visualize my monthly spending",
-        ],
-    ),
-]
 _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
 
 # "tabulaflow" in the half-block "pagga" style (3 rows).
@@ -171,24 +141,6 @@ def _wordmark(surface: Color) -> list[Text]:
     return rows
 
 
-def _examples() -> list[Text]:
-    """Render the starter-question block: each category as a heading, its example
-    questions beneath as bulleted lines, with a blank line between categories.
-
-    Long questions are hard-wrapped at ``_EXAMPLE_WRAP`` with a hanging indent so
-    the layout is identical regardless of terminal width.
-    """
-    rows: list[Text] = []
-    for i, (category, questions) in enumerate(_EXAMPLES):
-        if i:
-            rows.append(Text())  # blank line between categories
-        rows.append(Text(category, style="bold dim"))
-        for question in questions:
-            lines = textwrap.wrap(question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    ")
-            rows.extend(Text(line, style="dim") for line in lines)
-    return rows
-
-
 def build_wordmark(surface: str | None = None) -> RenderableType:
     """Build the 'tabulaflow' wordmark art as a Rich renderable.
 
@@ -203,11 +155,11 @@ def build_wordmark(surface: str | None = None) -> RenderableType:
 
 
 def build_banner_text() -> Text:
-    """Build the banner's text block — version, project URL, and starter examples.
+    """Build the banner's selectable project information and welcome text.
 
-    Returned as a single ``Text`` (rows joined with newlines) rather than a
-    ``Group`` so the widget rendering it is selectable: Textual only extracts
-    selection text from widgets whose render is a ``Text``/``Content``.
+    Returned as a ``Text`` rather than a ``Group`` so the widget rendering it is
+    selectable: Textual only extracts selection text from widgets whose render is
+    a ``Text``/``Content``.
 
     """
     # The scheme is dropped from the displayed URL (modern app convention).
@@ -216,4 +168,18 @@ def build_banner_text() -> Text:
     # that can't be styled away, so we trade clickability for the clean label.
     url_label = GITHUB_URL.split("://", 1)[-1]
     info = Text(f"v{__version__} · {url_label}", style="dim")
-    return Text("\n").join([info, Text(), *_examples()])
+    welcome = Text("\n").join(
+        [
+            Text("Hi, I’m TabulaFlow."),
+            Text(
+                "I work with all kinds of data, from databases and files to Hugging Face, "
+                "Wikidata, and web pages."
+            ),
+            Text(
+                "I’ll help you explore the results through interactive tables, charts, maps, "
+                "and graphs."
+            ),
+            Text("What would you like to explore?"),
+        ]
+    )
+    return Text("\n").join([info, Text(), welcome])

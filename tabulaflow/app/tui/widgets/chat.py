@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 class BannerWidget(Widget):
     """Displays the welcome banner: the wordmark art above a text block.
 
-    The two parts are separate widgets so the text block (version and starter
-    examples) renders from a single ``Text`` and is therefore selectable, while
-    the half-block art — which has no meaningful text to copy — is left as its
-    own, non-selectable widget.
+    The two parts are separate widgets so the project information and welcome text
+    render from a single ``Text`` and are therefore selectable, while the
+    half-block art — which has no meaningful text to copy — is left as its own,
+    non-selectable widget.
     """
 
     DEFAULT_CSS = """
