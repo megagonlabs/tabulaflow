@@ -20,6 +20,7 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
   don't lecture the agent on how or when to use it or mention verbosely commonsense knowledge.
 - For UI changes, ask me to verify it visually for you (without taking screenshot yourself) to save time.
 - Do not commit code unless I explicitly ask you to.
+- If there are unrelated changes in the repo that do not affect your work, just continue your work and preserve other changes.
 
 ## Principles
 
