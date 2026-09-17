@@ -3,8 +3,8 @@
 You can ask the agent to connect a supported data source for you, or connect it
 directly with `/connect`. Direct connections are useful when you want to choose
 the alias yourself, start browsing immediately, or run TabulaFlow with the LLM
-turned off. Once connected, you can browse the source directly with or without
-an active LLM.
+turned off. Once connected, the source appears in the Data Explorer, where you
+can browse its schemas, tables, and data without an active LLM.
 
 For example, ask the agent:
 
@@ -29,7 +29,7 @@ source; use `--alias` to choose your own.
 | --- | --- | --- |
 | CSV, Excel, Parquet, or JSON files | One or more file paths | [Local files](#local-files) |
 | SQLite or DuckDB database | A database file path | [Local databases](#local-databases) |
-| PostgreSQL, MySQL, Snowflake, or BigQuery | A connection URL | [SQL databases](#sql-databases) |
+| SQL database supported by SQLAlchemy | A connection URL | [SQL databases](#sql-databases) |
 | Neo4j graph database | A `neo4j` or `bolt` URL | [Neo4j](#neo4j) |
 | SPARQL endpoint | A `sparql+http` or `sparql+https` URL | [SPARQL](#sparql) |
 | Hugging Face dataset | A dataset or viewer URL | [Hugging Face](#hugging-face) |
@@ -63,7 +63,9 @@ path:
 
 ## SQL databases
 
-TabulaFlow includes PostgreSQL, MySQL, Snowflake, and BigQuery integrations.
+TabulaFlow accepts SQLAlchemy-compatible database URLs. Drivers for PostgreSQL,
+MySQL, Snowflake, and BigQuery are included; other SQLAlchemy dialects can be
+used when their required driver packages are installed.
 
 | Source | Example |
 | --- | --- |
@@ -86,8 +88,10 @@ Connect a Neo4j database with the URL provided by your deployment:
 /connect neo4j+s://user@host?database=neo4j --alias graph
 ```
 
-Keep the exact `neo4j`, `neo4j+s`, `bolt`, or `bolt+s` scheme. It controls
-routing, transport security, and certificate verification.
+Use the connection URI supplied by your Neo4j deployment unchanged, including
+its scheme (`neo4j`, `neo4j+s`, `bolt`, or `bolt+s`). Do not replace it with the
+scheme shown in this example: the scheme determines routing, TLS, and
+certificate verification.
 
 ## SPARQL
 
@@ -121,26 +125,16 @@ Connect the Wikidata knowledge graph by name:
 TabulaFlow connects to the Wikidata Query Service as a SPARQL source and
 provides source-specific query guidance to the agent.
 
-## How connections work
+## Source safety and the workspace
 
-### Source safety and the workspace
+Connected sources are read-only, so browsing and analysis do not change the
+original data. The agent uses a local DuckDB workspace as its writable area,
+storing anything it needs to create or retain for the session, including
+intermediate results, transformed or combined data, and extracted records.
+You can ask the agent at any time to export results to local files in any
+format you need for saving, sharing, or further use.
 
-Connected sources are read-only. TabulaFlow writes derived tables, combined
-data, and extracted records to its local DuckDB workspace.
-
-<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining a cross-source join in the local workspace">
-  <div class="media-placeholder__content">
-    <span class="media-placeholder__type">Diagram · wide</span>
-    <strong>Combine read-only sources in the workspace</strong>
-    <span>Show selected data flowing from customers.csv and a warehouse database into the local workspace, where the agent joins them and creates the result.</span>
-  </div>
-  <figcaption>Production placeholder · Mark both external sources as read-only and the workspace as writable.</figcaption>
-</figure>
-
-To join sources with different aliases, ask the agent to combine them in the
-workspace.
-
-### Credentials
+## Credentials
 
 Use environment variables, cloud-provider configuration, or your driver's
 credential store. Keep passwords out of shell history, committed files,
@@ -151,11 +145,8 @@ TabulaFlow may send content needed for a prompt to your model provider. Review
 your provider's data-handling and retention policies before connecting
 sensitive data.
 
-### Disconnect a source
+## Disconnect a source
 
 ```text
 /disconnect warehouse
 ```
-
-If only one user source is connected, you can omit its name. You cannot
-disconnect the built-in workspace.

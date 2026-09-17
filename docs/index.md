@@ -199,8 +199,8 @@ This design has three benefits:
 Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
-default. To export results to local files, simply ask the agent in natural
-language.
+default. You can ask the agent at any time to export results to local files in
+any format you need for saving, sharing, or further use.
 
 ## Build and research with TabulaFlow
 
