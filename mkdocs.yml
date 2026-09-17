@@ -35,7 +35,7 @@ extra:
 
 nav:
   - Overview: index.md
-  - Connecting data: data-agent/connecting-data.md
+  - Connect data: data-agent/connecting-data.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
       - Quick start: python-library/quick-start.md
@@ -54,7 +54,7 @@ nav:
       - Quick start: research-toolkit/quick-start.md
       - Benchmarks: research-toolkit/benchmarks.md
       - Agents: research-toolkit/agents.md
-      - Running experiments: research-toolkit/running-experiments.md
+      - Run experiments: research-toolkit/running-experiments.md
       - Evaluation and analysis: research-toolkit/evaluation.md
       - Extend the toolkit: research-toolkit/extending.md
       - API reference:

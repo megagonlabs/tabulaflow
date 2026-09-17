@@ -1,4 +1,4 @@
-# Connecting data
+# Connect data
 
 You can ask the agent to connect a supported data source for you, or connect it
 directly with `/connect`. Direct connections are useful when you want to choose

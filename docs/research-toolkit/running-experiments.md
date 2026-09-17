@@ -1,4 +1,4 @@
-# Running experiments
+# Run experiments
 
 ## Save and restore a run
 
