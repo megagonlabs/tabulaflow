@@ -162,8 +162,15 @@ class InlineChoiceSelector(Vertical):
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Cancel", style="dim")
 
+        title_width = max(0, available - hint.cell_len - 1)
+        if title_width:
+            title.truncate(title_width, overflow="ellipsis")
+        else:
+            title = Text()
+
         header = Text(no_wrap=True, overflow="crop")
         header.append_text(title)
-        header.append(" " * max(1, available - title.cell_len - hint.cell_len))
+        if title_width:
+            header.append(" " * (available - title.cell_len - hint.cell_len))
         header.append_text(hint)
         title_widget.update(header)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.widgets import Static
@@ -71,3 +72,23 @@ async def test_inline_choice_selector_backspace_and_cancel() -> None:
         await pilot.pause()
 
         assert app.cancelled is True
+
+
+@pytest.mark.parametrize("terminal_width", [60, 80])
+async def test_inline_choice_selector_keeps_hints_anchored_while_filtering(
+    terminal_width: int,
+) -> None:
+    app = _ChoiceApp()
+
+    async with app.run_test(size=(terminal_width, 24)) as pilot:
+        await pilot.pause()
+        title_widget = app.query_one("#choice-title", Static)
+        initial = cast(Text, title_widget.render()).plain
+        hint_column = initial.index("↑↓")
+
+        await pilot.press("m", "r", "p", "c")
+        await pilot.pause()
+
+        filtered = cast(Text, title_widget.render()).plain
+        assert filtered.index("↑↓") == hint_column
+        assert len(filtered) == len(initial)
