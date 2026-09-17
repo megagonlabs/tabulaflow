@@ -168,18 +168,18 @@ def build_banner_text() -> Text:
     # that can't be styled away, so we trade clickability for the clean label.
     url_label = GITHUB_URL.split("://", 1)[-1]
     info = Text(f"v{__version__} · {url_label}", style="dim")
+    intro = Text()
+    intro.append("Hi, I’m ")
+    intro.append("TabulaFlow", style="bold")
+    intro.append(
+        ". I work with all kinds of data, from databases and files to Hugging Face, Wikidata, and web pages. "
+        "I make results easy to explore through interactive tables, charts, maps, and graphs.",
+    )
     welcome = Text("\n").join(
         [
-            Text("Hi, I’m TabulaFlow."),
-            Text(
-                "I work with all kinds of data, from databases and files to Hugging Face, "
-                "Wikidata, and web pages."
-            ),
-            Text(
-                "I’ll help you explore the results through interactive tables, charts, maps, "
-                "and graphs."
-            ),
-            Text("What would you like to explore?"),
+            intro,
+            Text(),
+            Text("What would you like to work on?"),
         ]
     )
     return Text("\n").join([info, Text(), welcome])
