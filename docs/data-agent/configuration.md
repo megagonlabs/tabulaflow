@@ -94,13 +94,67 @@ These options apply to one launch:
 
 Run `tabulaflow --help` to see the full syntax.
 
+## Use TabulaFlow on a remote server
+
+If you can open an interactive SSH session on the server, you can run the full
+TabulaFlow TUI in that terminal. The browser output pane runs as a separate
+local web server, so accessing it from your computer requires a tunnel, direct
+network access, or a reverse proxy.
+
+### SSH port forwarding
+
+SSH port forwarding is the recommended approach because the output pane does
+not need to be exposed to the network. From your local computer, connect with a
+fixed forwarded port:
+
+```bash
+ssh -L 61111:127.0.0.1:61111 user@server
+```
+
+Then launch TabulaFlow in the SSH session with the same port:
+
+```bash
+tabulaflow --output-pane-port 61111
+```
+
+Open the output-pane URL shown by the TUI in your local browser.
+
+### Direct private-network access
+
+If the server is reachable only through a trusted private network or VPN, you
+can bind the output pane to the server's network interfaces:
+
+```bash
+tabulaflow \
+  --output-pane-host 0.0.0.0 \
+  --output-pane-port 61111 \
+  --output-pane-public-url http://server.internal:61111
+```
+
+Allow the selected port through the server's firewall only for the trusted
+network. `--output-pane-public-url` sets the address shown by the TUI;
+TabulaFlow automatically appends the session token. Do not expose the port
+directly to the public internet.
+
+### Reverse proxy
+
+For shared or publicly reachable environments, place the output pane behind an
+authenticated HTTPS proxy. Keep the pane bound to the server's loopback
+interface, configure the proxy to forward to it, and provide the browser-facing
+URL:
+
+```bash
+tabulaflow \
+  --output-pane-port 61111 \
+  --output-pane-public-url https://example.com/tabulaflow
+```
+
 !!! warning "Secure remote output access"
-    Keep `--output-pane-host` set to its default, `127.0.0.1`, unless you
-    explicitly need remote access. The output pane may display prompts, source
-    data, and query results. TabulaFlow adds a session token to the URL as a
-    safety measure, so keep that URL private. When exposing the pane beyond a
-    trusted machine, also restrict network access and use an authenticated
-    HTTPS proxy.
+    The output pane may display prompts, source data, and query results.
+    TabulaFlow includes a per-session token in every output-pane URL as a safety
+    measure, and requests without that token are rejected. Keep the URL private.
+    When exposing the pane beyond a trusted machine, also restrict network
+    access and use an authenticated HTTPS proxy.
 
 ## Environment variable reference
 
