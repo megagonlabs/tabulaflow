@@ -187,11 +187,11 @@ def _llm_config_success_message(
         )
 
     message = Text("✓ Main: ", style="dim")
-    message.append(f"{model_label(config.main.model)} · {config.main.reasoning}")
+    message.append(f"{model_label(config.main.model)} · {config.main.effort}")
     if main_mask is not None and not shared_key:
         message.append(f" [API key {main_mask}]")
     message.append(" · Subagent: ")
-    message.append(f"{model_label(config.subagent.model)} · {config.subagent.reasoning}")
+    message.append(f"{model_label(config.subagent.model)} · {config.subagent.effort}")
     if subagent_mask is not None and not shared_key:
         message.append(f" [API key {subagent_mask}]")
     if shared_key and main_mask is not None:
@@ -669,7 +669,7 @@ class TabulaflowApp(App[None]):
         url = self._pane.url if self._pane is not None else None
         if self._llm_config.config is not None:
             main = self._llm_config.config.main
-            model_status_label = f"{model_label(main.model)} · {main.reasoning}"
+            model_status_label = f"{model_label(main.model)} · {main.effort}"
         else:
             model_status_label = "LLM off"
         if self._llm_service_tier == "priority" and self._llm_config.config is not None:

@@ -168,9 +168,9 @@ class AppSession:
         return (
             agent is not None
             and agent.model == config.main.model
-            and agent.reasoning == config.main.reasoning
+            and agent.reasoning == config.main.effort
             and agent.subagent_model == config.subagent.model
-            and agent.subagent_reasoning == config.subagent.reasoning
+            and agent.subagent_reasoning == config.subagent.effort
             and agent.use_apply_patch == model_supports_apply_patch(config.main.model)
         )
 
@@ -184,12 +184,12 @@ class AppSession:
         return ChatSession(
             registry=self.registry,
             model=config.main.model,
-            reasoning=config.main.reasoning,
+            reasoning=config.main.effort,
             service_tier=self._llm_service_tier,
             workspace=self._workspace,
             trajectory_log_dir=self._runtime_paths.trajectories_dir,
             subagent_model=config.subagent.model,
-            subagent_reasoning=config.subagent.reasoning,
+            subagent_reasoning=config.subagent.effort,
             project_dir=self.project_dir,
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
@@ -215,9 +215,9 @@ class AppSession:
             if not self._chat_session_matches_config(config):
                 return self._chat_session.activate_llm_profile(
                     model=config.main.model,
-                    reasoning=config.main.reasoning,
+                    reasoning=config.main.effort,
                     subagent_model=config.subagent.model,
-                    subagent_reasoning=config.subagent.reasoning,
+                    subagent_reasoning=config.subagent.effort,
                     use_apply_patch=model_supports_apply_patch(config.main.model),
                 )
             return self._chat_session.resolve_api_keys()

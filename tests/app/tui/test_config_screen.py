@@ -8,8 +8,8 @@ from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
 
 
 _CONFIG = LLMConfig(
-    main=LLMRoleConfig(model="openai:gpt-5.6-sol", reasoning="medium"),
-    subagent=LLMRoleConfig(model="openai:gpt-5.4-mini", reasoning="low"),
+    main=LLMRoleConfig(model="openai:gpt-5.6-sol", effort="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-5.4-mini", effort="low"),
 )
 
 
@@ -40,9 +40,10 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
         assert "openai:gpt-5.4-mini" in _text(screen, "#field-subagent-model")
         assert _text(screen, "#field-main-model").endswith("openai:gpt-5.6-sol")
         assert _text(screen, "#field-subagent-model").endswith("openai:gpt-5.4-mini")
-        assert "medium" in _text(screen, "#field-main-reasoning")
+        assert "medium" in _text(screen, "#field-main-effort")
         assert "Subagent model" in _text(screen, "#field-subagent-model")
-        assert "Subagent reasoning" in _text(screen, "#field-subagent-reasoning")
+        assert "Effort" in _text(screen, "#field-main-effort")
+        assert "Subagent effort" in _text(screen, "#field-subagent-effort")
         assert not list(screen.query("#config-credentials"))
         rendered = {str(widget.render()) for widget in screen.query(Static)}
         assert "MAIN AGENT" not in rendered
@@ -105,7 +106,7 @@ async def test_reasoning_changes_inline_with_left_and_right() -> None:
     async with app.run_test() as pilot:
         await pilot.press("down", "down", "right")
         await pilot.pause()
-        assert "high" in _text(screen, "#field-main-reasoning")
+        assert "high" in _text(screen, "#field-main-effort")
         assert app.screen is screen
         await pilot.press("left", "escape")
         await pilot.pause()
@@ -122,9 +123,9 @@ async def test_non_model_options_rotate() -> None:
         assert "‹ on ›" in _text(screen, "#field-enabled")
 
         await pilot.press("down", "down", "right", "right", "right")
-        assert "minimal" in _text(screen, "#field-main-reasoning")
+        assert "minimal" in _text(screen, "#field-main-effort")
         await pilot.press("left")
-        assert "xhigh" in _text(screen, "#field-main-reasoning")
+        assert "xhigh" in _text(screen, "#field-main-effort")
 
 
 async def test_model_picker_filters_without_search_input() -> None:

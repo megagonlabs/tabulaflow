@@ -25,8 +25,8 @@ from tabulaflow.app.config import (
 
 def _config() -> LLMConfig:
     return LLMConfig(
-        main=LLMRoleConfig(model="together:owner/main", reasoning="high"),
-        subagent=LLMRoleConfig(model="together:owner/fast", reasoning="low"),
+        main=LLMRoleConfig(model="together:owner/main", effort="high"),
+        subagent=LLMRoleConfig(model="together:owner/fast", effort="low"),
     )
 
 
@@ -53,7 +53,15 @@ def test_explicit_config_round_trip(tmp_path: Path) -> None:
     config = AppConfig(llm=_config())
     save_app_config(config, path)
     assert load_app_config(path) == config
-    assert json.loads(Path(path).read_text())["llm"]["main"]["model"] == "together:owner/main"
+    saved = json.loads(Path(path).read_text())
+    assert saved["llm"]["main"] == {"model": "together:owner/main", "effort": "high"}
+
+
+def test_old_reasoning_field_is_rejected() -> None:
+    with pytest.raises(ValueError, match="reasoning"):
+        AppConfig.model_validate(
+            {"llm": {"main": {"model": "test", "reasoning": "high"}, "subagent": {"model": "test"}}}
+        )
 
 
 def test_off_round_trip(tmp_path: Path) -> None:

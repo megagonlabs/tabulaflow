@@ -60,8 +60,8 @@ def _llm_config(
     subagent_reasoning: ReasoningLevel = "medium",
 ) -> LLMConfig:
     return LLMConfig(
-        main=LLMRoleConfig(model=model, reasoning=reasoning),
-        subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
+        main=LLMRoleConfig(model=model, effort=reasoning),
+        subagent=LLMRoleConfig(model=subagent_model, effort=subagent_reasoning),
     )
 
 

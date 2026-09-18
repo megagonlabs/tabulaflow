@@ -28,7 +28,7 @@ from tabulaflow.app.config import (
 )
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
-_REASONING_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
+_EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
 
 
 class ModelPickerScreen(Screen[str | None]):
@@ -218,7 +218,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         self._initial_enabled = self._enabled
         self._initial_config = self._config.model_copy(deep=True)
         self._cursor = 0
-        self._fields = ("enabled", "main-model", "main-reasoning", "subagent-model", "subagent-reasoning")
+        self._fields = ("enabled", "main-model", "main-effort", "subagent-model", "subagent-effort")
 
     @property
     def dirty(self) -> bool:
@@ -231,9 +231,9 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             yield Static("")
             yield Static(id="field-enabled", classes="config-field")
             yield Static(id="field-main-model", classes="config-field")
-            yield Static(id="field-main-reasoning", classes="config-field")
+            yield Static(id="field-main-effort", classes="config-field")
             yield Static(id="field-subagent-model", classes="config-field")
-            yield Static(id="field-subagent-reasoning", classes="config-field")
+            yield Static(id="field-subagent-effort", classes="config-field")
         yield Static(id="config-hint")
 
     def on_mount(self) -> None:
@@ -247,11 +247,11 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         field = self._fields[self._cursor]
         if field == "enabled":
             self._enabled = not self._enabled
-        elif self._enabled and field.endswith("-reasoning"):
+        elif self._enabled and field.endswith("-effort"):
             role_name = field.split("-", 1)[0]
             role = cast(LLMRoleConfig, getattr(self._config, role_name))
-            index = _REASONING_LEVELS.index(role.reasoning) if role.reasoning in _REASONING_LEVELS else 2
-            role.reasoning = _REASONING_LEVELS[(index + delta) % len(_REASONING_LEVELS)]
+            index = _EFFORT_LEVELS.index(role.effort) if role.effort in _EFFORT_LEVELS else 2
+            role.effort = _EFFORT_LEVELS[(index + delta) % len(_EFFORT_LEVELS)]
         self._refresh()
 
     def action_edit(self) -> None:
@@ -289,27 +289,27 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         values = {
             "enabled": "on" if self._enabled else "off",
             "main-model": self._config.main.model,
-            "main-reasoning": str(self._config.main.reasoning),
+            "main-effort": str(self._config.main.effort),
             "subagent-model": self._config.subagent.model,
-            "subagent-reasoning": str(self._config.subagent.reasoning),
+            "subagent-effort": str(self._config.subagent.effort),
         }
         labels = {
             "enabled": "LLM",
             "main-model": "Model",
-            "main-reasoning": "Reasoning",
+            "main-effort": "Effort",
             "subagent-model": "Subagent model",
-            "subagent-reasoning": "Subagent reasoning",
+            "subagent-effort": "Subagent effort",
         }
         for index, field in enumerate(self._fields):
             cursor = index == self._cursor
             text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
             text.append(f"{labels[field]:<22}", style="bold" if cursor else "")
-            if field == "enabled" or field.endswith("-reasoning"):
+            if field == "enabled" or field.endswith("-effort"):
                 text.append("‹ ", style="dim")
             text.append(
                 values[field], style="bold" if cursor else ("" if self._enabled or field == "enabled" else "dim")
             )
-            if field == "enabled" or field.endswith("-reasoning"):
+            if field == "enabled" or field.endswith("-effort"):
                 text.append(" ›", style="dim")
             self.query_one(f"#field-{field}", Static).update(text)
 
@@ -319,7 +319,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         hint.append(" Back · ", style="dim")
         hint.append("↑↓", style=KEY_HINT)
         hint.append(" Navigate", style="dim")
-        if field == "enabled" or field.endswith("-reasoning"):
+        if field == "enabled" or field.endswith("-effort"):
             hint.append(" · ", style="dim")
             hint.append("←→", style=KEY_HINT)
             hint.append(" Change", style="dim")
