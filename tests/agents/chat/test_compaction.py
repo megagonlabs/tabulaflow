@@ -19,6 +19,7 @@ from pydantic_ai.usage import RequestUsage
 from tabulaflow.agents.chat.compaction import (
     CompactionConfig,
     compact_history,
+    effective_compaction_config,
     estimate_context_tokens,
 )
 from tabulaflow.agents.chat.events import ChatEvent, CompactionFinished, CompactionStarted
@@ -96,6 +97,12 @@ def test_estimate_context_tokens_counts_tool_arguments_and_reasoning_signatures(
     ]
 
     assert estimate_context_tokens(large) > estimate_context_tokens(small) + 400
+
+
+def test_compaction_config_scales_to_small_model_context() -> None:
+    config = effective_compaction_config(CompactionConfig(), "openai:gpt-3.5-turbo")
+
+    assert config == CompactionConfig(trigger_tokens=12_289, target_tokens=1_638)
 
 
 def test_compact_history_keeps_execution_and_pairs_tools_when_it_fits() -> None:
@@ -302,3 +309,18 @@ async def test_chat_session_compacts_before_pending_question() -> None:
     assert session._context_messages[-1].parts[0].content == "checkpoint"  # type: ignore[union-attr]
     assert session._transcript_messages[-2:] == checkpoint_messages
     assert [type(event) for event in events] == [CompactionStarted, CompactionFinished]
+
+
+async def test_chat_session_does_not_compact_before_first_turn() -> None:
+    session = ChatSession(
+        registry=DataConnectorRegistry(),
+        model="test",
+        reasoning="medium",
+        compaction=CompactionConfig(trigger_tokens=2, target_tokens=1),
+    )
+    events: list[ChatEvent] = []
+    session._active_emit = events.append
+
+    await session._compact_before_turn("hi", RunUsage())
+
+    assert events == []

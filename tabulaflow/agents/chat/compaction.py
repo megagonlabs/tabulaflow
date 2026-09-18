@@ -82,16 +82,23 @@ def checkpoint_prompt(config: CompactionConfig) -> str:
     return _CHECKPOINT_PROMPT.format(checkpoint_tokens=min(_CHECKPOINT_TOKEN_LIMIT, config.target_tokens // 4)).strip()
 
 
-def effective_trigger_tokens(config: CompactionConfig, model: str) -> int:
-    """Return the configured trigger with room reserved in the model window.
+def effective_compaction_config(config: CompactionConfig, model: str) -> CompactionConfig:
+    """Scale the compaction policy to fit the model context window.
 
-    Unknown models use the configured absolute trigger. Known smaller models compact
-    earlier so the checkpoint request and response still fit.
+    Unknown models use the configured policy. Known smaller models preserve its
+    trigger-to-target ratio while leaving room to generate the checkpoint.
     """
     context_window = _context_window(model)
     if context_window is None:
-        return config.trigger_tokens
-    return min(config.trigger_tokens, max(1, context_window - _CONTEXT_RESERVE_TOKENS))
+        return config
+    reserve = min(_CONTEXT_RESERVE_TOKENS, context_window // 4)
+    trigger = min(config.trigger_tokens, context_window - reserve)
+    if trigger == config.trigger_tokens:
+        return config
+    target = config.target_tokens * trigger // config.trigger_tokens
+    if target <= 0:
+        raise ValueError(f"model context window is too small for context compaction: {context_window}")
+    return CompactionConfig(trigger_tokens=trigger, target_tokens=target)
 
 
 def estimate_context_tokens(messages: list[ModelMessage], additional_content: ChatInput = "") -> int:

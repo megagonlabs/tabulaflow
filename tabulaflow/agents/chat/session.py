@@ -14,7 +14,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Final, Self
 
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.messages import BinaryContent
+from pydantic_ai.messages import BinaryContent, ModelResponse
 from pydantic_ai.usage import RunUsage
 
 from tabulaflow.agents.message_store import (
@@ -45,7 +45,7 @@ from tabulaflow.agents.chat.compaction import (
     HOST_EVENT_METADATA_KEY,
     checkpoint_prompt,
     compact_history,
-    effective_trigger_tokens,
+    effective_compaction_config,
     estimate_context_tokens,
 )
 from tabulaflow.agents.chat.tools import _ChatTools
@@ -849,10 +849,10 @@ class ChatSession:
     async def _compact_before_turn(self, question: ChatInput, usage: RunUsage) -> None:
         """Checkpoint completed history before a new prompt would exceed its budget."""
         config = self._compaction
-        if config is None or not self._context_messages:
+        if config is None or not any(isinstance(message, ModelResponse) for message in self._context_messages):
             return
-        trigger = effective_trigger_tokens(config, self.model)
-        if estimate_context_tokens(self._context_messages, question) <= trigger:
+        config = effective_compaction_config(config, self.model)
+        if estimate_context_tokens(self._context_messages, question) <= config.trigger_tokens:
             return
 
         assert self._pydantic_ai_agent is not None
