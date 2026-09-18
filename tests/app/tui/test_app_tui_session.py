@@ -451,8 +451,8 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
 @pytest.mark.parametrize(
     ("llm_enabled", "session_ready", "expected"),
     [
-        (True, True, "claude-opus-4-8 · high · "),
-        (True, False, "claude-opus-4-8 · high · "),
+        (True, True, "claude-opus-4-8 · "),
+        (True, False, "claude-opus-4-8 · "),
         (False, False, "LLM off · "),
     ],
 )
@@ -499,7 +499,7 @@ def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monke
     monkeypatch.setattr(app, "query_one", fake_query_one)
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("gpt-5.6-sol · low · Priority · ")
+    assert model_status.value.startswith("gpt-5.6-sol · Priority · ")
 
 
 async def test_startup_llm_activation_reports_session_then_agent_progress(

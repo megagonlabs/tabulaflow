@@ -63,6 +63,17 @@ async def test_config_title_and_spacing_match_the_plain_style() -> None:
         assert str(screen.query("#config-body > Static").nodes[1].render()) == ""
 
 
+async def test_config_hint_omits_navigation_arrows() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        hint = _text(screen, "#config-hint")
+        assert "Esc Back    " in hint
+        assert "↑↓" not in hint
+        assert "Navigate" not in hint
+        assert "←→ Change" in hint
+
+
 async def test_fields_are_edited_and_applied_atomically() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)

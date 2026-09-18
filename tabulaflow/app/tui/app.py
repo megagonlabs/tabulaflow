@@ -679,7 +679,7 @@ class TabulaflowApp(App[None]):
         url = self._pane.url if self._pane is not None else None
         if self._llm_config.config is not None:
             main = self._llm_config.config.main
-            model_status_label = f"{model_label(main.model)} · {main.effort}"
+            model_status_label = model_label(main.model)
         else:
             model_status_label = "LLM off"
         if self._llm_service_tier == "priority" and self._llm_config.config is not None:

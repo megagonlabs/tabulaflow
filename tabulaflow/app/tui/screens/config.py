@@ -163,7 +163,7 @@ class ModelPickerScreen(Screen[str | None]):
 
         hint = Text.assemble(
             ("Esc", KEY_HINT),
-            (" Back · ", "dim"),
+            (" Back    ", "dim"),
             ("Enter", KEY_HINT),
             (" Select", "dim"),
         )
@@ -317,15 +317,11 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         field = self._fields[self._cursor]
         hint = Text()
         hint.append("Esc", style=KEY_HINT)
-        hint.append(" Back · ", style="dim")
-        hint.append("↑↓", style=KEY_HINT)
-        hint.append(" Navigate", style="dim")
+        hint.append(" Back    ", style="dim")
         if field == "enabled" or field.endswith("-effort"):
-            hint.append(" · ", style="dim")
             hint.append("←→", style=KEY_HINT)
             hint.append(" Change", style="dim")
         elif self._enabled:
-            hint.append(" · ", style="dim")
             hint.append("Enter", style=KEY_HINT)
             hint.append(" Select", style="dim")
         self.query_one("#config-hint", Static).update(hint)
