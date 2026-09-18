@@ -91,6 +91,21 @@ async def test_disable_and_apply() -> None:
         assert app.results == [ResolvedLLMConfig("off", None)]
 
 
+async def test_disabled_llm_dims_and_skips_model_settings() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig("off", None))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "down")
+        await pilot.pause()
+
+        assert screen._cursor == 0
+        assert app.screen is screen
+        assert "❯ LLM" in _text(screen, "#field-enabled")
+        for selector in ("#field-main-model", "#field-main-effort", "#field-subagent-model", "#field-subagent-effort"):
+            rendered = screen.query_one(selector, Static).render()
+            assert any(span.style.dim for span in rendered.spans)
+
+
 async def test_escape_discards_clean_screen() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)

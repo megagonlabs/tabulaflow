@@ -240,6 +240,8 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         self._refresh()
 
     def action_move(self, delta: int) -> None:
+        if not self._enabled:
+            return
         self._cursor = max(0, min(len(self._fields) - 1, self._cursor + delta))
         self._refresh()
 
@@ -302,13 +304,12 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         }
         for index, field in enumerate(self._fields):
             cursor = index == self._cursor
+            enabled = self._enabled or field == "enabled"
             text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
-            text.append(f"{labels[field]:<22}", style="bold" if cursor else "")
+            text.append(f"{labels[field]:<22}", style="bold" if cursor else ("" if enabled else "dim"))
             if field == "enabled" or field.endswith("-effort"):
                 text.append("‹ ", style="dim")
-            text.append(
-                values[field], style="bold" if cursor else ("" if self._enabled or field == "enabled" else "dim")
-            )
+            text.append(values[field], style="bold" if cursor else ("" if enabled else "dim"))
             if field == "enabled" or field.endswith("-effort"):
                 text.append(" ›", style="dim")
             self.query_one(f"#field-{field}", Static).update(text)
