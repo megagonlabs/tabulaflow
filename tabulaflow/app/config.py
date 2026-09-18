@@ -61,7 +61,7 @@ class LLMConfig(BaseModel):
 
 OPENAI_DEFAULT_LLM_CONFIG = LLMConfig(
     main=LLMRoleConfig(model="openai:gpt-5.6-terra", effort="medium"),
-    subagent=LLMRoleConfig(model="openai:gpt-5.6-sol", effort="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-5.6-luna", effort="medium"),
 )
 ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
     main=LLMRoleConfig(model="anthropic:claude-opus-5", effort="high"),
@@ -69,7 +69,7 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
 )
 
 RECOMMENDED_MAIN_MODELS: tuple[str, ...] = ("openai:gpt-5.6-terra",)
-RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = ("openai:gpt-5.6-sol",)
+RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = ("openai:gpt-5.6-luna",)
 _CURATED_MODELS_BY_PROVIDER = (
     (
         "openai",

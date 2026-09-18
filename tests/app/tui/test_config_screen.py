@@ -274,7 +274,7 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-5.6-luna  (recommended)" in options
         assert "openai:gpt-5.4-mini  (recommended)" not in options
 
 
