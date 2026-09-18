@@ -12,7 +12,9 @@ from tabulaflow.app.config import (
     AppConfig,
     LLMConfig,
     LLMRoleConfig,
+    RECOMMENDED_MAIN_MODELS,
     ResolvedLLMConfig,
+    llm_model_catalog,
     load_app_config,
     model_supports_apply_patch,
     resolve_llm_config,
@@ -30,6 +32,14 @@ def _config() -> LLMConfig:
 
 def test_default_config_is_automatic() -> None:
     assert AppConfig().llm is None
+
+
+def test_model_catalog_contains_recommendations_current_and_pydantic_ai_models() -> None:
+    catalog = llm_model_catalog(current="vendor:new-model", recommended=RECOMMENDED_MAIN_MODELS)
+    assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
+    assert "anthropic:claude-opus-5" in catalog
+    assert "test" not in catalog
+    assert len(catalog) == len(set(catalog))
 
 
 def test_model_identifier_must_be_provider_qualified() -> None:

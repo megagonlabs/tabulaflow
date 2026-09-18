@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic_ai.models import known_model_names
 
 from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.agents.llm import ReasoningLevel
@@ -73,21 +74,20 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
     subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning="medium"),
 )
 
-MAIN_LLM_MODELS: tuple[str, ...] = (
+RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
     "openai-responses:gpt-5.6-sol",
+    "openai-responses:gpt-5.6-terra",
+)
+RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
     "openai-responses:gpt-5.4-mini",
     "openai-responses:gpt-5-mini",
-    "anthropic:claude-opus-5",
-    "anthropic:claude-opus-4-8",
-    "anthropic:claude-sonnet-4-5-20250929",
 )
-SUBAGENT_LLM_MODELS: tuple[str, ...] = (
-    "openai-responses:gpt-5.4-mini",
-    "openai-responses:gpt-5-mini",
-    "openai-responses:gpt-5.6-sol",
-    "anthropic:claude-sonnet-4-5-20250929",
-    "anthropic:claude-opus-5",
-)
+
+
+def llm_model_catalog(*, current: str, recommended: tuple[str, ...]) -> tuple[str, ...]:
+    """Return recommendations, the current model, and every Pydantic AI model id."""
+    models = (*recommended, current, *(model for model in known_model_names() if model != "test"))
+    return tuple(dict.fromkeys(models))
 
 
 class AppConfig(BaseModel):

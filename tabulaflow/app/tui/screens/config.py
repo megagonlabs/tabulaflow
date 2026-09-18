@@ -19,16 +19,18 @@ from tabulaflow.app.config import (
     ANTHROPIC_DEFAULT_LLM_CONFIG,
     APP_CONFIG_PATH,
     LLM_OFF,
-    MAIN_LLM_MODELS,
     OPENAI_DEFAULT_LLM_CONFIG,
-    SUBAGENT_LLM_MODELS,
+    RECOMMENDED_MAIN_MODELS,
+    RECOMMENDED_SUBAGENT_MODELS,
     LLMRoleConfig,
     ResolvedLLMConfig,
+    llm_model_catalog,
 )
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _CUSTOM_MODEL = "Enter a custom model identifier…"
 _REASONING_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
+_VISIBLE_MODEL_ROWS = 10
 
 
 class ModelPickerScreen(Screen[str | None]):
@@ -50,16 +52,15 @@ class ModelPickerScreen(Screen[str | None]):
         Binding("down", "move(1)", "Next", show=False, priority=True),
         Binding("enter", "select", "Select", show=False, priority=True),
         Binding("backspace", "erase_filter", "Edit filter", show=False, priority=True),
+        Binding("tab", "edit_custom", "Custom model", show=False, priority=True),
     ]
 
     def __init__(self, role: str, current: str) -> None:
         super().__init__()
         self._role = role
-        builtins = MAIN_LLM_MODELS if role == "main" else SUBAGENT_LLM_MODELS
-        defaults = ANTHROPIC_DEFAULT_LLM_CONFIG if current.startswith("anthropic:") else OPENAI_DEFAULT_LLM_CONFIG
-        self._recommended = getattr(defaults, role).model
-        ordered = (self._recommended, *(model for model in builtins if model != self._recommended))
-        self._models = ordered if current in ordered else (current, *ordered)
+        recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
+        self._recommended = frozenset(recommended)
+        self._models = llm_model_catalog(current=current, recommended=recommended)
         self._visible = self._models
         self._cursor = self._visible.index(current)
         self._filter = ""
@@ -110,6 +111,11 @@ class ModelPickerScreen(Screen[str | None]):
         if self._cursor < len(self._visible):
             self.dismiss(self._visible[self._cursor])
             return
+        self.action_edit_custom()
+
+    def action_edit_custom(self) -> None:
+        if self._editing_custom:
+            return
         self._editing_custom = True
         self._custom_value = ""
         self._custom_error = None
@@ -148,14 +154,26 @@ class ModelPickerScreen(Screen[str | None]):
             title.append(f"“{self._filter}”", style="bold")
         self.query_one("#model-picker-title", Static).update(title)
 
+        visible_count = len(self._visible)
+        if self._cursor < visible_count:
+            start = max(0, min(self._cursor - _VISIBLE_MODEL_ROWS // 2, visible_count - _VISIBLE_MODEL_ROWS))
+        else:
+            start = max(0, visible_count - _VISIBLE_MODEL_ROWS)
+        end = min(start + _VISIBLE_MODEL_ROWS, visible_count)
+
         options = Text()
-        for index, model in enumerate(self._visible):
+        if start:
+            options.append(f"  ↑ {start} more\n", style="dim")
+        for index in range(start, end):
+            model = self._visible[index]
             selected = not self._editing_custom and index == self._cursor
             options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
             options.append(model, style="bold" if selected else "")
-            if model == self._recommended:
+            if model in self._recommended:
                 options.append("  (recommended)", style="dim")
             options.append("\n")
+        if end < visible_count:
+            options.append(f"  ↓ {visible_count - end} more\n", style="dim")
 
         selected = not self._editing_custom and self._cursor == len(self._visible)
         options.append("❯ " if selected or self._editing_custom else "  ", style=ACCENT_BOLD)
@@ -191,7 +209,9 @@ class ModelPickerScreen(Screen[str | None]):
                 ("Type", KEY_HINT),
                 (" Filter · ", "dim"),
                 ("Enter", KEY_HINT),
-                (" Select", "dim"),
+                (" Select · ", "dim"),
+                ("Tab", KEY_HINT),
+                (" Custom", "dim"),
             )
         self.query_one("#model-picker-hint", Static).update(hint)
 

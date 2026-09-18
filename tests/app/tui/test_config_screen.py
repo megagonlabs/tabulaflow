@@ -61,7 +61,7 @@ async def test_fields_are_edited_and_applied_atomically() -> None:
         await pilot.pause()
         result = app.results[0]
         assert result is not None and result.config is not None
-        assert result.config.main.model == "openai-responses:gpt-5.4-mini"
+        assert result.config.main.model == "openai-responses:gpt-5.6-terra"
         assert result.config.subagent == _CONFIG.subagent
 
 
@@ -114,7 +114,7 @@ async def test_custom_model_is_entered_inline_without_another_screen() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
-        await pilot.press("down", "enter", *"gpt-5.6", "down", "enter")
+        await pilot.press("down", "enter", *"gpt-5.6", "tab")
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
@@ -131,3 +131,26 @@ async def test_custom_model_is_entered_inline_without_another_screen() -> None:
         await pilot.pause()
         assert app.screen is screen
         assert "test:model" in _text(screen, "#field-main-model")
+
+
+async def test_role_specific_recommendations_and_bounded_catalog() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "openai-responses:gpt-5.6-sol  (recommended)" in options
+        assert "openai-responses:gpt-5.6-terra  (recommended)" in options
+        assert "↓" in options
+
+        await pilot.press("escape")
+        await pilot.press("down", "down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "openai-responses:gpt-5.4-mini  (recommended)" in options
+        assert "openai-responses:gpt-5-mini  (recommended)" in options
