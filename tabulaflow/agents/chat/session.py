@@ -603,8 +603,7 @@ class ChatSession:
         parts = []
         if model != previous_model:
             parts.append(
-                f"the model powering this conversation changed from "
-                f"{model_label(previous_model)} to {model_label(model)}"
+                f"you are now powered by {model_label(model)} instead of {model_label(previous_model)}"
             )
         if self._tools.apply_patch is not None and use_apply_patch != previous_use_apply_patch:
             if use_apply_patch:
@@ -631,7 +630,7 @@ class ChatSession:
             self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")
 
     def _seed_conversation_context(self) -> None:
-        self.note_event(f"the model powering this conversation is {model_label(self.model)}.")
+        self.note_event(f"you are powered by {model_label(self.model)}.")
         self._note_initial_registry()
 
     def reset_conversation(self) -> None:
