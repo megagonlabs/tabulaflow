@@ -72,6 +72,8 @@ async def test_config_hint_omits_navigation_arrows() -> None:
         assert "↑↓" not in hint
         assert "Navigate" not in hint
         assert "←→ Change" in hint
+        await pilot.press("down")
+        assert "Enter Change" in _text(screen, "#config-hint")
 
 
 async def test_fields_are_edited_and_applied_atomically() -> None:

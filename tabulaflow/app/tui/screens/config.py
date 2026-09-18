@@ -323,5 +323,5 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             hint.append(" Change", style="dim")
         elif self._enabled:
             hint.append("Enter", style=KEY_HINT)
-            hint.append(" Select", style="dim")
+            hint.append(" Change", style="dim")
         self.query_one("#config-hint", Static).update(hint)
