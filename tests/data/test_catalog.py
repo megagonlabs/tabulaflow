@@ -16,14 +16,12 @@ def test_catalog_resolves_id_and_exact_normalized_locator() -> None:
     assert by_id.id == "wikidata"
 
 
-def test_wikidata_guidance_distinguishes_label_preferences_from_language_tags() -> None:
+def test_wikidata_guidance_covers_multilingual_labels() -> None:
     definition = resolve_data_source_definition("wikidata")
 
     assert definition is not None
     assert "user's requested language" in definition.description
-    assert "Bind labels explicitly" in definition.description
-    assert "LANG(?label) IN" in definition.description
-    assert "not a language tag" in definition.description
+    assert "`mul` language-neutral labels" in definition.description
     assert "Keep queries selective and efficient" in definition.description
 
 
