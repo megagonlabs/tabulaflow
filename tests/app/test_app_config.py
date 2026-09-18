@@ -41,7 +41,7 @@ def test_default_config_is_automatic() -> None:
 
 def test_model_catalog_contains_recommendations_current_and_curated_models() -> None:
     catalog = llm_model_catalog(current="vendor:new-model", recommended=RECOMMENDED_MAIN_MODELS)
-    assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
+    assert catalog[: len(RECOMMENDED_MAIN_MODELS) + 1] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
     assert "anthropic:claude-opus-5" in catalog
     assert "test" not in catalog
     assert not any(model.startswith("openai-chat:") for model in catalog)
@@ -91,7 +91,7 @@ def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
 
     catalog = llm_model_catalog(current=current, recommended=RECOMMENDED_MAIN_MODELS)
 
-    assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, current)
+    assert catalog[: len(RECOMMENDED_MAIN_MODELS) + 1] == (*RECOMMENDED_MAIN_MODELS, current)
     assert sum(model.startswith("openai-chat:") for model in catalog) == 1
 
 

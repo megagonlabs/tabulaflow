@@ -74,7 +74,7 @@ async def test_fields_are_edited_and_applied_atomically() -> None:
         assert isinstance(picker, ModelPickerScreen)
         assert "(recommended)" in _option_text(picker)
         assert not list(picker.query("#model-search"))
-        await pilot.press("down", "enter")
+        await pilot.press("up", "enter")
         await pilot.pause()
         assert screen.dirty
         await pilot.press("escape")
@@ -234,8 +234,8 @@ async def test_model_matches_are_selected_before_custom_identifier() -> None:
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
         assert "Use openai:gpt-5.6  (custom)" in options
-        assert "openai:gpt-5.6-sol  (recommended)" in options
-        assert "❯ openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-5.6-terra  (recommended)" in options
+        assert "❯ openai:gpt-5.6-terra  (recommended)" in options
 
         await pilot.press("up", "enter")
         await pilot.pause()
@@ -265,8 +265,8 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-5.6-sol  (recommended)" in options
         assert "openai:gpt-5.6-terra  (recommended)" in options
+        assert "openai:gpt-5.6-sol  (recommended)" not in options
 
         await pilot.press("escape")
         await pilot.press("down", "down", "enter")
@@ -274,8 +274,8 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-5.4-mini  (recommended)" in options
-        assert "openai:gpt-5-mini  (recommended)" in options
+        assert "openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-5.4-mini  (recommended)" not in options
 
 
 async def test_model_list_resizes_with_terminal() -> None:
