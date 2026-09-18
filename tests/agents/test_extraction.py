@@ -22,6 +22,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pypdf import PdfWriter
 
 from tabulaflow.agents.extraction import EntityExtractor
+from tabulaflow.agents.extraction.extractor import _media_prompts
 from tabulaflow.agents.media import select_pdf_pages
 
 
@@ -216,23 +217,11 @@ async def test_extractor_failure_and_cancellation_drain_active_chunks(failure: s
     assert calls == 2 and active == 0
 
 
-async def test_entity_extractor_splits_pdfs_into_page_batches() -> None:
-    prompts: list[list[UserContent]] = []
-
-    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        prompt = next(
-            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
-        )
-        assert not isinstance(prompt, str)
-        prompts.append(list(prompt))
-        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": []})])
-
-    extractor = EntityExtractor(llm=FunctionModel(respond))
-
-    await extractor.extract(
+def test_entity_extractor_splits_pdfs_into_page_batches() -> None:
+    prompts = _media_prompts(
         BinaryContent(data=_pdf(41), media_type="application/pdf"),
-        record_type=NamedRecord,
-        instruction="Extract every name.",
+        "Extract every name.",
+        None,
     )
 
     assert len(prompts) == 3
@@ -252,11 +241,12 @@ async def test_entity_extractor_processes_ordered_mixed_media_collection() -> No
         )
         assert not isinstance(prompt, str)
         prompts.append(list(prompt))
-        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": []})])
+        name = "image" if "Media item 1 of 2" in str(prompt[0]) else "pdf"
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"response": [{"name": name}]})])
 
     extractor = EntityExtractor(llm=FunctionModel(respond))
 
-    await extractor.extract(
+    records = await extractor.extract(
         [
             BinaryContent(data=_png(), media_type="image/png"),
             BinaryContent(data=_pdf(1), media_type="application/pdf"),
@@ -266,9 +256,14 @@ async def test_entity_extractor_processes_ordered_mixed_media_collection() -> No
     )
 
     assert len(prompts) == 2
-    assert "Media item 1 of 2" in str(prompts[0][0])
-    assert "Media item 2 of 2" in str(prompts[1][0])
-    assert [prompt[1].media_type for prompt in prompts if isinstance(prompt[1], BinaryContent)] == [
-        "image/png",
-        "application/pdf",
-    ]
+    assert {
+        (item, prompt[1].media_type)
+        for prompt in prompts
+        if isinstance(prompt[1], BinaryContent)
+        for item in ("Media item 1 of 2", "Media item 2 of 2")
+        if item in str(prompt[0])
+    } == {
+        ("Media item 1 of 2", "image/png"),
+        ("Media item 2 of 2", "application/pdf"),
+    }
+    assert records == [NamedRecord(name="image"), NamedRecord(name="pdf")]
