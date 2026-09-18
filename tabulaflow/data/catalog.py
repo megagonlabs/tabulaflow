@@ -31,11 +31,11 @@ def _normalize_catalog_source(source: str) -> str:
 WIKIDATA_DESCRIPTION = """Wikidata is a collaborative knowledge graph queried with SPARQL.
 
 Query notes:
-- Labels: Use the user's requested language, then `mul`, with English as a fallback unless the user asks for one language only. For example, use `fr,mul,en` with `SERVICE wikibase:label`; when no preference is known, use `en,mul`.
-- Direct label filters: Match each language tag explicitly, such as `LANG(?label) IN ("fr", "mul", "en")`; `"fr,mul,en"` is a label-service preference list, not a language tag.
+- Labels: Use the user's requested language, then `mul`, with English as a fallback. For example, use `fr,mul,en` with `SERVICE wikibase:label`; when no preference is known, use `en,mul`.
+- Label filters or transformations: Bind labels explicitly in the service, for example `?item rdfs:label ?itemLabel`; match tags with `LANG(?label) IN ("fr", "mul", "en")`; `"fr,mul,en"` is not a language tag.
 - Discovery: Resolve names to QIDs and PIDs with `SERVICE wikibase:mwapi` in the user's requested language, then query by those IDs; avoid graph-wide label scans.
-- Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` for qualifiers or ranks.
-- Dates: Query statement precision and calendar metadata when normalized timestamps are insufficient.
+- Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` when qualifiers, ranks, dates, date precision, or calendar metadata matter.
+- Performance: Keep queries selective and efficient; avoid broad graph scans unless the requested scope requires them.
 
 Docs: [Query help](https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help) · [User manual](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual)
 """

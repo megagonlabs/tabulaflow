@@ -21,8 +21,10 @@ def test_wikidata_guidance_distinguishes_label_preferences_from_language_tags() 
 
     assert definition is not None
     assert "user's requested language" in definition.description
+    assert "Bind labels explicitly" in definition.description
     assert "LANG(?label) IN" in definition.description
     assert "not a language tag" in definition.description
+    assert "Keep queries selective and efficient" in definition.description
 
 
 def test_resolver_rejects_ambiguous_definitions() -> None:

@@ -2,9 +2,8 @@
 
 The connector supports ``SELECT`` and ``ASK`` through the standard SPARQL JSON
 result format. Results are normalized into ordinary tabular values for display,
-serialization, and workspace materialization; language and unfamiliar datatype
-metadata use an N-Triples-compatible string representation, but the table is not
-an RDF round-trip format.
+serialization, and workspace materialization; the table is not an RDF round-trip
+format.
 
 Protocol references:
 https://www.w3.org/TR/sparql11-results-json/ and
@@ -79,36 +78,6 @@ class InvalidSPARQLResultError(ValueError):
     """A response is not a valid supported SPARQL JSON result."""
 
 
-def _escape_rdf_lexical(value: str) -> str:
-    escaped: list[str] = []
-    replacements = {
-        "\b": "\\b",
-        "\t": "\\t",
-        "\n": "\\n",
-        "\f": "\\f",
-        "\r": "\\r",
-        '"': '\\"',
-        "\\": "\\\\",
-    }
-    for char in value:
-        replacement = replacements.get(char)
-        if replacement is not None:
-            escaped.append(replacement)
-        elif ord(char) < 0x20 or ord(char) == 0x7F:
-            escaped.append(f"\\u{ord(char):04X}")
-        else:
-            escaped.append(char)
-    return '"' + "".join(escaped) + '"'
-
-
-def _lexical_literal(value: str, *, language: str | None = None, datatype: str | None = None) -> str:
-    literal = _escape_rdf_lexical(value)
-    if language is not None:
-        return f"{literal}@{language}"
-    assert datatype is not None
-    return f"{literal}^^<{datatype}>"
-
-
 def _native_typed_literal(value: str, datatype: str) -> object:
     if not datatype.startswith(_XSD):
         raise ValueError
@@ -156,11 +125,9 @@ def _native_typed_literal(value: str, datatype: str) -> object:
 def _binding_value(binding: object) -> object:
     """Normalize one SPARQL JSON binding into a portable table-cell value.
 
-    IRIs and plain literals become strings, blank nodes use an ``_:`` prefix,
-    and recognized valid XSD literals become native Python scalars. Language
-    tags and datatypes without an exact native conversion use a
-    metadata-preserving N-Triples-compatible string. This normalization is not
-    an RDF round-trip representation.
+    IRIs and literals become strings, blank nodes use an ``_:`` prefix, and
+    recognized valid XSD literals become native Python scalars. This
+    normalization is not an RDF round-trip representation.
 
     Args:
         binding: SPARQL JSON binding object containing string ``type`` and
@@ -201,13 +168,13 @@ def _binding_value(binding: object) -> object:
     if language is not None:
         if datatype is not None:
             raise InvalidSPARQLResultError("literal binding cannot have both language and datatype")
-        return _lexical_literal(value, language=language)
+        return value
     if datatype is None:
         return value
     try:
         return _native_typed_literal(value, datatype)
     except (OverflowError, ValueError):
-        return _lexical_literal(value, datatype=datatype)
+        return value
 
 
 def _parse_sparql_json(content: bytes, max_rows: int | None) -> pd.DataFrame:

@@ -139,7 +139,7 @@ async def test_typed_literals_use_native_values_when_conversion_is_exact() -> No
     assert row["string"] == "value"
 
 
-async def test_language_unknown_and_invalid_typed_literals_remain_lossless() -> None:
+async def test_language_and_unrecognized_typed_literals_are_lexical_strings() -> None:
     document = _select(
         ["language", "custom", "invalid", "out_of_range", "zoned_date"],
         [
@@ -173,11 +173,11 @@ async def test_language_unknown_and_invalid_typed_literals_remain_lossless() -> 
     assert result.df is not None
     assert result.df.to_dict("records") == [
         {
-            "language": r'"line\n\"two\"\t\\\r\u0001"@en-GB',
-            "custom": '"abc"^^<https://example.test/type>',
-            "invalid": f'"truthy"^^<{_XSD}boolean>',
-            "out_of_range": f'"256"^^<{_XSD}unsignedByte>',
-            "zoned_date": f'"2026-09-06Z"^^<{_XSD}date>',
+            "language": 'line\n"two"\t\\\r\x01',
+            "custom": "abc",
+            "invalid": "truthy",
+            "out_of_range": "256",
+            "zoned_date": "2026-09-06Z",
         }
     ]
 
