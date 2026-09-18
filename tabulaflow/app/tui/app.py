@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from rich.console import Console
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
@@ -259,6 +260,7 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         super().__init__()
+        self.error_console = Console(color_system=None, markup=False, highlight=False, stderr=True)
         self._llm_selection = llm_selection
         self._llm_service_tier = llm_service_tier
         self._enable_schema_cache = enable_schema_cache

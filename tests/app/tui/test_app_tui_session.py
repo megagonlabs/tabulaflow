@@ -7,6 +7,7 @@ from typing import Any, cast
 import pytest
 from pydantic_ai.messages import BinaryContent
 from pydantic_ai.exceptions import UserError
+from rich.console import Console
 from rich.text import Text
 from textual import events
 from textual.containers import VerticalScroll
@@ -114,6 +115,12 @@ def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
         runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
         workspace=None,
     )
+
+
+def test_crash_console_disables_color(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Console, "_detect_color_system", lambda _console: "standard")
+
+    assert _app(None).error_console.color_system is None
 
 
 async def test_escape_returns_to_previously_focused_result(monkeypatch: pytest.MonkeyPatch) -> None:
