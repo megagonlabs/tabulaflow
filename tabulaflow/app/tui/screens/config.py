@@ -29,7 +29,6 @@ from tabulaflow.app.config import (
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _REASONING_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
-_VISIBLE_MODEL_ROWS = 10
 
 
 class ModelPickerScreen(Screen[str | None]):
@@ -39,9 +38,9 @@ class ModelPickerScreen(Screen[str | None]):
 
     DEFAULT_CSS = """
     ModelPickerScreen { background: $background; }
-    ModelPickerScreen #model-picker { padding: 1 3; }
+    ModelPickerScreen #model-picker { height: 1fr; padding: 1 3; }
     ModelPickerScreen #model-picker-title { height: auto; margin-bottom: 1; }
-    ModelPickerScreen #model-options { height: auto; }
+    ModelPickerScreen #model-options { height: 1fr; border: none; padding: 0; background: transparent; }
     ModelPickerScreen #model-picker-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
 
@@ -71,6 +70,9 @@ class ModelPickerScreen(Screen[str | None]):
 
     def on_mount(self) -> None:
         self.focus()
+        self._refresh()
+
+    def on_resize(self) -> None:
         self._refresh()
 
     def on_key(self, event: events.Key) -> None:
@@ -131,30 +133,29 @@ class ModelPickerScreen(Screen[str | None]):
         rows = [(model, False) for model in self._visible]
         if custom_model is not None:
             rows.insert(0, (custom_model, True))
-        row_count = len(rows)
-        start = max(0, min(self._cursor - _VISIBLE_MODEL_ROWS // 2, row_count - _VISIBLE_MODEL_ROWS))
-        end = min(start + _VISIBLE_MODEL_ROWS, row_count)
 
+        options_widget = self.query_one("#model-options", Static)
         options = Text()
-        if start:
-            options.append(f"  ↑ {start} more\n", style="dim")
-        for index in range(start, end):
-            model, is_custom = rows[index]
-            selected = index == self._cursor
-            options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
-            options.append(f"Use {model}" if is_custom else model, style="bold" if selected else "")
-            if is_custom:
-                options.append("  (custom)", style="dim")
-            elif model in self._recommended:
-                options.append("  (recommended)", style="dim")
-            options.append("\n")
-        if end < row_count:
-            options.append(f"  ↓ {row_count - end} more\n", style="dim")
-
-        if not row_count:
+        if rows:
+            start, end, show_above, show_below = self._model_window(len(rows), options_widget.size.height)
+            if show_above:
+                options.append(f"  ↑ {start} more\n", style="dim")
+            for index in range(start, end):
+                model, is_custom = rows[index]
+                selected = index == self._cursor
+                options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
+                options.append(f"Use {model}" if is_custom else model, style="bold" if selected else "")
+                if is_custom:
+                    options.append("  (custom)", style="dim")
+                elif model in self._recommended:
+                    options.append("  (recommended)", style="dim")
+                options.append("\n")
+            if show_below:
+                options.append(f"  ↓ {len(rows) - end} more", style="dim")
+        else:
             options.append("  No matching models\n", style="dim")
             options.append("  To use a custom model, enter its full ID in provider:model format.", style="dim")
-        self.query_one("#model-options", Static).update(options)
+        options_widget.update(options)
 
         hint = Text.assemble(
             ("Esc", KEY_HINT),
@@ -167,6 +168,22 @@ class ModelPickerScreen(Screen[str | None]):
             (" Select", "dim"),
         )
         self.query_one("#model-picker-hint", Static).update(hint)
+
+    def _model_window(self, row_count: int, height: int) -> tuple[int, int, bool, bool]:
+        available = max(1, height)
+        for capacity in range(min(row_count, available), 0, -1):
+            start = max(0, min(self._cursor - capacity // 2, row_count - capacity))
+            end = start + capacity
+            show_above = start > 0
+            show_below = end < row_count
+            if capacity + show_above + show_below <= available:
+                return start, end, show_above, show_below
+
+        start = self._cursor
+        end = start + 1
+        show_above = start > 0 and available > 1
+        show_below = end < row_count and available > 1 + show_above
+        return start, end, show_above, show_below
 
 
 class ConfigScreen(Screen[ResolvedLLMConfig | None]):

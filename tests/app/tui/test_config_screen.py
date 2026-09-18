@@ -27,6 +27,10 @@ def _text(screen: ConfigScreen, selector: str) -> str:
     return str(screen.query_one(selector, Static).render())
 
 
+def _option_text(screen: ModelPickerScreen) -> str:
+    return str(screen.query_one("#model-options", Static).render())
+
+
 async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     async with _App(screen).run_test() as pilot:
@@ -52,7 +56,7 @@ async def test_fields_are_edited_and_applied_atomically() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        assert "(recommended)" in str(picker.query_one("#model-options", Static).render())
+        assert "(recommended)" in _option_text(picker)
         assert not list(picker.query("#model-search"))
         await pilot.press("down", "enter")
         await pilot.pause()
@@ -105,7 +109,7 @@ async def test_model_picker_filters_without_search_input() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         assert "“anth”" in str(picker.query_one("#model-picker-title", Static).render())
-        options = str(picker.query_one("#model-options", Static).render())
+        options = _option_text(picker)
         assert "anthropic:" in options
         assert "openai:" not in options
 
@@ -118,7 +122,7 @@ async def test_filter_accepts_a_custom_model_identifier() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        options = str(picker.query_one("#model-options", Static).render())
+        options = _option_text(picker)
         assert "Use test:model  (custom)" in options
         assert "Search or enter custom model ID" in str(picker.query_one("#model-picker-hint", Static).render())
         assert "Tab" not in str(picker.query_one("#model-picker-hint", Static).render())
@@ -137,8 +141,9 @@ async def test_model_matches_are_selected_before_custom_identifier() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        options = str(picker.query_one("#model-options", Static).render())
-        assert "  Use openai:gpt-5.6  (custom)" in options
+        options = _option_text(picker)
+        assert "Use openai:gpt-5.6  (custom)" in options
+        assert "openai:gpt-5.6-sol  (recommended)" in options
         assert "❯ openai:gpt-5.6-sol  (recommended)" in options
 
         await pilot.press("up", "enter")
@@ -155,12 +160,12 @@ async def test_no_matches_explains_custom_identifier_format() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        options = str(picker.query_one("#model-options", Static).render())
+        options = _option_text(picker)
         assert "No matching models" in options
         assert "enter its full ID in provider:model format" in options
 
 
-async def test_role_specific_recommendations_and_bounded_catalog() -> None:
+async def test_role_specific_recommendations() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
@@ -168,16 +173,31 @@ async def test_role_specific_recommendations_and_bounded_catalog() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        options = str(picker.query_one("#model-options", Static).render())
+        options = _option_text(picker)
         assert "openai:gpt-5.6-sol  (recommended)" in options
         assert "openai:gpt-5.6-terra  (recommended)" in options
-        assert "↓" in options
 
         await pilot.press("escape")
         await pilot.press("down", "down", "enter")
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        options = str(picker.query_one("#model-options", Static).render())
+        options = _option_text(picker)
         assert "openai:gpt-5.4-mini  (recommended)" in options
         assert "openai:gpt-5-mini  (recommended)" in options
+
+
+async def test_model_list_resizes_with_terminal() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test(size=(80, 18)) as pilot:
+        await pilot.press("down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        options = picker.query_one("#model-options", Static)
+        short_line_count = len(str(options.render()).splitlines())
+
+        await pilot.resize_terminal(80, 40)
+
+        assert len(str(options.render()).splitlines()) > short_line_count
