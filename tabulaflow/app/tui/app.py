@@ -67,6 +67,8 @@ _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJE
 _LLM_SETTING_RE = re.compile(r"\b(?:[A-Z][A-Z0-9_]*_API_KEY|HF_TOKEN|HEROKU_INFERENCE_KEY|SNOWFLAKE_ACCOUNT)\b")
 _MAX_ERROR_MESSAGE_LENGTH = 300
 LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. Data connections and browsing remain available."
+_DEFAULT_INPUT_PLACEHOLDER = "Ask anything or type /connect"
+_SAMPLE_DATA_PROMPT = "Show me a table and chart on sample data"
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
     "\x1b[?2004l"  # bracketed paste off
     "\x1b[?7h"  # line wrap on
@@ -311,8 +313,8 @@ class TabulaflowApp(App[None]):
             with Horizontal(id="input-row"):
                 yield HistoryInput(
                     history_path=self._runtime_paths.history_path,
-                    placeholder="Show me a table and chart on sample data",
-                    empty_tab_completion="Show me a table and chart on sample data",
+                    placeholder=_SAMPLE_DATA_PROMPT,
+                    empty_tab_completion=_SAMPLE_DATA_PROMPT,
                     id="input-bar",
                 )
                 with Vertical(id="explorer-control"):
@@ -965,6 +967,8 @@ class TabulaflowApp(App[None]):
         _, contains_credentials = redact_command_credentials(display_text)
         inp.record_submission(display_text, persist=not contains_credentials)
         inp.clear()
+        inp.placeholder = _DEFAULT_INPUT_PLACEHOLDER
+        inp.clear_empty_tab_completion()
 
         self._submission_worker = self.run_worker(
             self._run_submission(question, display_text, inp),

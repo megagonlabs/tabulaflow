@@ -415,6 +415,10 @@ class HistoryInput(TextArea):
         self.value = self._empty_tab_completion
         self.cursor_position = len(self.value)
 
+    def clear_empty_tab_completion(self) -> None:
+        """Disable the optional empty-input Tab completion."""
+        self._empty_tab_completion = None
+
     def action_dismiss_suggestions(self) -> None:
         menu = self._suggestion_menu()
         if menu is None or menu.selected is None:
