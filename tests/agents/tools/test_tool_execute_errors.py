@@ -88,6 +88,8 @@ async def test_connect_catalog_source_returns_curated_guidance(tmp_path: Path, m
     result = await tool.execute("wikidata", "wikidata")
 
     assert "en,mul" in result
+    assert "LANG(?label) IN" in result
+    assert "user's requested language" in result
     assert "get_data_source_document" in result
 
 

@@ -16,6 +16,15 @@ def test_catalog_resolves_id_and_exact_normalized_locator() -> None:
     assert by_id.id == "wikidata"
 
 
+def test_wikidata_guidance_distinguishes_label_preferences_from_language_tags() -> None:
+    definition = resolve_data_source_definition("wikidata")
+
+    assert definition is not None
+    assert "user's requested language" in definition.description
+    assert "LANG(?label) IN" in definition.description
+    assert "not a language tag" in definition.description
+
+
 def test_resolver_rejects_ambiguous_definitions() -> None:
     definition = DataSourceDefinition(id="example", source="sparql+https://example.test/query", description="Example")
 

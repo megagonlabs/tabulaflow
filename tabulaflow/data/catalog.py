@@ -31,8 +31,9 @@ def _normalize_catalog_source(source: str) -> str:
 WIKIDATA_DESCRIPTION = """Wikidata is a collaborative knowledge graph queried with SPARQL.
 
 Query notes:
-- Labels: Some English labels, including Q42, are tagged `mul`; use `en,mul` with `SERVICE wikibase:label` and in direct filters.
-- Discovery: Use `SERVICE wikibase:mwapi`; avoid graph-wide label scans.
+- Labels: Use the user's requested language, then `mul`, with English as a fallback unless the user asks for one language only. For example, use `fr,mul,en` with `SERVICE wikibase:label`; when no preference is known, use `en,mul`.
+- Direct label filters: Match each language tag explicitly, such as `LANG(?label) IN ("fr", "mul", "en")`; `"fr,mul,en"` is a label-service preference list, not a language tag.
+- Discovery: Resolve names to QIDs and PIDs with `SERVICE wikibase:mwapi` in the user's requested language, then query by those IDs; avoid graph-wide label scans.
 - Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` for qualifiers or ranks.
 - Dates: Query statement precision and calendar metadata when normalized timestamps are insufficient.
 
