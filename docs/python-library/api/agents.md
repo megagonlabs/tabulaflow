@@ -233,7 +233,7 @@ model throttling.
     options:
       show_docstring_description: false
 
-::: tabulaflow.agents.llm.model_display_name
+::: tabulaflow.agents.llm.model_label
 
 ::: tabulaflow.agents.llm.embedding_throttle
 
