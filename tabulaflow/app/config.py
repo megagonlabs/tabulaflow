@@ -142,8 +142,6 @@ _CURATED_MODELS_BY_PROVIDER = (
             "us.amazon.nova-premier-v1:0",
             "minimax.minimax-m2.5",
             "minimax.minimax-m2.1",
-            "mistral.mistral-large-3-675b-instruct",
-            "mistral.devstral-2-123b",
             "nvidia.nemotron-nano-3-30b",
             "nvidia.nemotron-super-3-120b",
             "qwen.qwen3-next-80b-a3b",
@@ -162,18 +160,7 @@ _CURATED_MODELS_BY_PROVIDER = (
             "openai.gpt-oss-20b",
         ),
     ),
-    (
-        "groq",
-        (
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
-            "llama-3.3-70b-versatile",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-        ),
-    ),
-    ("mistral", ("mistral-large-latest", "mistral-small-latest", "codestral-latest")),
     ("cerebras", ("gemma-4-31b", "gpt-oss-120b")),
-    ("cohere", ("command-nightly", "command-r-plus-08-2024", "command-r-08-2024", "command-r7b-12-2024")),
     (
         "huggingface",
         (
@@ -196,7 +183,6 @@ _CURATED_MODELS_BY_PROVIDER = (
             "openai-gpt-5.4",
             "llama4-maverick",
             "snowflake-llama-3.3-70b",
-            "mistral-large2",
         ),
     ),
     (
@@ -224,7 +210,6 @@ _CURATED_MODELS_BY_PROVIDER = (
             "openai/gpt-oss-120b",
         ),
     ),
-    ("typesafe", ("jev-latest", "jev-preview")),
 )
 CURATED_MODEL_CATALOG = tuple(
     f"{provider}:{model}" for provider, models in _CURATED_MODELS_BY_PROVIDER for model in models

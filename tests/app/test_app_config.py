@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic_ai.models import known_model_names
+from google.auth.exceptions import DefaultCredentialsError
+from pydantic_ai.exceptions import UserError
+from pydantic_ai.models import infer_model, known_model_names
 
 from tabulaflow.app.config import (
     ANTHROPIC_DEFAULT_LLM_CONFIG,
@@ -45,6 +47,43 @@ def test_model_catalog_contains_recommendations_current_and_curated_models() -> 
     assert not any(model.startswith("openai-chat:") for model in catalog)
     assert len(catalog) == len(set(catalog))
     assert set(CURATED_MODEL_CATALOG) <= set(known_model_names())
+
+
+@pytest.mark.parametrize("model", CURATED_MODEL_CATALOG)
+def test_curated_model_resolves_to_a_provider_or_missing_credentials(
+    model: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in (
+        "ANTHROPIC_API_KEY",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_DEFAULT_REGION",
+        "AWS_REGION",
+        "CEREBRAS_API_KEY",
+        "CRUSOE_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "HEROKU_INFERENCE_KEY",
+        "HF_TOKEN",
+        "MOONSHOTAI_API_KEY",
+        "OPENAI_API_KEY",
+        "SNOWFLAKE_ACCOUNT",
+        "XAI_API_KEY",
+        "ZAI_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    try:
+        infer_model(model)
+    except (DefaultCredentialsError, UserError) as error:
+        message = str(error).casefold()
+        assert "unknown model" not in message
+        assert "unknown provider" not in message
+        assert any(
+            term in message
+            for term in ("credential", "api_key", "hf_token", "inference_key", "region", "snowflake_account")
+        )
 
 
 def test_model_catalog_keeps_a_current_openai_chat_model() -> None:

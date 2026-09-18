@@ -779,13 +779,20 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         assert not app.query_one("#input-bar", HistoryInput).disabled
 
 
-async def test_failed_startup_activation_reports_error_and_unblocks_input(
+async def test_failed_startup_activation_reports_error_on_first_submission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = _llm_config(model="anthropic:claude-opus-4-8", reasoning="high")
     app = _app(config)
 
+    class FakeRegistry:
+        def list_aliases(self) -> list[str]:
+            return ["workspace"]
+
     class FakeSession:
+        registry = FakeRegistry()
+        llm_available = False
+
         def activate_llm_config(self, _selected: LLMConfig) -> tuple[str | None, str | None]:
             raise RuntimeError("missing credential")
 
@@ -809,6 +816,18 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
         )
         assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", HistoryInput).disabled
+
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        input_bar.value = "show recent orders"
+        await pilot.press("enter")
+        for _ in range(2):
+            await pilot.pause()
+
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages[-1] == (
+            "LLM unavailable: Initialization failed: RuntimeError: missing credential. "
+            "Choose another model in /config. Data connections and browsing remain available."
+        )
 
 
 async def test_llm_activation_preserves_blocked_submissions(

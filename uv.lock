@@ -3192,6 +3192,9 @@ openai = [
     { name = "openai" },
     { name = "tiktoken" },
 ]
+xai = [
+    { name = "xai-sdk" },
+]
 
 [[package]]
 name = "pydantic-core"
@@ -4070,7 +4073,7 @@ dependencies = [
     { name = "plotext" },
     { name = "pyarrow" },
     { name = "pydantic" },
-    { name = "pydantic-ai-slim", extra = ["anthropic", "google", "openai"] },
+    { name = "pydantic-ai-slim", extra = ["anthropic", "google", "openai", "xai"] },
     { name = "pydantic-settings" },
     { name = "pygments" },
     { name = "pymysql" },
@@ -4134,7 +4137,7 @@ requires-dist = [
     { name = "plotext", specifier = ">=5.3.2,<6" },
     { name = "pyarrow", specifier = ">=21.0.0" },
     { name = "pydantic", specifier = ">=2.12" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], specifier = ">=2.45.0,<3" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai", "xai"], specifier = ">=2.45.0,<3" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
     { name = "pygments", specifier = ">=2.19.2" },
     { name = "pymysql", specifier = ">=1.1.1" },
@@ -4824,6 +4827,26 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/79/d9/7cfd5a312760ac4dd8bf0184a6ee9e43c33e47f3dadc303032ce012b8fa3/wrapt-1.17.3-cp314-cp314t-win_amd64.whl", hash = "sha256:73d496de46cd2cdbdbcce4ae4bcdb4afb6a11234a1df9c085249d55166b95116", size = 41334, upload_time = "2025-08-12T05:53:14.178Z" },
     { url = "https://files.pythonhosted.org/packages/46/78/10ad9781128ed2f99dbc474f43283b13fea8ba58723e98844367531c18e9/wrapt-1.17.3-cp314-cp314t-win_arm64.whl", hash = "sha256:f38e60678850c42461d4202739f9bf1e3a737c7ad283638251e79cc49effb6b6", size = 38471, upload_time = "2025-08-12T05:52:57.784Z" },
     { url = "https://files.pythonhosted.org/packages/1f/f6/a933bd70f98e9cf3e08167fc5cd7aaaca49147e48411c0bd5ae701bb2194/wrapt-1.17.3-py3-none-any.whl", hash = "sha256:7171ae35d2c33d326ac19dd8facb1e82e5fd04ef8c6c0e394d7af55a55051c22", size = 23591, upload_time = "2025-08-12T05:53:20.674Z" },
+]
+
+[[package]]
+name = "xai-sdk"
+version = "1.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "googleapis-common-protos" },
+    { name = "grpcio" },
+    { name = "opentelemetry-sdk" },
+    { name = "packaging" },
+    { name = "protobuf" },
+    { name = "pydantic" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/85/85ae73cbc9de7e1529e87a5eb807fa11727dd59eac887957c87c0e721893/xai_sdk-1.19.0.tar.gz", hash = "sha256:65733bfb83826b10872b8c8af58003104cbd33ce69f0fdfc0d52bb670de7b0e7", size = 466299, upload_time = "2026-08-18T18:02:06.402Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/b5/6f6783b97fb3a5498eb852ccaa706e1a2c0de2409480e3c99428e85234fe/xai_sdk-1.19.0-py3-none-any.whl", hash = "sha256:4af1a629ad9304d0b05fa052d84ce77b7b61242a6d59d5936b692fec95fb52c1", size = 278826, upload_time = "2026-08-18T18:02:04.892Z" },
 ]
 
 [[package]]
