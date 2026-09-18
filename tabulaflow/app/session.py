@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from tabulaflow.app.config import LLMPreset, model_supports_apply_patch
+from tabulaflow.app.config import LLMConfig, model_supports_apply_patch
 from tabulaflow.app.runtime_paths import RuntimePaths
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ class AppSession:
     async def create(
         cls,
         *,
-        llm_preset: LLMPreset | None,
+        llm_config: LLMConfig | None,
         runtime_paths: RuntimePaths,
         project_dir: Path,
         llm_service_tier: ServiceTier = "default",
@@ -87,7 +87,7 @@ class AppSession:
         try:
             workspace = await _create_workspace_connector(runtime_paths.workspace_db_path, connector_configs.sql)
             session = cls(
-                llm_preset=llm_preset,
+                llm_config=llm_config,
                 runtime_paths=runtime_paths,
                 workspace=workspace,
                 llm_service_tier=llm_service_tier,
@@ -114,7 +114,7 @@ class AppSession:
 
     def __init__(
         self,
-        llm_preset: LLMPreset | None,
+        llm_config: LLMConfig | None,
         runtime_paths: RuntimePaths,
         workspace: SQLConnector | None,
         llm_service_tier: ServiceTier = "default",
@@ -126,7 +126,7 @@ class AppSession:
         from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
 
         self._runtime_paths = runtime_paths
-        self._selected_preset = llm_preset
+        self._selected_llm_config = llm_config
         self._llm_service_tier = llm_service_tier
         self._workspace = workspace
         self.project_dir = project_dir
@@ -147,78 +147,78 @@ class AppSession:
         return self._runtime_paths.data_dir
 
     @property
-    def selected_preset(self) -> LLMPreset | None:
-        """Return the LLM preset selected for this session."""
-        return self._selected_preset
+    def selected_llm_config(self) -> LLMConfig | None:
+        """Return the LLM configuration selected for this session."""
+        return self._selected_llm_config
 
     @property
     def active_chat_session(self) -> ChatSession | None:
-        """Return the chat session active for the selected preset, if initialized."""
-        if self._selected_preset is None or not self._chat_session_matches_preset(self._selected_preset):
+        """Return the chat session active for the selected LLM configuration, if initialized."""
+        if self._selected_llm_config is None or not self._chat_session_matches_config(self._selected_llm_config):
             return None
         return self._chat_session
 
     @property
     def llm_available(self) -> bool:
-        """Whether the selected LLM preset is ready to run turns."""
+        """Whether the selected LLM configuration is ready to run turns."""
         return self.active_chat_session is not None
 
-    def _chat_session_matches_preset(self, preset: LLMPreset) -> bool:
+    def _chat_session_matches_config(self, config: LLMConfig) -> bool:
         agent = self._chat_session
         return (
             agent is not None
-            and agent.model == preset.main.model
-            and agent.reasoning == preset.main.reasoning
-            and agent.subagent_model == preset.subagent.model
-            and agent.subagent_reasoning == preset.subagent.reasoning
-            and agent.use_apply_patch == model_supports_apply_patch(preset.main.model)
+            and agent.model == config.main.model
+            and agent.reasoning == config.main.reasoning
+            and agent.subagent_model == config.subagent.model
+            and agent.subagent_reasoning == config.subagent.reasoning
+            and agent.use_apply_patch == model_supports_apply_patch(config.main.model)
         )
 
     def _build_chat_session(
         self,
         *,
-        preset: LLMPreset,
+        config: LLMConfig,
     ) -> ChatSession:
         from tabulaflow.agents.chat import ChatSession
 
         return ChatSession(
             registry=self.registry,
-            model=preset.main.model,
-            reasoning=preset.main.reasoning,
+            model=config.main.model,
+            reasoning=config.main.reasoning,
             service_tier=self._llm_service_tier,
             workspace=self._workspace,
             trajectory_log_dir=self._runtime_paths.trajectories_dir,
-            subagent_model=preset.subagent.model,
-            subagent_reasoning=preset.subagent.reasoning,
+            subagent_model=config.subagent.model,
+            subagent_reasoning=config.subagent.reasoning,
             project_dir=self.project_dir,
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
-            use_apply_patch=model_supports_apply_patch(preset.main.model),
+            use_apply_patch=model_supports_apply_patch(config.main.model),
             data_source_definitions=self.data_source_definitions,
             data_source_connector_configs=self.connector_configs,
         )
 
-    def select_llm_preset(self, preset: LLMPreset | None) -> None:
-        """Select the only LLM preset allowed to answer new turns."""
-        self._selected_preset = preset
+    def select_llm_config(self, config: LLMConfig | None) -> None:
+        """Select the only LLM configuration allowed to answer new turns."""
+        self._selected_llm_config = config
 
-    def activate_llm_preset(self, preset: LLMPreset | None) -> tuple[str | None, str | None]:
-        """Activate ``preset`` without changing the session's current selection."""
-        if preset is None:
+    def activate_llm_config(self, config: LLMConfig | None) -> tuple[str | None, str | None]:
+        """Activate ``config`` without changing the session's current selection."""
+        if config is None:
             return None, None
         with self._activation_lock:
             if self._chat_session is None:
-                agent = self._build_chat_session(preset=preset)
+                agent = self._build_chat_session(config=config)
                 keys = agent.resolve_api_keys()
                 self._chat_session = agent
                 return keys
-            if not self._chat_session_matches_preset(preset):
+            if not self._chat_session_matches_config(config):
                 return self._chat_session.activate_llm_profile(
-                    model=preset.main.model,
-                    reasoning=preset.main.reasoning,
-                    subagent_model=preset.subagent.model,
-                    subagent_reasoning=preset.subagent.reasoning,
-                    use_apply_patch=model_supports_apply_patch(preset.main.model),
+                    model=config.main.model,
+                    reasoning=config.main.reasoning,
+                    subagent_model=config.subagent.model,
+                    subagent_reasoning=config.subagent.reasoning,
+                    use_apply_patch=model_supports_apply_patch(config.main.model),
                 )
             return self._chat_session.resolve_api_keys()
 

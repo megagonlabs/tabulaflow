@@ -104,8 +104,6 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
     result = CliRunner().invoke(
         app,
         [
-            "--llm-preset",
-            "off",
             "--llm-service-tier",
             "priority",
             "--enable-schema-cache",
@@ -122,7 +120,6 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
 
     assert result.exit_code == 0
     assert received == {
-        "llm_preset": "off",
         "llm_service_tier": AppLLMServiceTier.PRIORITY,
         "enable_schema_cache": True,
         "log_level": AppLogLevel.DEBUG,

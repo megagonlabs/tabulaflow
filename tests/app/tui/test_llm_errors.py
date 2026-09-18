@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 from tabulaflow.app.tui.app import LLM_UNAVAILABLE_MESSAGE
-from tabulaflow.agents.llm import model_display_name
+from tabulaflow.agents.llm import model_label
 
 
 def test_llm_unavailable_message_is_provider_neutral() -> None:
-    assert LLM_UNAVAILABLE_MESSAGE == ("Select a preset in /config. /connect and browsing remain available.")
+    assert LLM_UNAVAILABLE_MESSAGE == ("Configure models in /config. /connect and browsing remain available.")
     assert "Anthropic" not in LLM_UNAVAILABLE_MESSAGE
     assert "ANTHROPIC_API_KEY" not in LLM_UNAVAILABLE_MESSAGE
     assert "AnthropicProvider" not in LLM_UNAVAILABLE_MESSAGE
 
 
-def test_model_display_name_matches_config_panel_labels() -> None:
-    assert model_display_name("anthropic:claude-opus-4-8") == "Opus 4.8"
-    assert model_display_name("anthropic:claude-opus-4-8", "high") == "Opus 4.8 high"
-    assert model_display_name("anthropic:claude-opus-5", "high") == "Opus 5 high"
-    assert model_display_name("anthropic:claude-sonnet-4-5-20250929", "medium") == "Sonnet 4.5 medium"
-    assert model_display_name("openai-responses:gpt-5.4-mini", "medium") == "GPT 5.4 Mini medium"
-    assert model_display_name("openai-responses:gpt-5.4-mini", True) == "GPT 5.4 Mini reasoning"
-    assert model_display_name("openai-responses:gpt-5.4-mini", False) == "GPT 5.4 Mini no reasoning"
+def test_model_label_removes_only_provider_and_release_date() -> None:
+    assert model_label("openai-responses:gpt-5.6-sol") == "gpt-5.6-sol"
+    assert model_label("openai-responses:gpt-5-2025-08-07") == "gpt-5"
+    assert model_label("anthropic:claude-sonnet-4-5-20250929") == "claude-sonnet-4-5"
+    assert model_label("together:owner/model") == "owner/model"
+    assert model_label("test") == "test"

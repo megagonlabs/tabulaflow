@@ -1,9 +1,9 @@
 # Configuration
 
 Most users only need to install TabulaFlow and set one model-provider API key.
-TabulaFlow then selects a balanced model preset automatically; use `/config` to
-change it. The remaining settings control optional browser support, resource
-limits, schema caching, and browser-pane networking.
+TabulaFlow then selects suitable main-agent and subagent models automatically;
+use `/config` to change them. The remaining settings control optional browser
+support, resource limits, schema caching, and browser-pane networking.
 
 ## Installation
 
@@ -35,26 +35,21 @@ Choose an installation method:
 
 ## Model setup
 
-The Data Agent includes OpenAI and Anthropic presets. Set a key for the provider
-you use:
+The Data Agent includes recommended OpenAI and Anthropic models. Set a key for
+the provider you use:
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
 export ANTHROPIC_API_KEY="your-api-key"
 ```
 
-You need only one key. Without a saved preference, TabulaFlow checks OpenAI
-first, then Anthropic, and selects a balanced preset.
+You need only one key. Without a saved configuration, TabulaFlow checks OpenAI
+first, then Anthropic, and selects recommended models for both agent roles.
 
-Run `/config` to view the presets and save your choice. **Off** disables
+Run `/config` to configure the main agent and subagent independently. The model
+picker accepts any provider-qualified identifier supported by the installed
+model stack, such as `openai-responses:gpt-5.6-sol`. Disabling the LLM turns off
 conversational analysis but keeps data connections and browsing available.
-
-Override the saved preset for one launch:
-
-```bash
-tabulaflow --llm-preset "OpenAI budget"
-tabulaflow --llm-preset off
-```
 
 TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
 keys from the environment and does not save them.
@@ -84,7 +79,6 @@ These options apply to one launch:
 
 | Option | Purpose |
 | --- | --- |
-| `--llm-preset`, `-p` | Override the saved model preset or use `off` |
 | `--llm-service-tier` | Use `default` or `priority` request service; priority may cost more |
 | `--enable-schema-cache` | Persist database schemas for faster repeated connections |
 | `--log-level` | Set file logging to `debug`, `info`, `warning`, or `error` |
@@ -203,7 +197,7 @@ TabulaFlow stores local state beneath `~/.tabulaflow/`:
 
 | Path | Contents |
 | --- | --- |
-| `app_config.json` | Saved model selection and custom presets |
+| `app_config.json` | Saved main-agent and subagent model configuration |
 | `history.jsonl` | TUI input history |
 | `sample_data/` | Shared copy of the bundled sample database |
 | `cache/` | Optional persistent schemas and other cached data |

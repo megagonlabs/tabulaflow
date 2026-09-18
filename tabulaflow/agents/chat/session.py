@@ -29,7 +29,7 @@ from tabulaflow.agents.tools.browser.tool import (
     snapshot_snippet,
 )
 from tabulaflow.output.formatting import format_connector_summary
-from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings, model_display_name
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings, model_label
 from tabulaflow.agents.chat.events import (
     ChatEvent,
     ChatResult,
@@ -603,8 +603,8 @@ class ChatSession:
         parts = []
         if model != previous_model:
             parts.append(
-                "the model powering this conversation changed from "
-                f"{model_display_name(previous_model)} to {model_display_name(model)}"
+                f"the model powering this conversation changed from "
+                f"{model_label(previous_model)} to {model_label(model)}"
             )
         if self._tools.apply_patch is not None and use_apply_patch != previous_use_apply_patch:
             if use_apply_patch:
@@ -631,7 +631,7 @@ class ChatSession:
             self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")
 
     def _seed_conversation_context(self) -> None:
-        self.note_event(f"the model powering this conversation is {model_display_name(self.model)}.")
+        self.note_event(f"the model powering this conversation is {model_label(self.model)}.")
         self._note_initial_registry()
 
     def reset_conversation(self) -> None:

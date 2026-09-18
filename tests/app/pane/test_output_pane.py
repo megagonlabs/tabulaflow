@@ -18,7 +18,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
-from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
+from tabulaflow.app.config import LLM_OFF, ResolvedLLMConfig
 from tabulaflow.app.pane.cards import (
     ResultCardInput,
     render_result_data,
@@ -388,7 +388,7 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
     runtime_paths = _runtime_paths(tmp_path)
     app = TabulaflowApp(
-        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        llm_config=ResolvedLLMConfig(LLM_OFF, None),
         runtime_paths=runtime_paths,
         project_dir=tmp_path,
     )
@@ -836,7 +836,7 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
             pushed.append(turn)
 
     app = TabulaflowApp(
-        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        llm_config=ResolvedLLMConfig(LLM_OFF, None),
         runtime_paths=_runtime_paths(tmp_path),
         project_dir=tmp_path,
     )
@@ -996,7 +996,7 @@ def test_pane_serves_bundled_assets_with_expected_cache_policy(tmp_path: Path) -
         with urllib.request.urlopen(pane.url, timeout=2) as response:
             assert response.headers["Cache-Control"] == "no-store"
             assert response.headers["Referrer-Policy"] == "no-referrer"
-            assert b'/assets/fonts/figtree/Figtree-Variable.woff2' in response.read()
+            assert b"/assets/fonts/figtree/Figtree-Variable.woff2" in response.read()
 
         origin = _origin_url(pane.url)
         cases = [

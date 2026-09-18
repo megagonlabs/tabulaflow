@@ -21,7 +21,7 @@ from tabulaflow.app.tui.commands import (
     CommandResult,
     HuggingFaceSubsetSelection,
 )
-from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ResolvedLLMSelection
+from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMConfig, ResolvedLLMConfig
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
@@ -42,42 +42,41 @@ class _StatusCapture:
 
 
 class _InactiveSession:
-    selected_preset: LLMPreset | None = None
+    selected_llm_config: LLMConfig | None = None
 
-    def select_llm_preset(self, preset: LLMPreset | None) -> None:
-        self.selected_preset = preset
+    def select_llm_config(self, config: LLMConfig | None) -> None:
+        self.selected_llm_config = config
 
-    def activate_llm_preset(self, preset: LLMPreset | None) -> tuple[None, None]:
+    def activate_llm_config(self, config: LLMConfig | None) -> tuple[None, None]:
         return None, None
 
 
-def _preset(
+def _llm_config(
     *,
     label: str = "Test",
     model: str = "test",
     reasoning: ReasoningLevel = "low",
     subagent_model: str = "test",
     subagent_reasoning: ReasoningLevel = "medium",
-) -> LLMPreset:
-    return LLMPreset(
-        label=label,
+) -> LLMConfig:
+    return LLMConfig(
         main=LLMRoleConfig(model=model, reasoning=reasoning),
         subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
     )
 
 
 def _selection(
-    preset: LLMPreset | None,
+    config: LLMConfig | None,
     *,
     inferred: bool = False,
     detected_api_key_env: str | None = None,
-) -> ResolvedLLMSelection:
-    selection = None if inferred else (preset.label if preset is not None else LLM_OFF)
-    return ResolvedLLMSelection(selection, preset, detected_api_key_env)
+) -> ResolvedLLMConfig:
+    selection = None if inferred else (config if config is not None else LLM_OFF)
+    return ResolvedLLMConfig(selection, config, detected_api_key_env)
 
 
 def _app_for_selection(
-    selection: ResolvedLLMSelection,
+    selection: ResolvedLLMConfig,
     *,
     runtime_paths: RuntimePaths | None = None,
     project_dir: Path | None = None,
@@ -87,7 +86,7 @@ def _app_for_selection(
     from tabulaflow.agents.llm import ServiceTier
 
     return TabulaflowApp(
-        llm_selection=selection,
+        llm_config=selection,
         runtime_paths=runtime_paths or RuntimePaths.for_session("test-session"),
         project_dir=project_dir or Path.cwd(),
         llm_service_tier=cast(ServiceTier, llm_service_tier),
@@ -96,12 +95,12 @@ def _app_for_selection(
 
 
 def _app(
-    preset: LLMPreset | None,
+    config: LLMConfig | None,
     *,
     runtime_paths: RuntimePaths | None = None,
     project_dir: Path | None = None,
 ) -> TabulaflowApp:
-    return _app_for_selection(_selection(preset), runtime_paths=runtime_paths, project_dir=project_dir)
+    return _app_for_selection(_selection(config), runtime_paths=runtime_paths, project_dir=project_dir)
 
 
 def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,9 +108,9 @@ def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(app, "_ensure_pane", lambda: None)
 
 
-def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
+def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:
     return AppSession(
-        llm_preset=llm_preset,
+        llm_config=llm_config,
         runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
         workspace=None,
     )
@@ -418,10 +417,10 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
     monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.chdir(project_dir)
 
-    preset = _preset(model="test:model", subagent_model="test:subagent")
+    config = _llm_config(model="test:model", subagent_model="test:subagent")
     runtime_paths = RuntimePaths.for_session("test-session")
     app = _app_for_selection(
-        _selection(preset),
+        _selection(config),
         runtime_paths=runtime_paths,
         project_dir=project_dir,
         enable_schema_cache=True,
@@ -441,7 +440,7 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
 
     assert result is session
     assert captured["session_kwargs"] == {
-        "llm_preset": preset,
+        "llm_config": config,
         "runtime_paths": runtime_paths,
         "project_dir": project_dir,
         "llm_service_tier": "default",
@@ -452,8 +451,8 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
 @pytest.mark.parametrize(
     ("llm_enabled", "session_ready", "expected"),
     [
-        (True, True, "Opus 4.8 high · "),
-        (True, False, "Opus 4.8 high · "),
+        (True, True, "claude-opus-4-8 · high · "),
+        (True, False, "claude-opus-4-8 · high · "),
         (False, False, "LLM off · "),
     ],
 )
@@ -464,8 +463,8 @@ def test_bottom_status_uses_selected_startup_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = (
-        _preset(
+    config = (
+        _llm_config(
             model="anthropic:claude-opus-4-8",
             reasoning="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
@@ -473,9 +472,9 @@ def test_bottom_status_uses_selected_startup_profile(
         if llm_enabled
         else None
     )
-    app = _app(preset, project_dir=tmp_path)
+    app = _app(config, project_dir=tmp_path)
     if session_ready:
-        app._session = _session(llm_preset=preset, tmp_path=tmp_path)
+        app._session = _session(llm_config=config, tmp_path=tmp_path)
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 
@@ -489,8 +488,8 @@ def test_bottom_status_uses_selected_startup_profile(
 
 
 def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    preset = _preset(model="openai-responses:gpt-5.6-sol")
-    app = _app_for_selection(_selection(preset), project_dir=tmp_path, llm_service_tier="priority")
+    config = _llm_config(model="openai-responses:gpt-5.6-sol")
+    app = _app_for_selection(_selection(config), project_dir=tmp_path, llm_service_tier="priority")
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 
@@ -500,28 +499,28 @@ def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monke
     monkeypatch.setattr(app, "query_one", fake_query_one)
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("GPT 5.6 Sol low · Priority · ")
+    assert model_status.value.startswith("gpt-5.6-sol · low · Priority · ")
 
 
 async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(model="test:model")
-    app = _app(preset)
+    config = _llm_config(model="test:model")
+    app = _app(config)
     labels: list[str] = []
 
     async def fake_show(label: str) -> None:
         labels.append(label)
 
     class FakeSession:
-        def activate_llm_preset(self, _preset: LLMPreset) -> tuple[None, None]:
+        def activate_llm_config(self, _llm_config: LLMConfig) -> tuple[None, None]:
             return None, None
 
     async def fake_ensure_session() -> object:
         return FakeSession()
 
     async def fake_finish(
-        _selection: ResolvedLLMSelection,
+        _selection: ResolvedLLMConfig,
         *,
         result: tuple[str | None, str | None] | Exception,
     ) -> None:
@@ -531,7 +530,7 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
 
-    await app._activate_llm_option(_selection(preset))
+    await app._activate_llm_option(_selection(config))
 
     assert labels == ["Initializing session...", "Initializing agent..."]
 
@@ -542,37 +541,37 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
         (
             ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
             None,
-            "✓ LLM preset: Test · Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]",
+            "✓ Main: claude-opus-4-8 · high · Subagent: gpt-5.4-mini · medium [API key sk-***ABCD]",
         ),
         (
             ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
             None,
-            "✓ LLM preset: Test · Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]",
+            "✓ Main: claude-opus-4-8 · high [API key sk-***AAAA] · Subagent: gpt-5.4-mini · medium [API key sk-***BBBB]",
         ),
         (
             ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
             "ANTHROPIC_API_KEY",
-            "✓ ANTHROPIC_API_KEY detected (sk-***ABCD) · using Test. Change the preset in /config.",
+            "✓ ANTHROPIC_API_KEY detected (sk-***ABCD) · using claude-opus-4-8. Change models in /config.",
         ),
         (
             ("short", "short"),
             "ANTHROPIC_API_KEY",
-            "✓ ANTHROPIC_API_KEY detected · using Test. Change the preset in /config.",
+            "✓ ANTHROPIC_API_KEY detected · using claude-opus-4-8. Change models in /config.",
         ),
     ],
 )
-def test_llm_preset_success_message(
+def test_llm_config_success_message(
     api_keys: tuple[str, str],
     detected_env: str | None,
     expected: str,
 ) -> None:
-    preset = _preset(
+    config = _llm_config(
         model="anthropic:claude-opus-4-8",
         reasoning="high",
         subagent_model="openai-responses:gpt-5.4-mini",
     )
 
-    message = tui._llm_preset_success_message(preset, api_keys, detected_api_key_env=detected_env)
+    message = tui._llm_config_success_message(config, api_keys, detected_api_key_env=detected_env)
 
     assert message.plain == expected
     assert str(message.style) == "dim"
@@ -592,59 +591,59 @@ def test_masked_api_key(api_key: str, expected: str | None) -> None:
         (
             UserError("Set the ANTHROPIC_API_KEY environment variable via AnthropicProvider."),
             "anthropic:claude-opus-4-8",
-            "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another preset in /config.",
+            "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another model in /config.",
         ),
         (
             RuntimeError("Set the OPENAI_API_KEY environment variable."),
             "openai-responses:gpt-5",
-            "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config.",
+            "OPENAI_API_KEY is not set. Set it and restart the app, or choose another model in /config.",
         ),
         (
             UserError("Unknown model: invalid"),
             "anthropic:claude-opus-4-8",
-            "Unknown model: invalid. Update app_config.json or choose another preset in /config.",
+            "Unknown model: invalid. Update app_config.json or choose another model in /config.",
         ),
         (
             ValueError("Unknown provider: invalid"),
             "anthropic:claude-opus-4-8",
-            "Unknown provider: invalid. Update app_config.json or choose another preset in /config.",
+            "Unknown provider: invalid. Update app_config.json or choose another model in /config.",
         ),
         (
             KeyError("GOOGLE_CLOUD_PROJECT"),
             "anthropic:claude-opus-4-8",
-            "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another preset in /config.",
+            "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another model in /config.",
         ),
     ],
 )
 def test_llm_activation_error_is_actionable(error: Exception, model: str, expected: str) -> None:
-    preset = _preset(model=model, subagent_model="openai-responses:gpt-5-mini")
+    config = _llm_config(model=model, subagent_model="openai-responses:gpt-5-mini")
 
-    assert tui._normalize_llm_activation_error(error, preset) == expected
+    assert tui._normalize_llm_activation_error(error, config) == expected
 
 
 def test_llm_activation_error_is_redacted_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
-    preset = _preset(model="anthropic:claude-opus-4-8")
+    config = _llm_config(model="anthropic:claude-opus-4-8")
     api_key = "secret-api-key-1234"
     monkeypatch.setenv("VENDOR_API_KEY", api_key)
 
     normalized = tui._normalize_llm_activation_error(
         RuntimeError(f"first line\nsecond line leaked {api_key}"),
-        preset,
+        config,
     )
-    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), preset)
+    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), config)
 
     assert normalized == (
         "Initialization failed: RuntimeError: first line second line leaked sec***1234. "
-        "Choose another preset in /config."
+        "Choose another model in /config."
     )
     assert api_key not in normalized
-    assert "… Choose another preset in /config." in bounded
+    assert "… Choose another model in /config." in bounded
     assert len(bounded) < 400
 
 
 async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    preset = _preset()
-    app = _app(preset)
+    config = _llm_config()
+    app = _app(config)
     error = OSError("workspace unavailable")
     reported: list[Exception] = []
 
@@ -665,7 +664,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     monkeypatch.setattr(app, "_report_session_initialization_failure", fake_report)
     monkeypatch.setattr(app, "_finish_llm_activation", unexpected_finish)
 
-    await app._activate_llm_option(_selection(preset))
+    await app._activate_llm_option(_selection(config))
 
     assert reported == [error]
     assert app._llm_activation_error is None
@@ -720,7 +719,7 @@ async def test_startup_paints_banner_before_starting_initialization(
     app = _app(None)
     started: list[bool] = []
 
-    def fake_start(_selection: ResolvedLLMSelection) -> None:
+    def fake_start(_selection: ResolvedLLMConfig) -> None:
         banner = app.query_one(BannerWidget)
         started.append(banner.query_one(".banner-art", Static).is_mounted)
 
@@ -751,23 +750,23 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
             await pilot.pause()
 
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM off · no supported API key detected. Choose a preset in /config."]
+        assert messages == ["✓ LLM off · no supported API key detected. Configure models in /config."]
 
 
 async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(
+    config = _llm_config(
         model="openai-responses:gpt-5",
         reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning="medium",
     )
-    app = _app_for_selection(_selection(preset, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
+    app = _app_for_selection(_selection(config, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
 
     class FakeSession:
-        def activate_llm_preset(self, selected: LLMPreset) -> tuple[str | None, str | None]:
-            assert selected == preset
+        def activate_llm_config(self, selected: LLMConfig) -> tuple[str | None, str | None]:
+            assert selected == config
             return "sk-main123456789E0QA", "sk-main123456789E0QA"
 
     async def fake_ensure_session() -> object:
@@ -780,7 +779,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         for _ in range(3):
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ OPENAI_API_KEY detected (sk-***E0QA) · using Test. Change the preset in /config."]
+        assert messages == ["✓ OPENAI_API_KEY detected (sk-***E0QA) · using gpt-5. Change models in /config."]
         assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", HistoryInput).disabled
 
@@ -788,11 +787,11 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
 async def test_failed_startup_activation_reports_error_and_unblocks_input(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(model="anthropic:claude-opus-4-8", reasoning="high")
-    app = _app(preset)
+    config = _llm_config(model="anthropic:claude-opus-4-8", reasoning="high")
+    app = _app(config)
 
     class FakeSession:
-        def activate_llm_preset(self, _selected: LLMPreset) -> tuple[str | None, str | None]:
+        def activate_llm_config(self, _selected: LLMConfig) -> tuple[str | None, str | None]:
             raise RuntimeError("missing credential")
 
     async def fake_ensure_session() -> object:
@@ -807,11 +806,11 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
             "LLM unavailable: Initialization failed: RuntimeError: missing credential. "
-            "Choose another preset in /config. /connect and browsing remain available."
+            "Choose another model in /config. /connect and browsing remain available."
         ]
         assert app._llm_unavailable_message() == (
             "Initialization failed: RuntimeError: missing credential. "
-            "Choose another preset in /config. /connect and browsing remain available."
+            "Choose another model in /config. /connect and browsing remain available."
         )
         assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", HistoryInput).disabled
@@ -1055,7 +1054,7 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
     app = _app(None)
     session = _InactiveSession()
     updates: list[dict[str, object]] = []
-    activations: list[ResolvedLLMSelection] = []
+    activations: list[ResolvedLLMConfig] = []
 
     async def fake_ensure_session() -> object:
         app._session = session  # type: ignore[assignment]
@@ -1069,14 +1068,14 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         for _ in range(3):
             await pilot.pause()
         monkeypatch.setattr(app, "_start_llm_activation", activations.append)
-        preset = _preset(label="Selected")
+        config = _llm_config(label="Selected")
 
-        selection = ResolvedLLMSelection("Selected", preset)
+        selection = ResolvedLLMConfig(config, config)
         app._on_config_closed(selection)
         await pilot.pause()
 
-        assert session.selected_preset == preset
-        assert updates == [{"llm_preset": "Selected"}]
+        assert session.selected_llm_config == config
+        assert updates == [{"llm": config}]
         assert activations == [selection]
 
 

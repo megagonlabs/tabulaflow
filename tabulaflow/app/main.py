@@ -5,9 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-import typer
-
-from tabulaflow.app.config import ResolvedLLMSelection
+from tabulaflow.app.config import ResolvedLLMConfig
 
 if TYPE_CHECKING:
     from tabulaflow.agents import AgentRuntimeConfig
@@ -36,18 +34,14 @@ def _app_agent_runtime_config() -> AgentRuntimeConfig:
     return AgentRuntimeConfig(preprocessing_cache_mode="off")
 
 
-def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSelection:
-    from tabulaflow.app.config import load_app_config, resolve_llm_selection
+def _resolve_startup_llm_config() -> ResolvedLLMConfig:
+    from tabulaflow.app.config import load_app_config, resolve_llm_config
 
-    try:
-        return resolve_llm_selection(load_app_config(), override=llm_preset)
-    except ValueError as e:
-        raise typer.BadParameter(str(e), param_hint="--llm-preset") from None
+    return resolve_llm_config(load_app_config())
 
 
 def run_chat(
     *,
-    llm_preset: str | None = None,
     llm_service_tier: AppLLMServiceTier = AppLLMServiceTier.DEFAULT,
     enable_schema_cache: bool = False,
     log_level: AppLogLevel = AppLogLevel.INFO,
@@ -59,7 +53,7 @@ def run_chat(
     import asyncio
     import logging
 
-    startup_llm = _resolve_startup_llm_selection(llm_preset=llm_preset)
+    startup_llm = _resolve_startup_llm_config()
 
     logging.basicConfig(level=logging.WARNING)
 
@@ -69,7 +63,7 @@ def run_chat(
     initialize_agent_runtime(_app_agent_runtime_config())
     asyncio.run(
         run_tui(
-            llm_selection=startup_llm,
+            llm_config=startup_llm,
             llm_service_tier=llm_service_tier.value,
             enable_schema_cache=enable_schema_cache,
             log_level=getattr(logging, log_level.name),

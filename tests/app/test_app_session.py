@@ -9,7 +9,7 @@ import pytest
 
 from tabulaflow.app import sample_data, session as session_module
 from tabulaflow.agents.llm import ReasoningLevel
-from tabulaflow.app.config import LLMRoleConfig, LLMPreset
+from tabulaflow.app.config import LLMRoleConfig, LLMConfig
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession, _app_connector_configs, _create_workspace_connector
 from tabulaflow.data.config import SQLConnectorConfig
@@ -48,31 +48,30 @@ async def test_workspace_uses_utc_for_timezone_aware_timestamps(tmp_path: Path) 
     assert row["timezone"] == "UTC"
 
 
-def _preset(
+def _llm_config(
     *,
     model: str = "test",
     reasoning: ReasoningLevel = "low",
     subagent_model: str = "test",
     subagent_reasoning: ReasoningLevel = "medium",
-) -> LLMPreset:
-    return LLMPreset(
-        label="Test",
+) -> LLMConfig:
+    return LLMConfig(
         main=LLMRoleConfig(model=model, reasoning=reasoning),
         subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
     )
 
 
-def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
+def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:
     return AppSession(
-        llm_preset=llm_preset,
+        llm_config=llm_config,
         runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
         workspace=None,
     )
 
 
 def _activate_selected(session: AppSession) -> ChatSession:
-    assert session.selected_preset is not None
-    session.activate_llm_preset(session.selected_preset)
+    assert session.selected_llm_config is not None
+    session.activate_llm_config(session.selected_llm_config)
     agent = session.active_chat_session
     assert agent is not None
     return agent
@@ -98,7 +97,7 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
     monkeypatch.setattr(session_module, "_create_workspace_connector", create_workspace)
     monkeypatch.setattr(sample_data, "autoconnect_sample", connect_sample)
 
-    session = await AppSession.create(llm_preset=None, runtime_paths=paths, project_dir=tmp_path)
+    session = await AppSession.create(llm_config=None, runtime_paths=paths, project_dir=tmp_path)
 
     assert created_paths == [paths.workspace_db_path]
     assert session.registry.list_aliases() == ["workspace"]
@@ -149,7 +148,7 @@ def test_app_can_explicitly_enable_schema_cache(monkeypatch: pytest.MonkeyPatch)
 
 def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:
     session = _session(
-        llm_preset=_preset(),
+        llm_config=_llm_config(),
         tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
@@ -168,11 +167,11 @@ def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> Non
     assert agent._registry is session.registry
 
 
-def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_session_starts_with_unverified_llm_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
     session = _session(
-        llm_preset=_preset(
+        llm_config=_llm_config(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
@@ -182,8 +181,8 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
     )
 
     assert session.active_chat_session is None
-    assert session.selected_preset is not None
-    assert session.selected_preset.main.model == "anthropic:claude-sonnet-4-5-20250929"
+    assert session.selected_llm_config is not None
+    assert session.selected_llm_config.main.model == "anthropic:claude-sonnet-4-5-20250929"
     assert session.registry.list_aliases() == []
     session.note_event("ignored without an LLM")
 
@@ -195,7 +194,7 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
 def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = _session(
-        llm_preset=_preset(
+        llm_config=_llm_config(
             model="test",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
         ),
@@ -207,29 +206,29 @@ def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypat
     assert session.active_chat_session is None
 
 
-def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
+def test_session_starts_without_llm_config(tmp_path: Path) -> None:
     session = _session(
-        llm_preset=None,
+        llm_config=None,
         tmp_path=tmp_path,
     )
 
-    assert session.selected_preset is None
+    assert session.selected_llm_config is None
     assert session.active_chat_session is None
 
 
 def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
-    preset = _preset()
+    config = _llm_config()
     session = _session(
-        llm_preset=preset,
+        llm_config=config,
         tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
 
-    session.select_llm_preset(None)
+    session.select_llm_config(None)
 
-    assert session.selected_preset is None
+    assert session.selected_llm_config is None
     assert session.active_chat_session is None
-    session.select_llm_preset(preset)
+    session.select_llm_config(config)
     assert session.active_chat_session is agent
 
 
@@ -238,7 +237,7 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = _session(
-        llm_preset=_preset(
+        llm_config=_llm_config(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
@@ -247,44 +246,46 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
         tmp_path=tmp_path,
     )
 
-    session.select_llm_preset(_preset())
-    session.activate_llm_preset(_preset())
+    session.select_llm_config(_llm_config())
+    session.activate_llm_config(_llm_config())
 
-    assert session.selected_preset == _preset()
+    assert session.selected_llm_config == _llm_config()
     assert session.active_chat_session is not None
 
 
-def test_selecting_unusable_preset_defers_error_until_agent_build(
+def test_selecting_unusable_llm_config_defers_error_until_agent_build(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = _session(
-        llm_preset=_preset(),
+        llm_config=_llm_config(),
         tmp_path=tmp_path,
     )
     old_agent = _activate_selected(session)
     old_model = old_agent.model
 
-    selected_preset = _preset(
+    selected_llm_config = _llm_config(
         model="anthropic:claude-sonnet-4-5-20250929",
         reasoning="medium",
         subagent_model="anthropic:claude-haiku-4-5-20251001",
         subagent_reasoning="medium",
     )
-    session.select_llm_preset(selected_preset)
+    session.select_llm_config(selected_llm_config)
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        session.activate_llm_preset(selected_preset)
-    assert session.selected_preset == selected_preset
+        session.activate_llm_config(selected_llm_config)
+    assert session.selected_llm_config == selected_llm_config
     assert session.active_chat_session is None
     assert old_agent.model == old_model
-    session.select_llm_preset(_preset())
+    session.select_llm_config(_llm_config())
     assert session.active_chat_session is old_agent
 
 
-def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_switching_llm_config_preserves_live_chat_session_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     session = _session(
-        llm_preset=_preset(
+        llm_config=_llm_config(
             model="openai-responses:gpt-5",
             reasoning="medium",
             subagent_model="openai-responses:gpt-5-mini",
@@ -297,14 +298,14 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
     message_history = agent._context_messages
     output_store = agent.output_store
 
-    selected_preset = _preset(
+    selected_llm_config = _llm_config(
         model="openai-responses:gpt-5.4-mini",
         reasoning="high",
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning="medium",
     )
-    session.select_llm_preset(selected_preset)
-    session.activate_llm_preset(selected_preset)
+    session.select_llm_config(selected_llm_config)
+    session.activate_llm_config(selected_llm_config)
 
     assert session.active_chat_session is agent
     assert agent.resolve_api_keys()[0] == "sk-test123456789ab4x"

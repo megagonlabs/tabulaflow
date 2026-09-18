@@ -40,12 +40,6 @@ app.add_typer(examples_app, name="examples")
 @app.callback(invoke_without_command=True)
 def root(
     ctx: typer.Context,
-    llm_preset: str | None = typer.Option(
-        None,
-        "--llm-preset",
-        "-p",
-        help="LLM preset label or 'off' for this launch. Overrides the saved selection without persisting.",
-    ),
     llm_service_tier: AppLLMServiceTier = typer.Option(
         AppLLMServiceTier.DEFAULT,
         "--llm-service-tier",
@@ -80,7 +74,6 @@ def root(
     """Start an interactive chat by default or run a subcommand."""
     if ctx.invoked_subcommand is None:
         run_chat(
-            llm_preset=llm_preset,
             llm_service_tier=llm_service_tier,
             enable_schema_cache=enable_schema_cache,
             log_level=log_level,

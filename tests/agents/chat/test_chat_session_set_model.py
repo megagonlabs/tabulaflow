@@ -316,7 +316,7 @@ def _last_note(agent: ChatSession) -> str:
 def test_startup_note_states_model() -> None:
     agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     assert len(agent._context_messages) == 1
-    assert _last_note(agent) == "[system: the model powering this conversation is Test.]"
+    assert _last_note(agent) == "[system: the model powering this conversation is test.]"
 
 
 def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -337,7 +337,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_reasoning=agent.subagent_reasoning,
         use_apply_patch=agent.use_apply_patch,
     )
-    assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
+    assert _last_note(agent) == ("[system: the model powering this conversation changed from test to gpt-5.]")
 
     agent.activate_llm_profile(
         model="test",
@@ -346,7 +346,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_reasoning=agent.subagent_reasoning,
         use_apply_patch=agent.use_apply_patch,
     )
-    assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
+    assert _last_note(agent) == ("[system: the model powering this conversation changed from gpt-5 to test.]")
 
     # Effort- or subagent-only changes don't alter the main agent's context: no note.
     history_len = len(agent._context_messages)
@@ -371,7 +371,7 @@ def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -
         subagent_reasoning=agent.subagent_reasoning,
         use_apply_patch=agent.use_apply_patch,
     )
-    assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
+    assert _last_note(agent) == ("[system: the model powering this conversation changed from test to gpt-5.]")
 
 
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

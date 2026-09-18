@@ -13,6 +13,7 @@ cap so multi-step tool loops can continue.
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any, AsyncIterator, TypeVar, cast, overload
@@ -42,46 +43,25 @@ __all__ = [
     "embedding_throttle",
     "make_agent",
     "make_model_settings",
-    "model_display_name",
+    "model_label",
 ]
 
 _DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
-def model_display_name(model: str, reasoning: ReasoningLevel | None = None) -> str:
-    """Return a human-readable display name for an LLM model identifier,
-    with the reasoning effort appended when given.
+
+
+def model_label(model: str) -> str:
+    """Remove a provider prefix and trailing release date from a model identifier.
 
     Examples:
-        ``anthropic:claude-opus-4-8`` → ``Opus 4.8``,
-        ``anthropic:claude-sonnet-4-5-20250929`` → ``Sonnet 4.5``,
-        ``("openai-responses:gpt-5.4-mini", "medium")`` → ``GPT 5.4 Mini medium``.
+        ``openai-responses:gpt-5.6-sol`` becomes ``gpt-5.6-sol``.
+        ``openai-responses:gpt-5-2025-08-07`` becomes ``gpt-5``.
+        ``anthropic:claude-sonnet-4-5-20250929`` becomes
+        ``claude-sonnet-4-5``.
     """
-    _, sep, name = model.partition(":")
-    if not sep:
-        name = model
-    name = name.rsplit("/", 1)[-1]
-    tokens = name.replace("_", "-").split("-")
-    if len(tokens) > 1 and tokens[-1].isdigit() and len(tokens[-1]) == 8:
-        tokens = tokens[:-1]
-    if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
-        tokens = [*tokens[:-2], f"{tokens[-2]}.{tokens[-1]}"]
-    if tokens and tokens[0].lower() == "claude":
-        tokens = tokens[1:]
-    parts: list[str] = []
-    for tok in tokens:
-        if tok.lower() == "gpt":
-            parts.append(tok.upper())
-        elif tok[:1].isalpha():
-            parts.append(tok.capitalize())
-        else:
-            parts.append(tok)
-    name = " ".join(parts)
-    if reasoning is True:
-        return f"{name} reasoning"
-    if reasoning is False:
-        return f"{name} no reasoning"
-    return f"{name} {reasoning}" if reasoning else name
+    _, separator, name = model.partition(":")
+    return re.sub(r"-(?:\d{4}-\d{2}-\d{2}|\d{8})$", "", name if separator else model)
 
 
 def make_model_settings(

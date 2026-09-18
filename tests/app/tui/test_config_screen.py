@@ -1,294 +1,133 @@
 from __future__ import annotations
 
-import pytest
 from textual.app import App
 from textual.widgets import Static
 
-from tabulaflow.agents.llm import ReasoningLevel
-from tabulaflow.app.config import (
-    LLM_OFF,
-    AppConfig,
-    LLMRoleConfig,
-    LLMPreset,
-    ResolvedLLMSelection,
+from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
+from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
+
+
+_CONFIG = LLMConfig(
+    main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="medium"),
+    subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="low"),
 )
-from tabulaflow.app.tui.screens.config import ConfigScreen
-
-_PRESETS = [
-    LLMPreset(
-        label="OpenAI balanced",
-        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="medium"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
-    ),
-    LLMPreset(
-        label="OpenAI budget",
-        main=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5-mini", reasoning="medium"),
-    ),
-    LLMPreset(
-        label="Anthropic balanced",
-        main=LLMRoleConfig(model="anthropic:claude-opus-5", reasoning="high"),
-        subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning="high"),
-    ),
-    LLMPreset(
-        label="Planning hybrid",
-        main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning="high"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
-    ),
-]
-
-
-class _StubSession:
-    def __init__(
-        self,
-        label: str = "OpenAI balanced",
-        model: str = "openai-responses:gpt-5.6-sol",
-        reasoning: ReasoningLevel = "medium",
-        subagent_model: str = "openai-responses:gpt-5.4-mini",
-        subagent_reasoning: ReasoningLevel = "medium",
-    ) -> None:
-        self.llm_preset: LLMPreset | None = LLMPreset(
-            label=label,
-            main=LLMRoleConfig(model=model, reasoning=reasoning),
-            subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
-        )
 
 
 class _App(App[None]):
     def __init__(self, screen: ConfigScreen) -> None:
         super().__init__()
-        self._config_screen = screen
-        self.results: list[ResolvedLLMSelection | None] = []
+        self.screen_to_open = screen
+        self.results: list[ResolvedLLMConfig | None] = []
 
     def on_mount(self) -> None:
-        self.push_screen(self._config_screen, self.results.append)
+        self.push_screen(self.screen_to_open, self.results.append)
 
 
-@pytest.fixture(autouse=True)
-def _patch_config_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr(
-        "tabulaflow.app.tui.screens.config.load_app_config",
-        lambda: AppConfig(custom_llm_presets=list(_PRESETS)),
-    )
+def _text(screen: ConfigScreen, selector: str) -> str:
+    return str(screen.query_one(selector, Static).render())
 
 
-def _row_plain(screen: ConfigScreen, i: int) -> str:
-    return "".join(part.plain for part in screen._option_row_parts(i))
-
-
-def _explicit(preset: LLMPreset | None) -> ResolvedLLMSelection:
-    return ResolvedLLMSelection(LLM_OFF if preset is None else preset.label, preset)
-
-
-async def test_renders_presets() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
+async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert len(screen._option_rows) == 5
-        assert screen._cursor == 1
-        assert "LLM (main → subagent)" in {str(widget.render()) for widget in screen.query(Static)}
-        assert "Off" in _row_plain(screen, 0)
-        assert "Connect and browse data" in _row_plain(screen, 0)
-        assert _row_plain(screen, 0).index("Connect and browse data") == 26
-        assert "●" not in _row_plain(screen, 0)
-        assert "●" in _row_plain(screen, 1)
-        assert "OpenAI balanced" in _row_plain(screen, 1)
-        assert "GPT 5.6 Sol medium" in _row_plain(screen, 1)
-        assert "GPT 5.4 Mini medium" in _row_plain(screen, 1)
-        assert "OpenAI budget" in _row_plain(screen, 2)
-        assert "GPT 5.4 Mini medium" in _row_plain(screen, 2)
-        assert "GPT 5 Mini medium" in _row_plain(screen, 2)
-        assert "Opus 5 high" in _row_plain(screen, 3)
-        assert "Sonnet 4.5 high" in _row_plain(screen, 3)
-        assert "Claude" not in _row_plain(screen, 3)
-        assert "20250929" not in _row_plain(screen, 3)
-        assert "Planning hybrid" in _row_plain(screen, 4)
-        assert "Opus 4.8 high" in _row_plain(screen, 4)
-        assert "GPT 5.4 Mini medium" in _row_plain(screen, 4)
-        assert "●" not in _row_plain(screen, 2)
-        assert all("API key" not in _row_plain(screen, i) for i in range(5))
-        rows = [_row_plain(screen, i) for i in range(1, 5)]
-        assert all(" · " not in row for row in rows)
-        assert all(" → " in row for row in rows)
-        assert {row.index(screen._option_row_parts(i)[2].plain) for i, row in enumerate(rows, start=1)} == {26}
+        assert "enabled" in _text(screen, "#field-enabled")
+        assert "openai-responses:gpt-5.6-sol" in _text(screen, "#field-main-model")
+        assert "openai-responses:gpt-5.4-mini" in _text(screen, "#field-subagent-model")
+        assert "medium" in _text(screen, "#field-main-reasoning")
+        assert "Subagent model" in _text(screen, "#field-subagent-model")
+        assert "Subagent reasoning" in _text(screen, "#field-subagent-reasoning")
+        assert not list(screen.query("#config-credentials"))
+        rendered = {str(widget.render()) for widget in screen.query(Static)}
+        assert "MAIN AGENT" not in rendered
+        assert "SUBAGENT" not in rendered
 
 
-async def test_preset_label_truncates_by_display_width_and_models_wrap_in_their_column(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    long_label_preset = _PRESETS[0].model_copy(update={"label": "分析プリセットの長い名前"})
-    monkeypatch.setattr(
-        "tabulaflow.app.tui.screens.config.load_app_config",
-        lambda: AppConfig(custom_llm_presets=[long_label_preset]),
-    )
-    screen = ConfigScreen(_explicit(long_label_preset))
-
-    async with _App(screen).run_test(size=(42, 24)) as pilot:
-        await pilot.pause()
-        _, label, _ = screen._option_row_parts(screen._active_index)
-        row = screen._option_rows[screen._active_index]
-
-        assert label.cell_len == 22
-        assert label.plain.endswith("…  ")
-        assert row._models.region.x == row.region.x + 26
-        assert row.size.height > 1
-
-
-async def test_enter_stages_selection_and_escape_returns_it() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
+async def test_fields_are_edited_and_applied_atomically() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "enter")
-        assert app.screen is screen
-        assert app.results == []
-        assert session.llm_preset != _PRESETS[1]
-        assert "●" in _row_plain(screen, 2)
-        assert "●" not in _row_plain(screen, 1)
-
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        assert "(recommended)" in str(picker.query_one("#model-options", Static).render())
+        assert not list(picker.query("#model-search"))
+        await pilot.press("down", "enter")
+        await pilot.pause()
+        assert screen.dirty
         await pilot.press("escape")
         await pilot.pause()
-        assert app.results == [ResolvedLLMSelection("OpenAI budget", _PRESETS[1])]
+        result = app.results[0]
+        assert result is not None and result.config is not None
+        assert result.config.main.model == "openai-responses:gpt-5.4-mini"
+        assert result.config.subagent == _CONFIG.subagent
 
 
-async def test_enter_stages_llm_off_until_escape() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
+async def test_disable_and_apply() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
-        await pilot.pause()
-        await pilot.press("up", "enter")
-        assert app.screen is screen
-        assert app.results == []
-        assert session.llm_preset is not None
-        assert "●" in _row_plain(screen, 0)
-        assert "●" not in _row_plain(screen, 1)
-
-        await pilot.press("escape")
-        await pilot.pause()
-        assert app.results == [ResolvedLLMSelection(LLM_OFF, None)]
-
-
-async def test_llm_off_is_active_for_session_without_preset() -> None:
-    session = _StubSession()
-    session.llm_preset = None
-    screen = ConfigScreen(_explicit(session.llm_preset))
-
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert screen._cursor == 0
-        assert "● Off" in _row_plain(screen, 0)
-        assert "Connect and browse data" in _row_plain(screen, 0)
-
-
-async def test_unconfigured_selection_shows_only_its_effective_preset() -> None:
-    screen = ConfigScreen(ResolvedLLMSelection(None, _PRESETS[0], "OPENAI_API_KEY"))
-
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert screen._cursor == 1
-        assert "● OpenAI balanced" in _row_plain(screen, 1)
-        assert all("Auto" not in _row_plain(screen, i) for i in range(5))
-        assert all("API_KEY" not in _row_plain(screen, i) for i in range(5))
-        assert all("detected" not in _row_plain(screen, i).lower() for i in range(5))
-        assert all("default" not in _row_plain(screen, i).lower() for i in range(5))
-
-
-async def test_confirming_inferred_preset_makes_it_explicit() -> None:
-    screen = ConfigScreen(ResolvedLLMSelection(None, _PRESETS[0], "OPENAI_API_KEY"))
-    app = _App(screen)
-
-    async with app.run_test() as pilot:
-        await pilot.pause()
         await pilot.press("enter", "escape")
         await pilot.pause()
+        assert app.results == [ResolvedLLMConfig("off", None)]
 
-        assert app.results == [ResolvedLLMSelection("OpenAI balanced", _PRESETS[0])]
 
-
-async def test_multiple_selections_return_only_the_last_choice() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
+async def test_escape_discards_clean_screen() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
-        await pilot.pause()
-        await pilot.press("down", "enter", "down", "enter")
-        assert app.results == []
-        assert "●" in _row_plain(screen, 3)
-        assert "●" not in _row_plain(screen, 2)
         await pilot.press("escape")
-        await pilot.pause()
-        assert app.results == [ResolvedLLMSelection("Anthropic balanced", _PRESETS[2])]
-
-
-async def test_unverified_selected_preset_has_active_dot_without_error() -> None:
-    session = _StubSession(
-        label="Anthropic balanced",
-        model="anthropic:claude-opus-5",
-        reasoning="high",
-        subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning="high",
-    )
-    screen = ConfigScreen(_explicit(session.llm_preset))
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert len(screen._option_rows) == 5
-        assert screen._cursor == 3
-        row = _row_plain(screen, 3)
-        assert "●" in row
-        assert "LLM unavailable" not in row
-        assert "Anthropic API key is not configured" not in row
-        assert "ANTHROPIC_API_KEY" not in row
-        assert "AnthropicProvider" not in row
-
-
-async def test_current_custom_row_for_unmatched_runtime_profile() -> None:
-    session = _StubSession(
-        label="Test",
-        model="openai-responses:gpt-5.6-sol",
-        reasoning="high",
-        subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning="medium",
-    )
-    screen = ConfigScreen(_explicit(session.llm_preset))
-    app = _App(screen)
-    async with app.run_test() as pilot:
-        await pilot.pause()
-        assert len(screen._option_rows) == 6
-        assert screen._cursor == 1
-        assert "● Current custom" in _row_plain(screen, 1)
-        await pilot.press("enter")
-        await pilot.press("down", "enter")
-        assert app.results == []
-        assert "●" in _row_plain(screen, 2)
-        await pilot.press("escape")
-        await pilot.pause()
-        assert app.results == [ResolvedLLMSelection("OpenAI balanced", _PRESETS[0])]
-
-
-async def test_select_preset_does_not_show_provider_error() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        await pilot.press("down", "down", "enter")
-        assert "Anthropic API key is not configured" not in _row_plain(screen, 3)
-        assert "ANTHROPIC_API_KEY" not in _row_plain(screen, 3)
-        assert "AnthropicProvider" not in _row_plain(screen, 3)
-        assert "●" in _row_plain(screen, 3)
-        assert "●" not in _row_plain(screen, 1)
-
-
-async def test_escape_without_changed_selection_returns_no_result() -> None:
-    session = _StubSession()
-    screen = ConfigScreen(_explicit(session.llm_preset))
-    app = _App(screen)
-    async with app.run_test() as pilot:
-        await pilot.pause()
-        await pilot.press("down", "enter", "up", "enter", "escape")
         await pilot.pause()
         assert app.results == [None]
+
+
+async def test_reasoning_changes_inline_with_left_and_right() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "down", "right")
+        await pilot.pause()
+        assert "high" in _text(screen, "#field-main-reasoning")
+        assert app.screen is screen
+        await pilot.press("left", "escape")
+        await pilot.pause()
+        assert app.results == [None]
+
+
+async def test_model_picker_filters_without_search_input() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter", "a", "n", "t", "h")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        assert "“anth”" in str(picker.query_one("#model-picker-title", Static).render())
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "anthropic:" in options
+        assert "openai-responses:" not in options
+
+
+async def test_custom_model_is_entered_inline_without_another_screen() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter", *"gpt-5.6", "down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        assert "Choose model" in str(picker.query_one("#model-picker-title", Static).render())
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "openai-responses:gpt-5.6-sol" in options
+        assert "Custom model" in options
+
+        await pilot.press("enter")
+        await pilot.pause()
+        assert "provider:model" in str(picker.query_one("#model-options", Static).render())
+
+        await pilot.press(*"test:model", "enter")
+        await pilot.pause()
+        assert app.screen is screen
+        assert "test:model" in _text(screen, "#field-main-model")
