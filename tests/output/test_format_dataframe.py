@@ -68,6 +68,33 @@ class TestFormatDf:
         # Only one occurrence (not truncated)
         assert result.count("...") == 0 or "..." not in result.split("hello")[0]
 
+    def test_large_cell_uses_record_format_without_table_padding(self) -> None:
+        content = "x" * 1_200
+
+        result = format_dataframe(pd.DataFrame({"content": [content]}), max_cell_width=len(content))
+
+        assert result == f"row 1\ncontent: {content}"
+        assert "|" not in result
+        assert "---" not in result
+
+    def test_record_format_preserves_multiline_text_for_multiple_rows_and_columns(self) -> None:
+        content = "first line\n" + "x" * 1_200
+        df = pd.DataFrame({"id": [1, 2], "content": [content, "short"]})
+
+        result = format_dataframe(df, max_cell_width=2_000)
+
+        assert "row 1\nid: 1\ncontent:\nfirst line\n" in result
+        assert "row 2\nid: 2\ncontent: short" in result
+
+    def test_record_format_retains_rows_from_both_ends(self) -> None:
+        df = pd.DataFrame({"content": [f"{i}:" + "x" * 1_100 for i in range(21)]})
+
+        result = format_dataframe(df, max_cell_width=1_200, max_visible_rows=5)
+
+        assert "row 1" in result
+        assert "row 21" in result
+        assert "... (16 rows omitted)" in result
+
     def test_numeric_not_truncated(self) -> None:
         """Test that numeric values are not truncated (preserved as-is)."""
         df = pd.DataFrame({"a": [12345, 67890]})

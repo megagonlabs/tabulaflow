@@ -11,6 +11,93 @@ from tabulaflow.core.media import parse_base64_data_uri
 from tabulaflow.core.results import ExecResult
 from tabulaflow.data.protocols import DataConnector
 
+_RECORD_FORMAT_THRESHOLD = 1_000
+
+
+def _is_null(value: object) -> bool:
+    """Return whether a scalar value is null without failing on containers."""
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _truncate_text(text: str, *, max_cell_width: int, single_line: bool) -> str:
+    """Bound text, optionally flattening it for tabular display."""
+    if single_line:
+        text = format_single_line_text(text)
+    if len(text) <= max_cell_width:
+        return text
+    half = max_cell_width // 2
+    return text[:half] + "..." + text[-half:]
+
+
+def _format_table_cell(value: object, *, max_cell_width: int) -> object:
+    """Format one value for compact, single-line tabular output."""
+    value = summarize_binary_values(value)
+    if _is_null(value):
+        return "[NULL]"
+    if isinstance(value, str):
+        return _truncate_text(value, max_cell_width=max_cell_width, single_line=True)
+    if isinstance(value, (int, float)):
+        return value
+    return _truncate_text(str(value), max_cell_width=max_cell_width, single_line=True)
+
+
+def _format_record_cell(value: object, *, max_cell_width: int, floatfmt: str) -> str:
+    """Format one value for record output, preserving text line breaks."""
+    value = summarize_binary_values(value)
+    if _is_null(value):
+        return "[NULL]"
+    if isinstance(value, (bool, np.bool_)):
+        return str(value)
+    if isinstance(value, (float, np.floating)):
+        return format(value, floatfmt)
+    if isinstance(value, (int, np.integer)):
+        return str(value)
+    text = value if isinstance(value, str) else str(value)
+    return _truncate_text(text, max_cell_width=max_cell_width, single_line=False)
+
+
+def _has_large_text_cell(display_df: pd.DataFrame, *, threshold: int) -> bool:
+    """Return whether the compact display frame contains a large text value."""
+    return any(isinstance(value, str) and len(value) > threshold for value in display_df.to_numpy().flat)
+
+
+def _format_records(
+    df: pd.DataFrame,
+    *,
+    max_visible_rows: int,
+    max_cell_width: int,
+    floatfmt: str,
+    add_bottom_ellipsis_row: bool,
+) -> str:
+    """Render a frame as unpadded records, retaining rows from both ends."""
+    n = len(df)
+    if n > max_visible_rows:
+        first_n = (max_visible_rows + 1) // 2
+        last_n = max_visible_rows - first_n
+        positions: list[int | None] = [*range(first_n), None, *range(n - last_n, n)]
+    else:
+        positions = list(range(n))
+
+    records: list[str] = []
+    for position in positions:
+        if position is None:
+            records.append(f"... ({n - max_visible_rows} rows omitted)")
+            continue
+        lines = [f"row {position + 1}"]
+        for column, value in df.iloc[position].items():
+            text = _format_record_cell(value, max_cell_width=max_cell_width, floatfmt=floatfmt)
+            if "\n" in text or "\r" in text:
+                lines.extend((f"{column}:", text))
+            else:
+                lines.append(f"{column}: {text}")
+        records.append("\n".join(lines))
+    if add_bottom_ellipsis_row:
+        records.append("...")
+    return "\n\n".join(records)
+
 
 def summarize_binary_values(value: object) -> object:
     """Return a structure-preserving value with binary leaves summarized."""
@@ -87,10 +174,12 @@ def format_dataframe(
     floatfmt: str = ".8g",
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
-    """Format a DataFrame as a compact text table.
+    """Format a DataFrame as compact table or record text.
 
     Long results retain rows from both ends with an ellipsis between them;
-    multiline and oversized cells are converted to bounded single-line text.
+    multiline and oversized cells are converted to bounded single-line text in
+    tables. Results containing a large rendered cell use records instead, which
+    avoid table padding and preserve text line breaks.
 
     Args:
         df: DataFrame to format.
@@ -104,29 +193,17 @@ def format_dataframe(
         The formatted table text.
     """
 
-    def _truncate_str(s: str) -> str:
-        s = format_single_line_text(s)
-        if len(s) > max_cell_width:
-            half = max_cell_width // 2
-            return s[:half] + "..." + s[-half:]
-        return s
-
-    def truncate_cell(val: object) -> object:
-        val = summarize_binary_values(val)
-        try:
-            if pd.isna(val):
-                return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
-        except (ValueError, TypeError):
-            pass  # Container types (list, dict, ndarray) make pd.isna return non-scalar
-        if isinstance(val, str):
-            return _truncate_str(val)
-        if isinstance(val, (int, float)):
-            return val  # Preserve numeric types for tabulate formatting (floatfmt, alignment)
-        # Convert other types (bytes, list, dict, Decimal, datetime, etc.) to str and truncate
-        return _truncate_str(str(val))
-
     # Preserve numeric types while converting nulls to explicit display text.
-    display_df = df.map(truncate_cell)
+    display_df = df.map(lambda value: _format_table_cell(value, max_cell_width=max_cell_width))
+
+    if _has_large_text_cell(display_df, threshold=_RECORD_FORMAT_THRESHOLD):
+        return _format_records(
+            df,
+            max_visible_rows=max_visible_rows,
+            max_cell_width=max_cell_width,
+            floatfmt=floatfmt,
+            add_bottom_ellipsis_row=add_bottom_ellipsis_row,
+        )
 
     n = len(display_df)
     if n > max_visible_rows:
