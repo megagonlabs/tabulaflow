@@ -110,27 +110,54 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "openai:" not in options
 
 
-async def test_custom_model_is_entered_inline_without_another_screen() -> None:
+async def test_filter_accepts_a_custom_model_identifier() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test() as pilot:
-        await pilot.press("down", "enter", *"gpt-5.6", "tab")
+        await pilot.press("down", "enter", *"test:model")
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        assert "Choose model" in str(picker.query_one("#model-picker-title", Static).render())
         options = str(picker.query_one("#model-options", Static).render())
-        assert "openai:gpt-5.6-sol" in options
-        assert "Custom model" in options
+        assert "Use test:model  (custom)" in options
+        assert "Search or enter custom model ID" in str(picker.query_one("#model-picker-hint", Static).render())
+        assert "Tab" not in str(picker.query_one("#model-picker-hint", Static).render())
 
         await pilot.press("enter")
         await pilot.pause()
-        assert "provider:model" in str(picker.query_one("#model-options", Static).render())
-
-        await pilot.press(*"test:model", "enter")
-        await pilot.pause()
         assert app.screen is screen
         assert "test:model" in _text(screen, "#field-main-model")
+
+
+async def test_model_matches_are_selected_before_custom_identifier() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter", *"openai:gpt-5.6")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "  Use openai:gpt-5.6  (custom)" in options
+        assert "❯ openai:gpt-5.6-sol  (recommended)" in options
+
+        await pilot.press("up", "enter")
+        await pilot.pause()
+        assert app.screen is screen
+        assert "openai:gpt-5.6" in _text(screen, "#field-main-model")
+
+
+async def test_no_matches_explains_custom_identifier_format() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter", *"not-a-model")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        options = str(picker.query_one("#model-options", Static).render())
+        assert "No matching models" in options
+        assert "enter its full ID in provider:model format" in options
 
 
 async def test_role_specific_recommendations_and_bounded_catalog() -> None:

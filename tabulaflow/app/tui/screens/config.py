@@ -28,7 +28,6 @@ from tabulaflow.app.config import (
 )
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
-_CUSTOM_MODEL = "Enter a custom model identifier…"
 _REASONING_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
 _VISIBLE_MODEL_ROWS = 10
 
@@ -52,7 +51,6 @@ class ModelPickerScreen(Screen[str | None]):
         Binding("down", "move(1)", "Next", show=False, priority=True),
         Binding("enter", "select", "Select", show=False, priority=True),
         Binding("backspace", "erase_filter", "Edit filter", show=False, priority=True),
-        Binding("tab", "edit_custom", "Custom model", show=False, priority=True),
     ]
 
     def __init__(self, role: str, current: str) -> None:
@@ -64,9 +62,6 @@ class ModelPickerScreen(Screen[str | None]):
         self._visible = self._models
         self._cursor = self._visible.index(current)
         self._filter = ""
-        self._editing_custom = False
-        self._custom_value = ""
-        self._custom_error: str | None = None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="model-picker"):
@@ -81,53 +76,28 @@ class ModelPickerScreen(Screen[str | None]):
     def on_key(self, event: events.Key) -> None:
         if not event.is_printable or event.character is None:
             return
-        if self._editing_custom:
-            self._custom_value += event.character
-            self._custom_error = None
-            self._refresh()
-        else:
-            self._filter += event.character
-            self._apply_filter()
+        self._filter += event.character
+        self._apply_filter()
         event.stop()
         event.prevent_default()
 
     def action_move(self, delta: int) -> None:
-        if self._editing_custom:
+        option_count = len(self._visible) + (self._custom_model is not None)
+        if not option_count:
             return
-        option_count = len(self._visible) + 1
         self._cursor = max(0, min(option_count - 1, self._cursor + delta))
         self._refresh()
 
     def action_select(self) -> None:
-        if self._editing_custom:
-            try:
-                model = LLMRoleConfig(model=self._custom_value).model
-            except ValueError:
-                self._custom_error = "Use the provider:model format."
-                self._refresh()
-                return
-            self.dismiss(model)
+        custom_model = self._custom_model
+        if custom_model is not None and self._cursor == 0:
+            self.dismiss(custom_model)
             return
-        if self._cursor < len(self._visible):
-            self.dismiss(self._visible[self._cursor])
-            return
-        self.action_edit_custom()
-
-    def action_edit_custom(self) -> None:
-        if self._editing_custom:
-            return
-        self._editing_custom = True
-        self._custom_value = ""
-        self._custom_error = None
-        self._refresh()
+        model_index = self._cursor - (custom_model is not None)
+        if model_index < len(self._visible):
+            self.dismiss(self._visible[model_index])
 
     def action_erase_filter(self) -> None:
-        if self._editing_custom:
-            if self._custom_value:
-                self._custom_value = self._custom_value[:-1]
-                self._custom_error = None
-                self._refresh()
-            return
         if self._filter:
             self._filter = self._filter[:-1]
             self._apply_filter()
@@ -135,16 +105,19 @@ class ModelPickerScreen(Screen[str | None]):
     def _apply_filter(self) -> None:
         query = self._filter.casefold()
         self._visible = tuple(model for model in self._models if query in model.casefold())
-        self._cursor = 0
+        self._cursor = 1 if self._custom_model is not None and self._visible else 0
         self._refresh()
 
     def action_cancel(self) -> None:
-        if self._editing_custom:
-            self._editing_custom = False
-            self._custom_error = None
-            self._refresh()
-            return
         self.dismiss(None)
+
+    @property
+    def _custom_model(self) -> str | None:
+        try:
+            model = LLMRoleConfig(model=self._filter).model
+        except ValueError:
+            return None
+        return model if model not in self._models else None
 
     def _refresh(self) -> None:
         title_text = "Choose model" if self._role == "main" else "Choose model for subagent"
@@ -154,65 +127,45 @@ class ModelPickerScreen(Screen[str | None]):
             title.append(f"“{self._filter}”", style="bold")
         self.query_one("#model-picker-title", Static).update(title)
 
-        visible_count = len(self._visible)
-        if self._cursor < visible_count:
-            start = max(0, min(self._cursor - _VISIBLE_MODEL_ROWS // 2, visible_count - _VISIBLE_MODEL_ROWS))
-        else:
-            start = max(0, visible_count - _VISIBLE_MODEL_ROWS)
-        end = min(start + _VISIBLE_MODEL_ROWS, visible_count)
+        custom_model = self._custom_model
+        rows = [(model, False) for model in self._visible]
+        if custom_model is not None:
+            rows.insert(0, (custom_model, True))
+        row_count = len(rows)
+        start = max(0, min(self._cursor - _VISIBLE_MODEL_ROWS // 2, row_count - _VISIBLE_MODEL_ROWS))
+        end = min(start + _VISIBLE_MODEL_ROWS, row_count)
 
         options = Text()
         if start:
             options.append(f"  ↑ {start} more\n", style="dim")
         for index in range(start, end):
-            model = self._visible[index]
-            selected = not self._editing_custom and index == self._cursor
+            model, is_custom = rows[index]
+            selected = index == self._cursor
             options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
-            options.append(model, style="bold" if selected else "")
-            if model in self._recommended:
+            options.append(f"Use {model}" if is_custom else model, style="bold" if selected else "")
+            if is_custom:
+                options.append("  (custom)", style="dim")
+            elif model in self._recommended:
                 options.append("  (recommended)", style="dim")
             options.append("\n")
-        if end < visible_count:
-            options.append(f"  ↓ {visible_count - end} more\n", style="dim")
+        if end < row_count:
+            options.append(f"  ↓ {row_count - end} more\n", style="dim")
 
-        selected = not self._editing_custom and self._cursor == len(self._visible)
-        options.append("❯ " if selected or self._editing_custom else "  ", style=ACCENT_BOLD)
-        if self._editing_custom:
-            options.append("Custom model", style="bold")
-            options.append("\n    ")
-            if self._custom_value:
-                options.append(self._custom_value, style="bold")
-            else:
-                options.append("provider:model", style="dim")
-            options.append("_", style=ACCENT_BOLD)
-            if self._custom_error is not None:
-                options.append(f"\n    {self._custom_error}", style="red")
-        else:
-            options.append(_CUSTOM_MODEL, style="bold" if selected else "")
+        if not row_count:
+            options.append("  No matching models\n", style="dim")
+            options.append("  To use a custom model, enter its full ID in provider:model format.", style="dim")
         self.query_one("#model-options", Static).update(options)
 
-        if self._editing_custom:
-            hint = Text.assemble(
-                ("Esc", KEY_HINT),
-                (" Back · ", "dim"),
-                ("Type", KEY_HINT),
-                (" Enter identifier · ", "dim"),
-                ("Enter", KEY_HINT),
-                (" Use", "dim"),
-            )
-        else:
-            hint = Text.assemble(
-                ("Esc", KEY_HINT),
-                (" Back · ", "dim"),
-                ("↑↓", KEY_HINT),
-                (" Navigate · ", "dim"),
-                ("Type", KEY_HINT),
-                (" Filter · ", "dim"),
-                ("Enter", KEY_HINT),
-                (" Select · ", "dim"),
-                ("Tab", KEY_HINT),
-                (" Custom", "dim"),
-            )
+        hint = Text.assemble(
+            ("Esc", KEY_HINT),
+            (" Back · ", "dim"),
+            ("↑↓", KEY_HINT),
+            (" Navigate · ", "dim"),
+            ("Type", KEY_HINT),
+            (" Search or enter custom model ID · ", "dim"),
+            ("Enter", KEY_HINT),
+            (" Select", "dim"),
+        )
         self.query_one("#model-picker-hint", Static).update(hint)
 
 
