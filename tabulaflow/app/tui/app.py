@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -27,7 +28,6 @@ from tabulaflow.app.tui.commands import (
     redact_command_credentials,
 )
 from tabulaflow.app.config import (
-    PROVIDER_API_KEY_ENV,
     LLMConfig,
     ResolvedLLMConfig,
     update_app_config,
@@ -64,8 +64,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
+_API_KEY_SETTING_RE = re.compile(r"\b[A-Z][A-Z0-9_]*_API_KEY\b")
 _MAX_ERROR_MESSAGE_LENGTH = 300
-LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. /connect and browsing remain available."
+LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. Data connections and browsing remain available."
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
     "\x1b[?2004l"  # bracketed paste off
     "\x1b[?7h"  # line wrap on
@@ -142,24 +143,22 @@ def _format_agent_turn_failure(error: Exception) -> str:
     return f"{type(error).__name__}."
 
 
-def _normalize_llm_activation_error(error: Exception, config: LLMConfig) -> str:
+def _normalize_llm_activation_error(error: Exception) -> str:
     """Return an actionable one-line explanation for an LLM activation error."""
     message = _sanitize_exception_message(error)
-    for role in (config.main, config.subagent):
-        provider = role.model.partition(":")[0]
-        if setting := PROVIDER_API_KEY_ENV.get(provider):
-            if setting in message:
-                return f"{setting} is not set. Set it and restart the app, or choose another model in /config."
+    if match := _API_KEY_SETTING_RE.search(message):
+        setting = match.group()
+        return f"{setting} is not set. Set it and restart TabulaFlow, or choose another model in /config."
 
     if isinstance(error, KeyError) and len(error.args) == 1 and error.args[0] in _REQUIRED_LLM_SETTINGS:
         setting = error.args[0]
-        return f"{setting} is not set. Set it and restart the app, or choose another model in /config."
+        return f"{setting} is not set. Set it and restart TabulaFlow, or choose another model in /config."
 
     from pydantic_ai.exceptions import UserError
 
     if isinstance(error, UserError) or message.startswith(("Unknown model:", "Unknown provider:")):
         detail = message or f"{type(error).__name__}."
-        return f"{detail} Update app_config.json or choose another model in /config."
+        return f"{detail} Choose another model in /config."
     detail = f"{type(error).__name__}: {message}" if message else f"{type(error).__name__}."
     return f"Initialization failed: {detail} Choose another model in /config."
 
@@ -760,7 +759,7 @@ class TabulaflowApp(App[None]):
         if config is None:
             raise RuntimeError("Cannot finish activation without an LLM configuration.")
         if isinstance(result, Exception):
-            self._llm_activation_error = _normalize_llm_activation_error(result, config)
+            self._llm_activation_error = _normalize_llm_activation_error(result)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             message.append(self._llm_unavailable_message())
         else:
@@ -779,7 +778,7 @@ class TabulaflowApp(App[None]):
     def _llm_unavailable_message(self) -> str:
         if self._llm_activation_error is None:
             return LLM_UNAVAILABLE_MESSAGE
-        return f"{self._llm_activation_error} /connect and browsing remain available."
+        return f"{self._llm_activation_error} Data connections and browsing remain available."
 
     async def _push_turn_to_pane(
         self,

@@ -16,14 +16,6 @@ from tabulaflow.agents.llm import ReasoningLevel, uses_openai_responses
 
 APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF: Literal["off"] = "off"
-PROVIDER_API_KEY_ENV = {
-    "anthropic": "ANTHROPIC_API_KEY",
-    "fireworks": "FIREWORKS_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "openai-chat": "OPENAI_API_KEY",
-    "openai-responses": "OPENAI_API_KEY",
-    "together": "TOGETHER_API_KEY",
-}
 
 
 def model_supports_apply_patch(model: str) -> bool:

@@ -586,51 +586,46 @@ def test_masked_api_key(api_key: str, expected: str | None) -> None:
 
 
 @pytest.mark.parametrize(
-    ("error", "model", "expected"),
+    ("error", "expected"),
     [
         (
             UserError("Set the ANTHROPIC_API_KEY environment variable via AnthropicProvider."),
-            "anthropic:claude-opus-4-8",
-            "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another model in /config.",
+            "ANTHROPIC_API_KEY is not set. Set it and restart TabulaFlow, or choose another model in /config.",
         ),
         (
             RuntimeError("Set the OPENAI_API_KEY environment variable."),
-            "openai:gpt-5",
-            "OPENAI_API_KEY is not set. Set it and restart the app, or choose another model in /config.",
+            "OPENAI_API_KEY is not set. Set it and restart TabulaFlow, or choose another model in /config.",
+        ),
+        (
+            UserError("Set the `ZAI_API_KEY` environment variable or pass it via `ZaiProvider(api_key=...)`."),
+            "ZAI_API_KEY is not set. Set it and restart TabulaFlow, or choose another model in /config.",
         ),
         (
             UserError("Unknown model: invalid"),
-            "anthropic:claude-opus-4-8",
-            "Unknown model: invalid. Update app_config.json or choose another model in /config.",
+            "Unknown model: invalid. Choose another model in /config.",
         ),
         (
             ValueError("Unknown provider: invalid"),
-            "anthropic:claude-opus-4-8",
-            "Unknown provider: invalid. Update app_config.json or choose another model in /config.",
+            "Unknown provider: invalid. Choose another model in /config.",
         ),
         (
             KeyError("GOOGLE_CLOUD_PROJECT"),
-            "anthropic:claude-opus-4-8",
-            "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another model in /config.",
+            "GOOGLE_CLOUD_PROJECT is not set. Set it and restart TabulaFlow, or choose another model in /config.",
         ),
     ],
 )
-def test_llm_activation_error_is_actionable(error: Exception, model: str, expected: str) -> None:
-    config = _llm_config(model=model, subagent_model="openai:gpt-5-mini")
-
-    assert tui._normalize_llm_activation_error(error, config) == expected
+def test_llm_activation_error_is_actionable(error: Exception, expected: str) -> None:
+    assert tui._normalize_llm_activation_error(error) == expected
 
 
 def test_llm_activation_error_is_redacted_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
-    config = _llm_config(model="anthropic:claude-opus-4-8")
     api_key = "secret-api-key-1234"
     monkeypatch.setenv("VENDOR_API_KEY", api_key)
 
     normalized = tui._normalize_llm_activation_error(
         RuntimeError(f"first line\nsecond line leaked {api_key}"),
-        config,
     )
-    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), config)
+    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500))
 
     assert normalized == (
         "Initialization failed: RuntimeError: first line second line leaked sec***1234. "
@@ -806,11 +801,11 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
             "LLM unavailable: Initialization failed: RuntimeError: missing credential. "
-            "Choose another model in /config. /connect and browsing remain available."
+            "Choose another model in /config. Data connections and browsing remain available."
         ]
         assert app._llm_unavailable_message() == (
             "Initialization failed: RuntimeError: missing credential. "
-            "Choose another model in /config. /connect and browsing remain available."
+            "Choose another model in /config. Data connections and browsing remain available."
         )
         assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", HistoryInput).disabled

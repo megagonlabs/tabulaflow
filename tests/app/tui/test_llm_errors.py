@@ -5,7 +5,7 @@ from tabulaflow.agents.llm import model_label
 
 
 def test_llm_unavailable_message_is_provider_neutral() -> None:
-    assert LLM_UNAVAILABLE_MESSAGE == ("Configure models in /config. /connect and browsing remain available.")
+    assert LLM_UNAVAILABLE_MESSAGE == ("Configure models in /config. Data connections and browsing remain available.")
     assert "Anthropic" not in LLM_UNAVAILABLE_MESSAGE
     assert "ANTHROPIC_API_KEY" not in LLM_UNAVAILABLE_MESSAGE
     assert "AnthropicProvider" not in LLM_UNAVAILABLE_MESSAGE
