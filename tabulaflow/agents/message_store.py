@@ -3,9 +3,9 @@
 User prompts and string tool results can be stored in
 ``workspace._internal.messages`` and represented to the model by a short
 ``[message_id=M<n>]`` marker. Large values are reduced to a head-and-tail snippet
-that includes the exact ``run_query`` call needed to retrieve the stored body. This
-keeps prompts bounded without preventing the agent, document extractors, or nested
-subagents from accessing the complete content later.
+that identifies their stored row. This keeps prompts bounded without preventing the
+agent, document extractors, or nested subagents from accessing the complete content
+later.
 
 Storage is best-effort and fail-open. An id is returned only after its row has been
 written successfully; without a workspace or after a write failure, callers keep the
@@ -79,26 +79,17 @@ def make_marked(message_id: str, content: str) -> str:
     return f"{id_marker(message_id)}\n{content}"
 
 
-def deref_call(message_id: str) -> str:
-    """Return the ``run_query`` call that fetches a stored message's full content.
-
-    Shared by every snippet builder so the dereference pointer (workspace alias,
-    schema-qualified table) is written in exactly one place.
-    """
-    return f'run_query(connector_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
-
-
 def make_snippet(message_id: str, content: str) -> str:
     """Return the head+tail snippet shown to the LLM for an overflowed message.
 
-    The marker is self-describing: it names the ``run_query`` call (with the
-    ``workspace`` alias and a schema-qualified table) that fetches the full
-    content, so a reader needs no out-of-band instructions to dereference it.
+    The marker identifies the row holding the complete content without prescribing
+    how an agent should inspect it. It may query, search, chunk, or join that row
+    according to the task.
     """
     total = len(content)
     head = content[:MESSAGE_HEAD_CHARS]
     tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
-    marker = f"... [truncated, {total} chars total — read full content with {deref_call(message_id)}]"
+    marker = f"... [truncated, {total} chars total — full content is available in {_SCHEMA}.{_TABLE} for message_id='{message_id}']"
     parts = [id_marker(message_id), head, marker]
     if tail:
         parts.append(tail)

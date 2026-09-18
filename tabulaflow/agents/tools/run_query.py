@@ -20,6 +20,7 @@ _UNSET = object()
 _MAX_MEDIA_ITEMS = 10
 _MAX_MEDIA_BYTES = 25 * 1024 * 1024
 _MAX_MEDIA_ISSUES = 5
+_MAX_CELL_CHARS = 16_000
 
 
 def _media_source(column: object, index: int | None) -> str:
@@ -213,15 +214,20 @@ class RunQueryTool:
     (``CREATE`` / ``DROP`` / ``ALTER``) and the connector's cached schema
     must reflect the new state for subsequent ``get_table_schema`` calls.
 
+    When ``enable_max_cell_chars=True``, the tool schema includes a
+    ``max_cell_chars`` argument for expanding textual result cells beyond the
+    normal compact preview.
+
     Attributes:
         connector: Data connector to execute queries against.
         enable_params: Whether to expose the ``parameters`` argument to the LLM.
         enable_refresh: Whether to expose the ``refresh`` argument to the LLM.
         enable_media: Whether to expose inline result-cell media inspection.
+        enable_max_cell_chars: Whether to expose expanded text-cell output.
         timeout: Query timeout in seconds. When omitted, use the connector default;
             ``None`` explicitly disables the timeout.
         max_visible_rows: Maximum rows shown in the formatted output.
-        max_cell_width: Maximum character width per cell in the formatted output.
+        max_cell_width: Default maximum character width per cell in the formatted output.
         floatfmt: Float format string passed to tabulate.
     """
 
@@ -234,6 +240,7 @@ class RunQueryTool:
         enable_params: bool = False,
         enable_refresh: bool = False,
         enable_media: bool = False,
+        enable_max_cell_chars: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -243,6 +250,7 @@ class RunQueryTool:
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
         self.enable_media = enable_media
+        self.enable_max_cell_chars = enable_max_cell_chars
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -256,6 +264,7 @@ class RunQueryTool:
         refresh: bool = False,
         *,
         include_media: bool = False,
+        max_cell_chars: int | None = None,
     ) -> QueryExecution:
         """Execute one query and return both agent-facing output and recorded query data."""
 
@@ -273,7 +282,7 @@ class RunQueryTool:
         prepared_media = PreparedResultMedia((), 0, 0, ())
         if include_media and exec_result.df is not None:
             prepared_media = _prepare_result_media(exec_result.df)
-        res = self._format_exec_result(exec_result)
+        res = self._format_exec_result(exec_result, max_cell_chars=max_cell_chars)
         if include_media:
             res += _format_media_summary(prepared_media)
         if refresh:
@@ -290,7 +299,7 @@ class RunQueryTool:
             media_content=prepared_media.content,
         )
 
-    def _format_exec_result(self, exec_result: ExecResult) -> str:
+    def _format_exec_result(self, exec_result: ExecResult, *, max_cell_chars: int | None = None) -> str:
         if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
@@ -323,11 +332,20 @@ class RunQueryTool:
         if df.empty:
             return f"(query executed successfully, but results are empty){lat_line}{graph_line}"
 
+        effective_max_cell_chars = self.max_cell_width if max_cell_chars is None else max_cell_chars
+        effective_max_cell_chars = min(effective_max_cell_chars, _MAX_CELL_CHARS)
         res = format_dataframe(
-            df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
+            df,
+            max_visible_rows=self.max_visible_rows,
+            max_cell_width=effective_max_cell_chars,
+            floatfmt=self.floatfmt,
         )
         res += f"\n({len(df)} rows){lat_line}{graph_line}"
-        res += f"\n\n(display configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
+        res += (
+            "\n\n(display configuration: "
+            f"max_visible_rows={self.max_visible_rows}, max_cell_chars={effective_max_cell_chars}, "
+            f"floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
+        )
 
         for hint in _detect_result_hints(df):
             res += f"\n({hint})"
@@ -340,6 +358,7 @@ class RunQueryTool:
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
         include_media: bool = False,
+        max_cell_chars: int | None = None,
     ) -> ToolReturn:
         """Execute a query against the database and return formatted results.
 
@@ -356,12 +375,14 @@ class RunQueryTool:
                 to the model for inspection. Audio and video remain available for
                 artifact display but are not attached to the model. Does not fetch
                 paths, URLs, or object-store URIs.
+            max_cell_chars: Maximum characters to show in each text cell.
         """
         execution = await self.execute(
             query,
             parameters,
             refresh and self.enable_refresh,
             include_media=include_media and self.enable_media,
+            max_cell_chars=max_cell_chars if self.enable_max_cell_chars else None,
         )
         return ToolReturn(
             return_value=execution.output,
@@ -377,6 +398,8 @@ class RunQueryTool:
             omitted.append("refresh")
         if not self.enable_media:
             omitted.append("include_media")
+        if not self.enable_max_cell_chars:
+            omitted.append("max_cell_chars")
         return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:

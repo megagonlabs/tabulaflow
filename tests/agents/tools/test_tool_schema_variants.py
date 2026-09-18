@@ -80,19 +80,21 @@ def test_refresh_parameter_is_exposed_only_when_enabled(factory: Callable[[bool]
 
 
 @pytest.mark.parametrize(
-    ("enable_params", "enable_refresh", "enable_media", "expected"),
+    ("enable_params", "enable_refresh", "enable_media", "enable_max_cell_chars", "expected"),
     [
-        (False, False, False, {"connector_alias", "query"}),
-        (True, False, False, {"connector_alias", "query", "parameters"}),
-        (False, True, False, {"connector_alias", "query", "refresh"}),
-        (False, False, True, {"connector_alias", "query", "include_media"}),
-        (True, True, True, {"connector_alias", "query", "parameters", "refresh", "include_media"}),
+        (False, False, False, False, {"connector_alias", "query"}),
+        (True, False, False, False, {"connector_alias", "query", "parameters"}),
+        (False, True, False, False, {"connector_alias", "query", "refresh"}),
+        (False, False, True, False, {"connector_alias", "query", "include_media"}),
+        (False, False, False, True, {"connector_alias", "query", "max_cell_chars"}),
+        (True, True, True, True, {"connector_alias", "query", "parameters", "refresh", "include_media", "max_cell_chars"}),
     ],
 )
 def test_registry_run_query_exposes_enabled_parameters(
     enable_params: bool,
     enable_refresh: bool,
     enable_media: bool,
+    enable_max_cell_chars: bool,
     expected: set[str],
 ) -> None:
     tool = RegistryRunQueryTool(
@@ -100,6 +102,7 @@ def test_registry_run_query_exposes_enabled_parameters(
         enable_params=enable_params,
         enable_refresh=enable_refresh,
         enable_media=enable_media,
+        enable_max_cell_chars=enable_max_cell_chars,
     )
 
     assert _fields(tool.as_pydantic_ai_tool()) == expected

@@ -356,6 +356,23 @@ async def test_run_query_refresh_disabled_ignores_flag(db_connector: SQLConnecto
     assert "thingamajigs" not in {t.name for t in db_connector.schema.tables}
 
 
+async def test_run_query_expands_text_cells_when_enabled(db_connector: SQLConnector) -> None:
+    content = "a" * 400
+    parameters = [LLMParameter(parameter_name="content", parameter_value=content)]
+
+    disabled = await RunQueryTool(db_connector, enable_params=True)(
+        "SELECT :content AS content", parameters=parameters, max_cell_chars=400
+    )
+    enabled = await RunQueryTool(db_connector, enable_params=True, enable_max_cell_chars=True)(
+        "SELECT :content AS content", parameters=parameters, max_cell_chars=400
+    )
+
+    assert content not in disabled.return_value
+    assert "max_cell_chars=200" in disabled.return_value
+    assert content in enabled.return_value
+    assert "max_cell_chars=400" in enabled.return_value
+
+
 def test_run_query_pydantic_tool_signatures() -> None:
     """The prepared schema should contain only enabled model-facing fields."""
     from pydantic_ai.tools import ToolDefinition
@@ -368,18 +385,20 @@ def test_run_query_pydantic_tool_signatures() -> None:
     stub: Any = _StubConnector()
 
     matrix = [
-        (False, False, False, {"query"}),
-        (True, False, False, {"query", "parameters"}),
-        (False, True, False, {"query", "refresh"}),
-        (False, False, True, {"query", "include_media"}),
-        (True, True, True, {"query", "parameters", "refresh", "include_media"}),
+        (False, False, False, False, {"query"}),
+        (True, False, False, False, {"query", "parameters"}),
+        (False, True, False, False, {"query", "refresh"}),
+        (False, False, True, False, {"query", "include_media"}),
+        (False, False, False, True, {"query", "max_cell_chars"}),
+        (True, True, True, True, {"query", "parameters", "refresh", "include_media", "max_cell_chars"}),
     ]
-    for enable_params, enable_refresh, enable_media, expected in matrix:
+    for enable_params, enable_refresh, enable_media, enable_max_cell_chars, expected in matrix:
         tool = RunQueryTool(
             stub,
             enable_params=enable_params,
             enable_refresh=enable_refresh,
             enable_media=enable_media,
+            enable_max_cell_chars=enable_max_cell_chars,
             timeout=None,
         )
         pai_tool = tool.as_pydantic_ai_tool()
@@ -389,7 +408,7 @@ def test_run_query_pydantic_tool_signatures() -> None:
             assert isinstance(prepared, ToolDefinition)
             tool_def = prepared
         fields = set((tool_def.parameters_json_schema.get("properties") or {}).keys())
-        assert fields == expected, (enable_params, enable_refresh, enable_media, fields)
+        assert fields == expected, (enable_params, enable_refresh, enable_media, enable_max_cell_chars, fields)
 
 
 async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:

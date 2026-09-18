@@ -2,7 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
-from tabulaflow.agents.message_store import MessageStore, MessageStoreCapability
+from tabulaflow.agents.message_store import MessageStore, MessageStoreCapability, make_snippet
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 
@@ -41,6 +41,14 @@ async def test_message_store_persists_and_returns_id(tmp_path: Path) -> None:
 
 async def test_message_store_returns_none_without_connector() -> None:
     assert await MessageStore().add(kind="user_prompt", content="hello") is None
+
+
+def test_message_store_snippet_identifies_content_without_prescribing_a_query() -> None:
+    snippet = make_snippet("M7", "x" * 30_000)
+
+    assert "_internal.messages" in snippet
+    assert "message_id='M7'" in snippet
+    assert "run_query(" not in snippet
 
 
 async def test_message_store_capability_preserves_content_when_storage_fails() -> None:

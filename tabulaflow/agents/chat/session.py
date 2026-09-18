@@ -296,6 +296,7 @@ class ChatSession:
                 output_store=self._output_store,
                 enable_refresh=True,
                 enable_media=True,
+                enable_max_cell_chars=True,
             ),
             create_parameterized_source=CreateParameterizedArtifactSourceTool(
                 self._registry, output_store=self._output_store

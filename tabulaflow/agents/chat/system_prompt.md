@@ -188,8 +188,9 @@ other formats, COPY to parquet or csv first, then convert with the shell.
 
 Every browser response is mirrored, and very long user prompts and tool responses are offloaded, into the
 `_internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)` table of
-`workspace`. An offloaded message arrives as a head+tail snippet whose marker names the exact `run_query` call
-that fetches the full content — process it programmatically rather than paging it through your context:
+`workspace`. An offloaded message arrives as a head+tail snippet identifying its stored row. Query, search,
+chunk, or join the stored content as appropriate rather than paging it through your context. Use
+`max_cell_chars` on `run_query` when a bounded larger text-cell preview is useful:
 - To hand a long message to a subagent, leave it offloaded and JOIN `_internal.messages` in the `task_query` so
   the content arrives as a column — e.g. `SELECT m.message_id, m.content AS chunk FROM _internal.messages m
   WHERE m.message_id = 'M7'`; the `task_instruction` references it as `{{ chunk }}`.

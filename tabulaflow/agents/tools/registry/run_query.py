@@ -32,6 +32,7 @@ class RegistryRunQueryTool:
         enable_params: bool = False,
         enable_refresh: bool = False,
         enable_media: bool = False,
+        enable_max_cell_chars: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -48,6 +49,8 @@ class RegistryRunQueryTool:
                 the LLM.  When True, the agent can request a connector
                 schema refresh after DDL.
             enable_media: Whether to expose inline result-cell media inspection.
+            enable_max_cell_chars: Whether to expose ``max_cell_chars`` so the
+                agent can expand textual result cells.
             timeout: Query timeout in seconds. When omitted, use each connector's
                 default; ``None`` explicitly disables the timeout.
             max_visible_rows: Maximum rows shown in the formatted output.
@@ -61,6 +64,7 @@ class RegistryRunQueryTool:
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
         self.enable_media = enable_media
+        self.enable_max_cell_chars = enable_max_cell_chars
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -82,6 +86,7 @@ class RegistryRunQueryTool:
             enable_params=self.enable_params,
             enable_refresh=self.enable_refresh,
             enable_media=self.enable_media,
+            enable_max_cell_chars=self.enable_max_cell_chars,
             max_visible_rows=self.max_visible_rows,
             max_cell_width=self.max_cell_width,
             floatfmt=self.floatfmt,
@@ -97,6 +102,7 @@ class RegistryRunQueryTool:
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
         include_media: bool = False,
+        max_cell_chars: int | None = None,
     ) -> ToolReturn:
         """Execute a query against a registered data source.
 
@@ -111,6 +117,7 @@ class RegistryRunQueryTool:
                 to the model for inspection. Audio and video remain available for
                 artifact display but are not attached to the model. Does not fetch
                 paths, URLs, or object-store URIs.
+            max_cell_chars: Maximum characters to show in each text cell.
         """
         try:
             tool = self._get_tool(connector_alias)
@@ -125,6 +132,7 @@ class RegistryRunQueryTool:
             parameters,
             refresh and self.enable_refresh,
             include_media=include_media and self.enable_media,
+            max_cell_chars=max_cell_chars if self.enable_max_cell_chars else None,
         )
         exec_result = execution.exec_result
         if exec_result.error is not None:
@@ -155,6 +163,8 @@ class RegistryRunQueryTool:
             omitted.append("refresh")
         if not self.enable_media:
             omitted.append("include_media")
+        if not self.enable_max_cell_chars:
+            omitted.append("max_cell_chars")
         return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:
