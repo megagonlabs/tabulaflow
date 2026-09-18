@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from unittest import mock
+
 from pygments import lex
 from pygments.lexers import get_lexer_by_name
 from pygments.token import Token
 from rich.segment import Segment
+from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 from textual.content import Content
 from textual.geometry import Offset
+from textual.screen import Screen
 from textual.selection import Selection
 from textual.strip import Strip
+from textual.widgets import Static
 from textual.widgets._markdown import MarkdownParagraph, MarkdownTableCellContents
 
 from tabulaflow.app.theme import (
@@ -19,6 +24,7 @@ from tabulaflow.app.theme import (
     CODE_STRING,
     CODE_TEXT,
 )
+from tabulaflow.app.tui.app import _SelectionGuardScreen
 from tabulaflow.app.tui.theme import TabulaflowCodeHighlightTheme
 from tabulaflow.app.tui.widgets.markdown import (
     AgentMarkdownFence,
@@ -41,6 +47,9 @@ class _AgentMarkdownApp(App[None]):
         variables["focus-surface"] = "#1a212c"
         return variables
 
+    def get_default_screen(self) -> _SelectionGuardScreen:
+        return _SelectionGuardScreen(id="_default")
+
     def compose(self) -> ComposeResult:
         yield VerticalScroll(self.progress, id="chat-log")
 
@@ -48,6 +57,22 @@ class _AgentMarkdownApp(App[None]):
 def test_agent_markdown_blocks_are_selectable() -> None:
     assert AgentTextBlock.ALLOW_SELECT is True
     assert FrozenAgentTextBlock.ALLOW_SELECT is True
+
+
+async def test_selection_ignores_a_detached_compositor_hit() -> None:
+    app = _AgentMarkdownApp()
+
+    async with app.run_test(size=(80, 20)) as pilot:
+        await pilot.pause()
+        widget = Static("stale")
+        await app.query_one("#chat-log").mount(widget)
+        await widget.remove()
+        assert widget.parent is None
+
+        with mock.patch.object(Screen, "get_widget_and_offset_at", return_value=(widget, Offset(0, 0))):
+            app.screen._forward_event(events.MouseDown(None, 1, 1, 0, 0, 1, False, False, False))
+
+        assert app.screen._select_state is None
 
 
 def test_frozen_markdown_selection_uses_snapshot_text() -> None:

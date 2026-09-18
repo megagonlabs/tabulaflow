@@ -14,7 +14,10 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.geometry import Offset
+from textual.screen import Screen
 from textual.timer import Timer
+from textual.widget import Widget
 from textual.worker import Worker
 from textual.widgets import Button, Static
 
@@ -227,6 +230,19 @@ def _focused_has_binding_for(widget: object, key: str) -> bool:
     return False
 
 
+class _SelectionGuardScreen(Screen[None]):
+    """Ignore stale compositor hits until Textualize/textual#6643 is released.
+
+    https://github.com/Textualize/textual/issues/6643
+    """
+
+    def get_widget_and_offset_at(self, x: int, y: int) -> tuple[Widget | None, Offset | None]:
+        widget, offset = super().get_widget_and_offset_at(x, y)
+        if widget is not None and not widget.is_attached:
+            return None, None
+        return widget, offset
+
+
 class TabulaflowApp(App[None]):
     """Interactive data-source chat TUI."""
 
@@ -252,6 +268,9 @@ class TabulaflowApp(App[None]):
         Binding("pageup", "scroll_log('pageup')", "Scroll up", show=False, priority=True),
         Binding("pagedown", "scroll_log('pagedown')", "Scroll down", show=False, priority=True),
     ]
+
+    def get_default_screen(self) -> _SelectionGuardScreen:
+        return _SelectionGuardScreen(id="_default")
 
     _QUIT_CONFIRMATION_WINDOW = 2.0
 
