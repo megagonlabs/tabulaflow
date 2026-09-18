@@ -66,9 +66,9 @@ def test_model_catalog_prioritizes_current_provider() -> None:
         "openai:gpt-5.6-sol",
         "anthropic:claude-sonnet-5",
         "anthropic:claude-opus-5",
-        "anthropic:claude-opus-4-8",
+        "anthropic:claude-haiku-4-5",
     )
-    assert catalog.index("xai:grok-4.20") < catalog.index("moonshotai:kimi-k3")
+    assert catalog.index("xai:grok-4.6") < catalog.index("moonshotai:kimi-k3")
     assert catalog.index("moonshotai:kimi-k3") < catalog.index("deepseek:deepseek-v4-pro")
 
 
@@ -88,8 +88,8 @@ def test_curated_openai_models_only_include_selected_gpt_families() -> None:
         "openai:gpt-5.6-sol",
         "openai:gpt-5.6-terra",
         "openai:gpt-5.6-luna",
-        "openai:gpt-5.6-cyber",
         "openai:gpt-5.5",
+        "openai:gpt-5",
         "openai:gpt-5.4-mini",
         "openai:gpt-5-mini",
     )
