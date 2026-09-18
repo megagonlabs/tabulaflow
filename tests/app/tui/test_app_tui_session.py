@@ -612,10 +612,40 @@ def test_masked_api_key(api_key: str, expected: str | None) -> None:
             KeyError("GOOGLE_CLOUD_PROJECT"),
             "GOOGLE_CLOUD_PROJECT is not set. Set it and restart TabulaFlow, or choose another model in /config.",
         ),
+        (
+            UserError("Set the `HF_TOKEN` environment variable or pass it via `HuggingFaceProvider(api_key=...)`."),
+            "HF_TOKEN is not set. Set it and restart TabulaFlow, or choose another model in /config.",
+        ),
+        (
+            UserError(
+                "Set the `SNOWFLAKE_ACCOUNT` environment variable or pass it via `SnowflakeProvider(account=...)`."
+            ),
+            "SNOWFLAKE_ACCOUNT is not set. Set it and restart TabulaFlow, or choose another model in /config.",
+        ),
+        (
+            UserError("Set the `HEROKU_INFERENCE_KEY` environment variable."),
+            "HEROKU_INFERENCE_KEY is not set. Set it and restart TabulaFlow, or choose another model in /config.",
+        ),
     ],
 )
 def test_llm_activation_error_is_actionable(error: Exception, expected: str) -> None:
     assert tui._normalize_llm_activation_error(error) == expected
+
+
+def test_llm_activation_error_normalizes_cloud_credentials() -> None:
+    from google.auth.exceptions import DefaultCredentialsError
+
+    error = cast(type[Exception], DefaultCredentialsError)("missing ADC")
+    assert tui._normalize_llm_activation_error(error) == (
+        "Google Cloud credentials were not found. Configure Application Default Credentials and restart TabulaFlow."
+    )
+    assert (
+        tui._normalize_llm_activation_error(
+            UserError("You must provide a `region_name` or a boto3 client for Bedrock Runtime."),
+            model="bedrock:amazon.nova",
+        )
+        == "AWS region is not set. Set AWS_REGION or AWS_DEFAULT_REGION and restart TabulaFlow."
+    )
 
 
 def test_llm_activation_error_is_redacted_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:

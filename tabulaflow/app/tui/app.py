@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
-_API_KEY_SETTING_RE = re.compile(r"\b[A-Z][A-Z0-9_]*_API_KEY\b")
+_LLM_SETTING_RE = re.compile(r"\b(?:[A-Z][A-Z0-9_]*_API_KEY|HF_TOKEN|HEROKU_INFERENCE_KEY|SNOWFLAKE_ACCOUNT)\b")
 _MAX_ERROR_MESSAGE_LENGTH = 300
 LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. Data connections and browsing remain available."
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
@@ -143,12 +143,22 @@ def _format_agent_turn_failure(error: Exception) -> str:
     return f"{type(error).__name__}."
 
 
-def _normalize_llm_activation_error(error: Exception) -> str:
+def _normalize_llm_activation_error(error: Exception, *, model: str | None = None) -> str:
     """Return an actionable one-line explanation for an LLM activation error."""
     message = _sanitize_exception_message(error)
-    if match := _API_KEY_SETTING_RE.search(message):
+    if match := _LLM_SETTING_RE.search(message):
         setting = match.group()
         return f"{setting} is not set. Set it and restart TabulaFlow, or choose another model in /config."
+
+    from google.auth.exceptions import DefaultCredentialsError
+
+    if isinstance(error, DefaultCredentialsError):
+        return (
+            "Google Cloud credentials were not found. Configure Application Default Credentials and restart TabulaFlow."
+        )
+
+    if model is not None and model.startswith(("bedrock:", "bedrock-mantle:")) and "region" in message.casefold():
+        return "AWS region is not set. Set AWS_REGION or AWS_DEFAULT_REGION and restart TabulaFlow."
 
     if isinstance(error, KeyError) and len(error.args) == 1 and error.args[0] in _REQUIRED_LLM_SETTINGS:
         setting = error.args[0]
@@ -759,7 +769,7 @@ class TabulaflowApp(App[None]):
         if config is None:
             raise RuntimeError("Cannot finish activation without an LLM configuration.")
         if isinstance(result, Exception):
-            self._llm_activation_error = _normalize_llm_activation_error(result)
+            self._llm_activation_error = _normalize_llm_activation_error(result, model=config.main.model)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             message.append(self._llm_unavailable_message())
         else:
