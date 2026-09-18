@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from textual.app import App
+from textual.content import Content
 from textual.widgets import Static
 
 from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
@@ -55,8 +56,10 @@ async def test_config_title_and_spacing_match_the_plain_style() -> None:
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         title = screen.query_one("#config-title", Static).render()
-        assert title.spans[0].style.bold
-        assert title.spans[0].style.foreground is None
+        assert isinstance(title, Content)
+        title_style = title.get_style_at_offset(0)
+        assert title_style.bold
+        assert title_style.foreground is None
         assert str(screen.query("#config-body > Static").nodes[1].render()) == ""
 
 
@@ -103,7 +106,8 @@ async def test_disabled_llm_dims_and_skips_model_settings() -> None:
         assert "❯ LLM" in _text(screen, "#field-enabled")
         for selector in ("#field-main-model", "#field-main-effort", "#field-subagent-model", "#field-subagent-effort"):
             rendered = screen.query_one(selector, Static).render()
-            assert any(span.style.dim for span in rendered.spans)
+            assert isinstance(rendered, Content)
+            assert any(rendered.get_style_at_offset(index).dim for index in range(len(rendered)))
 
 
 async def test_escape_discards_clean_screen() -> None:
@@ -166,12 +170,15 @@ async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> Non
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         title = picker.query_one("#model-picker-title", Static).render()
+        assert isinstance(title, Content)
         assert str(title) == "Choose model · Type to search or enter a custom model ID"
-        assert title.spans[0].style.bold
-        assert title.spans[0].style.foreground is None
-        assert title.spans[-1].style.dim
-        assert not title.spans[-1].style.bold
-        assert title.spans[-1].style.foreground is None
+        title_style = title.get_style_at_offset(0)
+        guidance_style = title.get_style_at_offset(-1)
+        assert title_style.bold
+        assert title_style.foreground is None
+        assert guidance_style.dim
+        assert not guidance_style.bold
+        assert guidance_style.foreground is None
         hint = str(picker.query_one("#model-picker-hint", Static).render())
         assert "Navigate" not in hint
         assert "Type" not in hint

@@ -1,8 +1,6 @@
 """Launch the real app with conversation history primed to compact on the next turn.
 
     uv run scripts/app/preview_compaction.py
-    uv run scripts/app/preview_compaction.py --llm-preset "Anthropic balanced"
-
 The synthetic history carries provider usage just above the normal compaction trigger,
 so the next message submitted through the standard UI exercises the production
 checkpoint-and-rewrite path without sending a 240K-token fixture.
@@ -10,7 +8,6 @@ checkpoint-and-rewrite path without sending a 240K-token fixture.
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 from pathlib import Path
 
@@ -27,7 +24,7 @@ from pydantic_ai.usage import RequestUsage
 from rich.text import Text
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.config import ResolvedLLMSelection, load_app_config, resolve_llm_selection
+from tabulaflow.app.config import ResolvedLLMConfig, load_app_config, resolve_llm_config
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.app import _restore_terminal_modes
@@ -98,7 +95,7 @@ class CompactionPreviewApp(TabulaflowApp):
     CSS_PATH = str(Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "tui" / "tui.tcss")
     _preview_loaded = False
 
-    async def _activate_llm_option(self, selection: ResolvedLLMSelection) -> None:
+    async def _activate_llm_option(self, selection: ResolvedLLMConfig) -> None:
         await super()._activate_llm_option(selection)
         if self._preview_loaded or self._session is None:
             return
@@ -122,12 +119,12 @@ class CompactionPreviewApp(TabulaflowApp):
         chat_log.scroll_end(animate=False)
 
 
-async def _run(llm_preset: str | None) -> None:
-    selection = resolve_llm_selection(load_app_config(), override=llm_preset)
-    if selection.preset is None:
-        raise RuntimeError("Select an LLM preset in /config or pass --llm-preset")
+async def _run() -> None:
+    selection = resolve_llm_config(load_app_config())
+    if selection.config is None:
+        raise RuntimeError("Configure an LLM in /config")
     app = CompactionPreviewApp(
-        llm_selection=selection,
+        llm_config=selection,
         runtime_paths=RuntimePaths.create(),
         project_dir=Path.cwd(),
     )
@@ -139,9 +136,7 @@ async def _run(llm_preset: str | None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--llm-preset", help="Configured LLM preset label; defaults to the normal app selection")
-    asyncio.run(_run(parser.parse_args().llm_preset))
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from pathlib import Path
 from textual.containers import VerticalScroll
 
 from _preview_fixtures import mount_preview_widgets
-from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
+from tabulaflow.app.config import LLM_OFF, ResolvedLLMConfig
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.app import _restore_terminal_modes
@@ -24,7 +24,7 @@ class PreviewApp(TabulaflowApp):
 
 async def run() -> None:
     app = PreviewApp(
-        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        llm_config=ResolvedLLMConfig(LLM_OFF, None),
         runtime_paths=RuntimePaths.create(),
         project_dir=Path.cwd(),
     )

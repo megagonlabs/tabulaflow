@@ -14,7 +14,7 @@ from rich.text import Text
 from textual.binding import Binding
 from textual.widgets import Input
 
-from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
+from tabulaflow.app.config import LLM_OFF, ResolvedLLMConfig
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.app import _restore_terminal_modes
@@ -57,7 +57,7 @@ class SubsetSelectorPreviewApp(TabulaflowApp):
 
     def __init__(self, dataset_id: str, subsets: tuple[str, ...]) -> None:
         super().__init__(
-            llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+            llm_config=ResolvedLLMConfig(LLM_OFF, None),
             runtime_paths=RuntimePaths.create(),
             project_dir=Path.cwd(),
         )
