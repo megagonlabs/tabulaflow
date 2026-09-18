@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic_ai.models import known_model_names
 
 from tabulaflow.app.config import (
     ANTHROPIC_DEFAULT_LLM_CONFIG,
+    CURATED_MODEL_CATALOG,
     LLM_OFF,
     OPENAI_DEFAULT_LLM_CONFIG,
     AppConfig,
@@ -35,13 +37,14 @@ def test_default_config_is_automatic() -> None:
     assert AppConfig().llm is None
 
 
-def test_model_catalog_contains_recommendations_current_and_pydantic_ai_models() -> None:
+def test_model_catalog_contains_recommendations_current_and_curated_models() -> None:
     catalog = llm_model_catalog(current="vendor:new-model", recommended=RECOMMENDED_MAIN_MODELS)
     assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
     assert "anthropic:claude-opus-5" in catalog
     assert "test" not in catalog
     assert not any(model.startswith("openai-chat:") for model in catalog)
     assert len(catalog) == len(set(catalog))
+    assert set(CURATED_MODEL_CATALOG) <= set(known_model_names())
 
 
 def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
@@ -53,57 +56,42 @@ def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
     assert sum(model.startswith("openai-chat:") for model in catalog) == 1
 
 
-def test_model_catalog_prioritizes_current_provider_and_newer_models(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    known = (
-        "vendor:model",
-        "zai:glm-5.2",
-        "deepseek:deepseek-v4-pro",
-        "moonshotai:kimi-k3",
-        "xai:grok-4.6",
-        "openai:gpt-4.1",
-        "anthropic:claude-opus-4-6",
-        "anthropic:claude-opus-5-20260101",
-        "anthropic:claude-opus-5",
-        "anthropic:claude-sonnet-4-5",
-    )
-    monkeypatch.setattr("tabulaflow.app.config.known_model_names", lambda: known)
-
+def test_model_catalog_prioritizes_current_provider() -> None:
     catalog = llm_model_catalog(
-        current="anthropic:claude-sonnet-4-5",
+        current="anthropic:claude-sonnet-5",
         recommended=("openai:gpt-5.6-sol",),
     )
 
-    assert catalog == (
+    assert catalog[:4] == (
         "openai:gpt-5.6-sol",
-        "anthropic:claude-sonnet-4-5",
+        "anthropic:claude-sonnet-5",
         "anthropic:claude-opus-5",
-        "anthropic:claude-opus-5-20260101",
-        "anthropic:claude-opus-4-6",
-        "openai:gpt-4.1",
-        "xai:grok-4.6",
-        "moonshotai:kimi-k3",
-        "deepseek:deepseek-v4-pro",
-        "zai:glm-5.2",
-        "vendor:model",
+        "anthropic:claude-opus-4-8",
     )
+    assert catalog.index("xai:grok-4.20") < catalog.index("moonshotai:kimi-k3")
+    assert catalog.index("moonshotai:kimi-k3") < catalog.index("deepseek:deepseek-v4-pro")
 
 
-def test_model_catalog_does_not_treat_snapshot_dates_as_versions(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "tabulaflow.app.config.known_model_names",
-        lambda: ("xai:grok-4-0709", "xai:grok-4.6", "xai:grok-4.20", "xai:grok-4-1-fast"),
-    )
+def test_model_catalog_only_includes_current_gateway_model() -> None:
+    current = "gateway/openai:gpt-5.6-sol"
 
-    catalog = llm_model_catalog(current="xai:custom", recommended=())
+    catalog = llm_model_catalog(current=current, recommended=())
 
-    assert catalog == (
-        "xai:custom",
-        "xai:grok-4.20",
-        "xai:grok-4.6",
-        "xai:grok-4-1-fast",
-        "xai:grok-4-0709",
+    assert current in catalog
+    assert sum(model.startswith("gateway/") for model in catalog) == 1
+
+
+def test_curated_openai_models_only_include_selected_gpt_families() -> None:
+    openai_models = tuple(model for model in CURATED_MODEL_CATALOG if model.startswith("openai:"))
+    assert openai_models == (
+        "openai:gpt-6-astra",
+        "openai:gpt-5.6-sol",
+        "openai:gpt-5.6-terra",
+        "openai:gpt-5.6-luna",
+        "openai:gpt-5.6-cyber",
+        "openai:gpt-5.5",
+        "openai:gpt-5.4-mini",
+        "openai:gpt-5-mini",
     )
 
 

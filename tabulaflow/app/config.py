@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
-from pydantic_ai.models import known_model_names
-
 from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.agents.llm import ReasoningLevel, uses_openai_responses
 
@@ -78,93 +76,219 @@ RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
     "openai:gpt-5.4-mini",
     "openai:gpt-5-mini",
 )
-_PROVIDER_ORDER = (
-    "openai",
-    "anthropic",
-    "google",
-    "google-cloud",
-    "xai",
-    "moonshotai",
-    "deepseek",
-    "zai",
-    "bedrock",
-    "bedrock-mantle",
-    "groq",
-    "mistral",
-    "cerebras",
-    "cohere",
-    "huggingface",
-    "snowflake",
-    "heroku",
-    "crusoe",
-)
-_MODEL_VERSION_PATTERNS = {
-    "openai": (
-        re.compile(r"^(?P<family>gpt)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),
-        re.compile(r"^(?P<family>o)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),
-    ),
-    "anthropic": (re.compile(r"^(?P<family>claude-[^-]+)-(?P<major>\d+)(?:-(?P<minor>\d+))?"),),
-    "google": (re.compile(r"^(?P<family>gemini)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
-    "google-cloud": (re.compile(r"^(?P<family>gemini)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
-    "xai": (
-        re.compile(
-            r"^(?P<family>grok)-(?P<major>\d+)"
-            r"(?:\.(?P<minor_dot>\d+)|-(?P<minor_dash>\d{1,2})(?=-|$))?"
+_CURATED_MODELS_BY_PROVIDER = (
+    (
+        "openai",
+        (
+            "gpt-6-astra",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-5.6-cyber",
+            "gpt-5.5",
+            "gpt-5.4-mini",
+            "gpt-5-mini",
         ),
     ),
-    "moonshotai": (re.compile(r"^(?P<family>kimi-k)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
-    "deepseek": (re.compile(r"^(?P<family>deepseek-v)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
-    "zai": (re.compile(r"^(?P<family>glm)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
-}
-_MODEL_SNAPSHOT_RE = re.compile(r"-(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})$")
-
-
-def _provider_sort_key(provider: str, current_provider: str) -> tuple[int, int, bool, str]:
-    if provider == current_provider:
-        return (0, 0, False, provider)
-    gateway = provider.startswith("gateway/")
-    base_provider = provider.removeprefix("gateway/")
-    try:
-        rank = _PROVIDER_ORDER.index(base_provider)
-    except ValueError:
-        return (2, len(_PROVIDER_ORDER), gateway, provider)
-    return (1, rank, gateway, provider)
-
-
-def _model_sort_key(model: str) -> tuple[int, int, int, str, str, bool, int, str]:
-    provider, _, name = model.partition(":")
-    base_provider = provider.removeprefix("gateway/")
-    snapshot_match = _MODEL_SNAPSHOT_RE.search(name)
-    base_name = name[: snapshot_match.start()] if snapshot_match else name
-    snapshot = int("".join(snapshot_match.group("year", "month", "day"))) if snapshot_match else 0
-    for pattern in _MODEL_VERSION_PATTERNS.get(base_provider, ()):
-        if match := pattern.match(base_name):
-            groups = match.groupdict()
-            minor = groups.get("minor") or groups.get("minor_dot") or groups.get("minor_dash") or "0"
-            return (
-                0,
-                -int(match.group("major")),
-                -int(minor),
-                match.group("family"),
-                base_name.casefold(),
-                snapshot_match is not None,
-                -snapshot,
-                name.casefold(),
-            )
-    return (1, 0, 0, "", name.casefold(), False, 0, name.casefold())
+    (
+        "anthropic",
+        (
+            "claude-opus-5",
+            "claude-opus-4-8",
+            "claude-sonnet-5",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5",
+            "claude-fable-5-1",
+            "claude-fable-5",
+            "claude-mythos-5-1",
+            "claude-mythos-5",
+        ),
+    ),
+    (
+        "google",
+        (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
+            "gemini-3.1-pro-preview",
+            "gemini-3-pro-preview",
+            "gemini-3.1-flash-image",
+            "gemini-3-pro-image",
+        ),
+    ),
+    (
+        "google-cloud",
+        (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
+            "gemini-3.1-pro-preview",
+            "gemini-3-pro-preview",
+            "gemini-3.1-flash-image",
+            "gemini-3-pro-image",
+        ),
+    ),
+    (
+        "xai",
+        (
+            "grok-4.20",
+            "grok-4.6",
+            "grok-4.20-reasoning-latest",
+            "grok-4.20-non-reasoning-latest",
+            "grok-4.20-multi-agent-latest",
+            "grok-code-fast-1",
+            "grok-build-0.1",
+        ),
+    ),
+    (
+        "moonshotai",
+        ("kimi-k3", "kimi-k2.6", "kimi-k2.7-code", "kimi-k2.7-code-highspeed", "kimi-thinking-preview"),
+    ),
+    ("deepseek", ("deepseek-v4-pro", "deepseek-v4-flash", "deepseek-reasoner", "deepseek-chat")),
+    (
+        "zai",
+        ("glm-5.3", "glm-5.2", "glm-5.3-flash", "glm-4.7-flashx", "glm-5-turbo", "glm-5v-turbo", "glm-4.6v-flashx"),
+    ),
+    (
+        "bedrock",
+        (
+            "global.anthropic.claude-opus-5",
+            "global.anthropic.claude-opus-4-8",
+            "global.anthropic.claude-sonnet-5",
+            "us.anthropic.claude-sonnet-4-6",
+            "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "global.anthropic.claude-fable-5-1",
+            "global.anthropic.claude-fable-5",
+            "global.openai.gpt-5.6-sol",
+            "global.openai.gpt-5.6-terra",
+            "global.openai.gpt-5.6-luna",
+            "us.meta.llama4-maverick-17b-instruct-v1:0",
+            "us.meta.llama4-scout-17b-instruct-v1:0",
+            "global.amazon.nova-2-lite-v1:0",
+            "us.amazon.nova-premier-v1:0",
+            "deepseek.r1-v1:0",
+            "deepseek.v3.2",
+            "moonshotai.kimi-k2.5",
+            "moonshot.kimi-k2-thinking",
+            "minimax.minimax-m2.5",
+            "minimax.minimax-m2.1",
+            "mistral.mistral-large-3-675b-instruct",
+            "mistral.devstral-2-123b",
+            "nvidia.nemotron-nano-3-30b",
+            "nvidia.nemotron-super-3-120b",
+            "qwen.qwen3-next-80b-a3b",
+            "qwen.qwen3-coder-next",
+            "qwen.qwen3-vl-235b-a22b",
+            "zai.glm-5",
+            "zai.glm-4.7",
+        ),
+    ),
+    (
+        "bedrock-mantle",
+        (
+            "openai.gpt-5.6-sol",
+            "openai.gpt-5.6-terra",
+            "openai.gpt-5.6-luna",
+            "openai.gpt-5.5",
+            "openai.gpt-oss-120b",
+            "openai.gpt-oss-20b",
+        ),
+    ),
+    (
+        "groq",
+        (
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
+            "llama-3.3-70b-versatile",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+        ),
+    ),
+    ("mistral", ("mistral-large-latest", "mistral-small-latest", "codestral-latest")),
+    ("cerebras", ("zai-glm-4.7", "gemma-4-31b", "gpt-oss-120b")),
+    ("cohere", ("command-nightly", "command-r-plus-08-2024", "command-r-08-2024", "command-r7b-12-2024")),
+    (
+        "huggingface",
+        (
+            "Qwen/Qwen3-235B-A22B",
+            "Qwen/Qwen3-32B",
+            "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+            "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+            "deepseek-ai/DeepSeek-R1",
+        ),
+    ),
+    (
+        "snowflake",
+        (
+            "claude-opus-5",
+            "claude-opus-4-8",
+            "claude-sonnet-5",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5",
+            "openai-gpt-5-6-sol",
+            "openai-gpt-5-6-terra",
+            "openai-gpt-5-6-luna",
+            "openai-gpt-5.5",
+            "openai-gpt-5.4",
+            "llama4-maverick",
+            "snowflake-llama-3.3-70b",
+            "deepseek-r1",
+            "mistral-large2",
+        ),
+    ),
+    (
+        "heroku",
+        (
+            "claude-opus-4-6",
+            "claude-opus-4-5",
+            "claude-4-6-sonnet",
+            "claude-4-5-sonnet",
+            "claude-4-5-haiku",
+            "deepseek-v3-2",
+            "glm-4-7",
+            "glm-4-7-flash",
+            "kimi-k2-5",
+            "kimi-k2-thinking",
+            "minimax-m2-1",
+            "minimax-m2",
+            "nova-2-lite",
+            "qwen3-235b",
+            "qwen3-coder-480b",
+            "gpt-oss-120b",
+        ),
+    ),
+    (
+        "crusoe",
+        (
+            "deepseek-ai/DeepSeek-V4-Pro",
+            "deepseek-ai/Deepseek-V4-Flash",
+            "zai/GLM-5.2",
+            "zai/GLM-5.1",
+            "moonshotai/Kimi-K2.6",
+            "Qwen/Qwen3-235B-A22B-Instruct-2507",
+            "meta-llama/Llama-3.3-70B-Instruct",
+            "google/gemma-4-31b-it",
+            "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B",
+            "nvidia/Nemotron-3.5-Lightning-30B-A3B",
+            "openai/gpt-oss-120b",
+        ),
+    ),
+    ("typesafe", ("jev-latest", "jev-preview")),
+)
+CURATED_MODEL_CATALOG = tuple(
+    f"{provider}:{model}" for provider, models in _CURATED_MODELS_BY_PROVIDER for model in models
+)
 
 
 def llm_model_catalog(*, current: str, recommended: tuple[str, ...]) -> tuple[str, ...]:
-    """Return recommendations, the current model, and browsable Pydantic AI model ids."""
+    """Return recommendations, the current model, and the curated model catalog."""
     current_provider = current.partition(":")[0]
-    known = sorted(
-        (model for model in known_model_names() if model != "test" and not model.startswith("openai-chat:")),
-        key=lambda model: (
-            _provider_sort_key(model.partition(":")[0], current_provider),
-            _model_sort_key(model),
-        ),
+    current_provider_models = tuple(
+        model for model in CURATED_MODEL_CATALOG if model.partition(":")[0] == current_provider
     )
-    models = (*recommended, current, *known)
+    other_models = tuple(model for model in CURATED_MODEL_CATALOG if model.partition(":")[0] != current_provider)
+    models = (*recommended, current, *current_provider_models, *other_models)
     return tuple(dict.fromkeys(models))
 
 
