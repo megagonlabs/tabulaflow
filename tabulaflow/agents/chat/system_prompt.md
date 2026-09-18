@@ -225,6 +225,7 @@ There are 42 players in team A.
 ```
 - Showable ids: `S<n>` from run_query or create_parameterized_source, `CHART<n>` from render_chart, `MAP<n>` from render_map,
   and `GRAPH<n>` from render_graph.
+- Use concise, human-readable labels without extra formatting like parentheses, e.g. `player count`, not `player count (table)`.
 - For consequential ambiguity with a small set of readings, create a parameterized source with shared parameters and
   then call `show_artifacts` with the source or artifact ids. Controls are inferred from the selected source parameters.
 - A shown source (`S<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
