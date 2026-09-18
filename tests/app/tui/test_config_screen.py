@@ -8,8 +8,8 @@ from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
 
 
 _CONFIG = LLMConfig(
-    main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="medium"),
-    subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="low"),
+    main=LLMRoleConfig(model="openai:gpt-5.6-sol", reasoning="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-5.4-mini", reasoning="low"),
 )
 
 
@@ -32,8 +32,8 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert "enabled" in _text(screen, "#field-enabled")
-        assert "openai-responses:gpt-5.6-sol" in _text(screen, "#field-main-model")
-        assert "openai-responses:gpt-5.4-mini" in _text(screen, "#field-subagent-model")
+        assert "openai:gpt-5.6-sol" in _text(screen, "#field-main-model")
+        assert "openai:gpt-5.4-mini" in _text(screen, "#field-subagent-model")
         assert "medium" in _text(screen, "#field-main-reasoning")
         assert "Subagent model" in _text(screen, "#field-subagent-model")
         assert "Subagent reasoning" in _text(screen, "#field-subagent-reasoning")
@@ -61,7 +61,7 @@ async def test_fields_are_edited_and_applied_atomically() -> None:
         await pilot.pause()
         result = app.results[0]
         assert result is not None and result.config is not None
-        assert result.config.main.model == "openai-responses:gpt-5.6-terra"
+        assert result.config.main.model == "openai:gpt-5.6-terra"
         assert result.config.subagent == _CONFIG.subagent
 
 
@@ -107,7 +107,7 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "“anth”" in str(picker.query_one("#model-picker-title", Static).render())
         options = str(picker.query_one("#model-options", Static).render())
         assert "anthropic:" in options
-        assert "openai-responses:" not in options
+        assert "openai:" not in options
 
 
 async def test_custom_model_is_entered_inline_without_another_screen() -> None:
@@ -120,7 +120,7 @@ async def test_custom_model_is_entered_inline_without_another_screen() -> None:
         assert isinstance(picker, ModelPickerScreen)
         assert "Choose model" in str(picker.query_one("#model-picker-title", Static).render())
         options = str(picker.query_one("#model-options", Static).render())
-        assert "openai-responses:gpt-5.6-sol" in options
+        assert "openai:gpt-5.6-sol" in options
         assert "Custom model" in options
 
         await pilot.press("enter")
@@ -142,8 +142,8 @@ async def test_role_specific_recommendations_and_bounded_catalog() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = str(picker.query_one("#model-options", Static).render())
-        assert "openai-responses:gpt-5.6-sol  (recommended)" in options
-        assert "openai-responses:gpt-5.6-terra  (recommended)" in options
+        assert "openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-5.6-terra  (recommended)" in options
         assert "↓" in options
 
         await pilot.press("escape")
@@ -152,5 +152,5 @@ async def test_role_specific_recommendations_and_bounded_catalog() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = str(picker.query_one("#model-options", Static).render())
-        assert "openai-responses:gpt-5.4-mini  (recommended)" in options
-        assert "openai-responses:gpt-5-mini  (recommended)" in options
+        assert "openai:gpt-5.4-mini  (recommended)" in options
+        assert "openai:gpt-5-mini  (recommended)" in options

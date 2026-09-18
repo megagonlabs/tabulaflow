@@ -101,7 +101,12 @@ def test_update_app_config(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     ("model", "supported"),
-    [("openai-responses:gpt-5.6-sol", True), ("openai:gpt-5", False), ("anthropic:claude-opus-5", False)],
+    [
+        ("openai:gpt-5.6-sol", True),
+        ("openai-responses:gpt-5.6-sol", True),
+        ("openai:gpt-5", True),
+        ("anthropic:claude-opus-5", False),
+    ],
 )
 def test_apply_patch_support(model: str, supported: bool) -> None:
     assert model_supports_apply_patch(model) is supported

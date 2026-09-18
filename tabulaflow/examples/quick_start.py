@@ -46,7 +46,7 @@ async def main() -> None:
 
         async with ChatSession(
             registry=registry,
-            model="openai-responses:gpt-5-mini",
+            model="openai:gpt-5-mini",
             reasoning="low",
         ) as session:
             result = await session.run(

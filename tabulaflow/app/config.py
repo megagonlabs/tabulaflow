@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from pydantic_ai.models import known_model_names
 
 from tabulaflow._paths import DEFAULT_HOME_DIR
-from tabulaflow.agents.llm import ReasoningLevel
+from tabulaflow.agents.llm import ReasoningLevel, uses_openai_responses
 
 APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF: Literal["off"] = "off"
@@ -28,8 +28,8 @@ PROVIDER_API_KEY_ENV = {
 
 def model_supports_apply_patch(model: str) -> bool:
     """Whether the app should expose the GPT-trained patch tool."""
-    provider, _, model_name = model.partition(":")
-    if provider != "openai-responses":
+    _, _, model_name = model.partition(":")
+    if not uses_openai_responses(model):
         return False
     version_match = re.match(r"^gpt-(\d+)(?:[.-]|$)", model_name)
     return version_match is not None and int(version_match.group(1)) >= 5
@@ -66,8 +66,8 @@ class LLMConfig(BaseModel):
 
 
 OPENAI_DEFAULT_LLM_CONFIG = LLMConfig(
-    main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="medium"),
-    subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
+    main=LLMRoleConfig(model="openai:gpt-5.6-sol", reasoning="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-5.4-mini", reasoning="medium"),
 )
 ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
     main=LLMRoleConfig(model="anthropic:claude-opus-5", reasoning="high"),
@@ -75,12 +75,12 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
 )
 
 RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
-    "openai-responses:gpt-5.6-sol",
-    "openai-responses:gpt-5.6-terra",
+    "openai:gpt-5.6-sol",
+    "openai:gpt-5.6-terra",
 )
 RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
-    "openai-responses:gpt-5.4-mini",
-    "openai-responses:gpt-5-mini",
+    "openai:gpt-5.4-mini",
+    "openai:gpt-5-mini",
 )
 
 

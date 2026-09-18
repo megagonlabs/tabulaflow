@@ -23,7 +23,7 @@ from tabulaflow.agents.llm import make_agent
 
 
 class DbtAgentConfig(BasicAgentConfig):
-    db_summarizer_llm: str = "openai-responses:gpt-5.4"
+    db_summarizer_llm: str = "openai:gpt-5.4"
     use_bash_tool: bool = False
 
 

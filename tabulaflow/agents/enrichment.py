@@ -328,7 +328,7 @@ class DataFrameEnricher:
     def __init__(
         self,
         *,
-        llm: str | Model = "openai-responses:gpt-5-mini",
+        llm: str | Model = "openai:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         enable_browser_tools: bool = False,

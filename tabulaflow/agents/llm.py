@@ -44,6 +44,7 @@ __all__ = [
     "make_agent",
     "make_model_settings",
     "model_label",
+    "uses_openai_responses",
 ]
 
 _DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
@@ -55,13 +56,19 @@ def model_label(model: str) -> str:
     """Remove a provider prefix and trailing release date from a model identifier.
 
     Examples:
-        ``openai-responses:gpt-5.6-sol`` becomes ``gpt-5.6-sol``.
-        ``openai-responses:gpt-5-2025-08-07`` becomes ``gpt-5``.
+        ``openai:gpt-5.6-sol`` becomes ``gpt-5.6-sol``.
+        ``openai:gpt-5-2025-08-07`` becomes ``gpt-5``.
         ``anthropic:claude-sonnet-4-5-20250929`` becomes
         ``claude-sonnet-4-5``.
     """
     _, separator, name = model.partition(":")
     return re.sub(r"-(?:\d{4}-\d{2}-\d{2}|\d{8})$", "", name if separator else model)
+
+
+def uses_openai_responses(model: str) -> bool:
+    """Whether a model identifier selects Pydantic AI's OpenAI Responses model."""
+    provider, _, _ = model.partition(":")
+    return provider in {"openai", "openai-responses"}
 
 
 def make_model_settings(
@@ -102,7 +109,7 @@ def _reasoning_model_settings(reasoning: ReasoningLevel | None, *, model: str) -
     if reasoning is None:
         return ModelSettings()
     settings = ModelSettings(thinking=reasoning)
-    if reasoning is not False and model.startswith("openai-responses:"):
+    if reasoning is not False and uses_openai_responses(model):
         settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
     return settings
 

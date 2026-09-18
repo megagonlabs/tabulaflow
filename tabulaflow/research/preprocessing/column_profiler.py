@@ -40,7 +40,7 @@ class LLMOutput(BaseModel):
 
 
 class ColumnProfiler:
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini", model_settings: ModelSettings | None = None):
+    def __init__(self, llm: str = "openai:gpt-5-mini", model_settings: ModelSettings | None = None):
         self.llm = llm
         self.model_settings = model_settings
         self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)

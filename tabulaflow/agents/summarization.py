@@ -67,7 +67,7 @@ class DataSourceSummarizer:
 
     def __init__(
         self,
-        llm: str = "openai-responses:gpt-5.4",
+        llm: str = "openai:gpt-5.4",
         reasoning: ReasoningLevel | None = "high",
         max_words: int = 4000,
         model_settings: ModelSettings | None = None,

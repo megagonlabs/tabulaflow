@@ -19,7 +19,7 @@ class Place(BaseModel):
 async def main() -> None:
     guide = files("tabulaflow.examples.support").joinpath("travel_guide.txt").read_text()
 
-    extractor = EntityExtractor(llm="openai-responses:gpt-5-mini")
+    extractor = EntityExtractor(llm="openai:gpt-5-mini")
     # Long documents are split into chunks and processed concurrently.
     # Results are combined into one list of validated Place instances.
     places = await extractor.extract(

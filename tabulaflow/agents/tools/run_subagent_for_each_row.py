@@ -73,7 +73,7 @@ class RunSubagentForEachRowTool:
         *,
         registry: DataConnectorRegistry | None = None,
         message_store: MessageStore | None = None,
-        subagent_llm: str | Model = "openai-responses:gpt-5-mini",
+        subagent_llm: str | Model = "openai:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         store_metadata: bool = False,

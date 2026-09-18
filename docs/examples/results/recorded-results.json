@@ -6,7 +6,7 @@
   "split": "test",
   "agent": "ambig_structured_sql_agent",
   "agent_config": {
-    "llm": "openai-responses:gpt-4.1",
+    "llm": "openai:gpt-4.1",
     "schema_formatter": "sql_default",
     "compress_schema": true,
     "temperature": 0.0,

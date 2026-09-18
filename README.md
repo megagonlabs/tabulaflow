@@ -80,7 +80,7 @@ async def main():
     )
     registry = DataConnectorRegistry()
     registry.register("sales", sales)
-    session = ChatSession(registry=registry, model="openai-responses:gpt-5-mini", reasoning="low")
+    session = ChatSession(registry=registry, model="openai:gpt-5-mini", reasoning="low")
 
     result = await session.run("Show total revenue by region as a bar chart.")
     print("Answer:", result.text)

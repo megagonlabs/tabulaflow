@@ -13,10 +13,17 @@ def test_make_model_settings_accepts_shared_reasoning_values() -> None:
         "thinking": "high",
         "max_tokens": 24576,
     }
-    assert make_model_settings(model="openai-responses:gpt-5") == {}
+    assert make_model_settings(model="openai:gpt-5") == {}
 
 
 def test_make_model_settings_adds_openai_summary_when_thinking() -> None:
+    assert make_model_settings(model="openai:gpt-5", reasoning="high") == {
+        "thinking": "high",
+        "openai_reasoning_summary": "detailed",
+    }
+
+
+def test_make_model_settings_supports_explicit_openai_responses_alias() -> None:
     assert make_model_settings(model="openai-responses:gpt-5", reasoning="high") == {
         "thinking": "high",
         "openai_reasoning_summary": "detailed",
@@ -24,7 +31,7 @@ def test_make_model_settings_adds_openai_summary_when_thinking() -> None:
 
 
 def test_make_model_settings_skips_summary_when_thinking_disabled() -> None:
-    assert make_model_settings(model="openai-responses:gpt-5", reasoning=False) == {"thinking": False}
+    assert make_model_settings(model="openai:gpt-5", reasoning=False) == {"thinking": False}
 
 
 def test_make_model_settings_skips_summary_for_other_providers() -> None:
@@ -65,7 +72,7 @@ def test_opus_5_uses_upstream_adaptive_profile() -> None:
 
 
 def test_make_model_settings_uses_cross_provider_service_tier() -> None:
-    assert make_model_settings(model="openai-responses:gpt-5", service_tier="priority") == {"service_tier": "priority"}
+    assert make_model_settings(model="openai:gpt-5", service_tier="priority") == {"service_tier": "priority"}
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", service_tier="priority") == {
         "service_tier": "priority"
     }
@@ -73,7 +80,7 @@ def test_make_model_settings_uses_cross_provider_service_tier() -> None:
 
 def test_make_model_settings_combines_reasoning_and_service_tier() -> None:
     assert make_model_settings(
-        model="openai-responses:gpt-5",
+        model="openai:gpt-5",
         reasoning="high",
         service_tier="priority",
     ) == {

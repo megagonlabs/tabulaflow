@@ -84,7 +84,7 @@ class NLAmbigPoint(BaseModel):
 class UserSimulatorConfig(BaseModel):
     task: str
     ambig_points: list[NLAmbigPoint]
-    llm: str = "openai-responses:gpt-4.1-2025-04-14"
+    llm: str = "openai:gpt-4.1-2025-04-14"
     temperature: float = 0.0
     include_history: bool = True
     answer_with_multiple_ambig_points: bool = False
@@ -123,7 +123,7 @@ class UserSimulator:
     def from_ambig_nl2q_task(
         cls,
         task: AmbigNL2QTask,
-        llm: str = "openai-responses:gpt-4.1-2025-04-14",
+        llm: str = "openai:gpt-4.1-2025-04-14",
         temperature: float = 0.0,
         include_history: bool = True,
         answer_with_multiple_ambig_points: bool = False,

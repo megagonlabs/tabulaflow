@@ -39,7 +39,7 @@ class RegistryGetDataSourceDocumentTool:
         registry: DataConnectorRegistry,
         *,
         summarizer_cls: Callable[..., Any],
-        summarizer_llm: str = "openai-responses:gpt-5.4",
+        summarizer_llm: str = "openai:gpt-5.4",
         summary_max_words: int = 2000,
         min_items_for_summary: int = 10,
         enable_refresh: bool = False,

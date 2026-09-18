@@ -286,9 +286,9 @@ def test_switching_llm_config_preserves_live_chat_session_state(
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     session = _session(
         llm_config=_llm_config(
-            model="openai-responses:gpt-5",
+            model="openai:gpt-5",
             reasoning="medium",
-            subagent_model="openai-responses:gpt-5-mini",
+            subagent_model="openai:gpt-5-mini",
             subagent_reasoning="low",
         ),
         tmp_path=tmp_path,
@@ -299,9 +299,9 @@ def test_switching_llm_config_preserves_live_chat_session_state(
     output_store = agent.output_store
 
     selected_llm_config = _llm_config(
-        model="openai-responses:gpt-5.4-mini",
+        model="openai:gpt-5.4-mini",
         reasoning="high",
-        subagent_model="openai-responses:gpt-5-mini",
+        subagent_model="openai:gpt-5-mini",
         subagent_reasoning="medium",
     )
     session.select_llm_config(selected_llm_config)

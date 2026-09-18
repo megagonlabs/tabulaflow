@@ -48,7 +48,7 @@ first, then Anthropic, and selects recommended models for both agent roles.
 
 Run `/config` to configure the main agent and subagent independently. The model
 picker accepts any provider-qualified identifier supported by the installed
-model stack, such as `openai-responses:gpt-5.6-sol`. Disabling the LLM turns off
+model stack, such as `openai:gpt-5.6-sol`. Disabling the LLM turns off
 conversational analysis but keeps data connections and browsing available.
 
 TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API

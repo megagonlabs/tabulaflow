@@ -160,7 +160,7 @@ class AmbigPointStats:
     name: ClassVar[str] = "ambig_point_stats"
     compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-flat", "ambig-structured"]
 
-    def __init__(self, llm: str = "openai-responses:gpt-4.1-2025-04-14"):
+    def __init__(self, llm: str = "openai:gpt-4.1-2025-04-14"):
         self.llm = llm
 
     def _to_simple_dict(self, ap: PredAmbiguityPoint | GoldAmbiguityPoint, id_prefix: str) -> dict[str, Any]:

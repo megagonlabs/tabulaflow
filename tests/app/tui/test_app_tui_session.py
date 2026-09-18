@@ -488,7 +488,7 @@ def test_bottom_status_uses_selected_startup_profile(
 
 
 def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = _llm_config(model="openai-responses:gpt-5.6-sol")
+    config = _llm_config(model="openai:gpt-5.6-sol")
     app = _app_for_selection(_selection(config), project_dir=tmp_path, llm_service_tier="priority")
     model_status = _StatusCapture()
     url_status = _StatusCapture()
@@ -568,7 +568,7 @@ def test_llm_config_success_message(
     config = _llm_config(
         model="anthropic:claude-opus-4-8",
         reasoning="high",
-        subagent_model="openai-responses:gpt-5.4-mini",
+        subagent_model="openai:gpt-5.4-mini",
     )
 
     message = tui._llm_config_success_message(config, api_keys, detected_api_key_env=detected_env)
@@ -595,7 +595,7 @@ def test_masked_api_key(api_key: str, expected: str | None) -> None:
         ),
         (
             RuntimeError("Set the OPENAI_API_KEY environment variable."),
-            "openai-responses:gpt-5",
+            "openai:gpt-5",
             "OPENAI_API_KEY is not set. Set it and restart the app, or choose another model in /config.",
         ),
         (
@@ -616,7 +616,7 @@ def test_masked_api_key(api_key: str, expected: str | None) -> None:
     ],
 )
 def test_llm_activation_error_is_actionable(error: Exception, model: str, expected: str) -> None:
-    config = _llm_config(model=model, subagent_model="openai-responses:gpt-5-mini")
+    config = _llm_config(model=model, subagent_model="openai:gpt-5-mini")
 
     assert tui._normalize_llm_activation_error(error, config) == expected
 
@@ -757,9 +757,9 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = _llm_config(
-        model="openai-responses:gpt-5",
+        model="openai:gpt-5",
         reasoning="medium",
-        subagent_model="openai-responses:gpt-5-mini",
+        subagent_model="openai:gpt-5-mini",
         subagent_reasoning="medium",
     )
     app = _app_for_selection(_selection(config, inferred=True, detected_api_key_env="OPENAI_API_KEY"))

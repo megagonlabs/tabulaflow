@@ -24,7 +24,7 @@ from tabulaflow.research.pipelines import evaluate_async, execute_async, predict
 
 # --8<-- [start:agent]
 class TableLinkingConfig(BaseModel):
-    llm: str = "openai-responses:gpt-5-mini"
+    llm: str = "openai:gpt-5-mini"
 
 
 class TableSelection(BaseModel):

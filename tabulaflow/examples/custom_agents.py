@@ -48,7 +48,7 @@ async def run_support_agent(orders: SQLConnector, support_dir: Path) -> None:
         return ticket_id
 
     agent = make_agent(
-        "openai-responses:gpt-5-mini",
+        "openai:gpt-5-mini",
         instructions=(
             "You are a customer support agent. Follow faq.txt, consult product guides, "
             "look up the customer's order, and cite the files you use."

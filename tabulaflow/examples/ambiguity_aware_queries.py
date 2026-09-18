@@ -21,7 +21,7 @@ async def main() -> None:
         result = await predict_async(
             agent_cls=AmbigStructuredSQLAgent,
             agent_config=AmbigStructuredSQLAgentConfig(
-                llm="openai-responses:gpt-4.1",
+                llm="openai:gpt-4.1",
                 query_for_intended_only=True,
             ),
             dataset=dataset,

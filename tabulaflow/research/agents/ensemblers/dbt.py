@@ -75,8 +75,8 @@ Select the number of the best candidate.
 
 class DbtLLMEnsemblerConfig(BaseModel):
     result_dirs: list[str]
-    llm: str = "openai-responses:gpt-5-mini"
-    db_summarizer_llm: str = "openai-responses:gpt-5.4"
+    llm: str = "openai:gpt-5-mini"
+    db_summarizer_llm: str = "openai:gpt-5.4"
     skip_failed_runs: bool = True
     deduplicate_results: bool = True
     temperature: float | None = None

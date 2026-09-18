@@ -39,7 +39,7 @@ async def main() -> None:
     async with registry:
         await load_sample_data(stock)
         # --8<-- [start:session]
-        session = ChatSession(registry=registry, model="openai-responses:gpt-5-mini", reasoning="low")
+        session = ChatSession(registry=registry, model="openai:gpt-5-mini", reasoning="low")
         # --8<-- [end:session]
         async with session:
             # --8<-- [start:first-turn]
