@@ -161,6 +161,23 @@ async def test_filter_accepts_a_custom_model_identifier() -> None:
         assert "test:model" in _text(screen, "#field-main-model")
 
 
+async def test_openai_chat_models_are_custom_only() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        model = "openai-chat:gpt-5.4-mini"
+        await pilot.press("down", "enter", *model)
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        assert _option_text(picker).splitlines() == [f"❯ Use {model}  (custom)"]
+
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app.screen is screen
+        assert model in _text(screen, "#field-main-model")
+
+
 async def test_model_matches_are_selected_before_custom_identifier() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)

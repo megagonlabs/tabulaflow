@@ -4,6 +4,7 @@ import typer
 from typer import rich_utils
 
 from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel, run_chat
+from tabulaflow.app.config import InvalidAppConfigError
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.examples.cli import examples_app
 from tabulaflow.research.cli import benchmark_app
@@ -73,14 +74,18 @@ def root(
 ) -> None:
     """Start an interactive chat by default or run a subcommand."""
     if ctx.invoked_subcommand is None:
-        run_chat(
-            llm_service_tier=llm_service_tier,
-            enable_schema_cache=enable_schema_cache,
-            log_level=log_level,
-            output_pane_port=output_pane_port,
-            output_pane_host=output_pane_host,
-            output_pane_public_url=output_pane_public_url,
-        )
+        try:
+            run_chat(
+                llm_service_tier=llm_service_tier,
+                enable_schema_cache=enable_schema_cache,
+                log_level=log_level,
+                output_pane_port=output_pane_port,
+                output_pane_host=output_pane_host,
+                output_pane_public_url=output_pane_public_url,
+            )
+        except InvalidAppConfigError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from None
 
 
 def main() -> None:

@@ -58,6 +58,7 @@ class ModelPickerScreen(Screen[str | None]):
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
         self._recommended = frozenset(recommended)
         self._models = llm_model_catalog(current=current, recommended=recommended)
+        self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
         self._visible = self._models
         self._cursor = self._visible.index(current)
         self._filter = ""
@@ -106,7 +107,7 @@ class ModelPickerScreen(Screen[str | None]):
 
     def _apply_filter(self) -> None:
         query = self._filter.casefold()
-        self._visible = tuple(model for model in self._models if query in model.casefold())
+        self._visible = tuple(model for model in self._searchable_models if query in model.casefold())
         self._cursor = 1 if self._custom_model is not None and self._visible else 0
         self._refresh()
 
@@ -119,7 +120,7 @@ class ModelPickerScreen(Screen[str | None]):
             model = LLMRoleConfig(model=self._filter).model
         except ValueError:
             return None
-        return model if model not in self._models else None
+        return model if model not in self._searchable_models else None
 
     def _refresh(self) -> None:
         title_text = "Choose model" if self._role == "main" else "Choose model for subagent"

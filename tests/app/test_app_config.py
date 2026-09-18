@@ -10,6 +10,7 @@ from tabulaflow.app.config import (
     LLM_OFF,
     OPENAI_DEFAULT_LLM_CONFIG,
     AppConfig,
+    InvalidAppConfigError,
     LLMConfig,
     LLMRoleConfig,
     RECOMMENDED_MAIN_MODELS,
@@ -39,7 +40,17 @@ def test_model_catalog_contains_recommendations_current_and_pydantic_ai_models()
     assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
     assert "anthropic:claude-opus-5" in catalog
     assert "test" not in catalog
+    assert not any(model.startswith("openai-chat:") for model in catalog)
     assert len(catalog) == len(set(catalog))
+
+
+def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
+    current = "openai-chat:gpt-5-mini"
+
+    catalog = llm_model_catalog(current=current, recommended=RECOMMENDED_MAIN_MODELS)
+
+    assert catalog[:3] == (*RECOMMENDED_MAIN_MODELS, current)
+    assert sum(model.startswith("openai-chat:") for model in catalog) == 1
 
 
 def test_model_identifier_must_be_provider_qualified() -> None:
@@ -77,8 +88,30 @@ def test_missing_file_returns_defaults(tmp_path: Path) -> None:
 def test_invalid_or_old_config_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     path.write_text(json.dumps({"llm_preset": "OpenAI balanced"}))
-    with pytest.raises(ValueError, match="llm_preset"):
+    with pytest.raises(InvalidAppConfigError, match="llm_preset"):
         load_app_config(str(path))
+
+
+def test_invalid_config_gets_a_concise_validation_error(tmp_path: Path) -> None:
+    path = tmp_path / "app_config.json"
+    path.write_text(
+        json.dumps(
+            {
+                "llm": {
+                    "main": {"model": "openai:gpt-5", "reasoning": "high"},
+                    "subagent": {"model": "openai:gpt-5-mini", "reasoning": "medium"},
+                }
+            }
+        )
+    )
+
+    with pytest.raises(InvalidAppConfigError) as exc_info:
+        load_app_config(str(path))
+
+    assert str(exc_info.value) == (
+        f"Invalid app configuration: {path}\n"
+        "llm.main.reasoning: Extra inputs are not permitted. Fix or delete the file."
+    )
 
 
 def test_resolve_explicit_and_off() -> None:

@@ -18,6 +18,10 @@ APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF: Literal["off"] = "off"
 
 
+class InvalidAppConfigError(ValueError):
+    """An app configuration file could not be parsed or validated."""
+
+
 def model_supports_apply_patch(model: str) -> bool:
     """Whether the app should expose the GPT-trained patch tool."""
     _, _, model_name = model.partition(":")
@@ -77,8 +81,11 @@ RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
 
 
 def llm_model_catalog(*, current: str, recommended: tuple[str, ...]) -> tuple[str, ...]:
-    """Return recommendations, the current model, and every Pydantic AI model id."""
-    models = (*recommended, current, *(model for model in known_model_names() if model != "test"))
+    """Return recommendations, the current model, and browsable Pydantic AI model ids."""
+    known = sorted(
+        model for model in known_model_names() if model != "test" and not model.startswith("openai-chat:")
+    )
+    models = (*recommended, current, *known)
     return tuple(dict.fromkeys(models))
 
 
@@ -133,8 +140,21 @@ def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:
     try:
         with open(path) as f:
             return AppConfig.model_validate(json.load(f))
-    except (json.JSONDecodeError, ValidationError, ValueError) as e:
-        raise ValueError(f"Invalid app config at {path}: {e}\nFix or delete the file.") from e
+    except json.JSONDecodeError as error:
+        detail = f"Invalid JSON at line {error.lineno}, column {error.colno}."
+        raise InvalidAppConfigError(_invalid_app_config_message(path, detail)) from error
+    except ValidationError as error:
+        errors = error.errors(include_url=False, include_context=False, include_input=False)
+        relevant = [item for item in errors if "literal['off']" not in item["loc"]]
+        item = (relevant or errors)[0]
+        location = ".".join(str(part) for part in item["loc"] if part != "LLMConfig")
+        detail = f"{location}: {item['msg']}."
+        raise InvalidAppConfigError(_invalid_app_config_message(path, detail)) from error
+
+
+def _invalid_app_config_message(path: str, detail: str) -> str:
+    display_path = path.replace(os.path.expanduser("~"), "~", 1)
+    return f"Invalid app configuration: {display_path}\n{detail} Fix or delete the file."
 
 
 def save_app_config(config: AppConfig, path: str = APP_CONFIG_PATH) -> None:
