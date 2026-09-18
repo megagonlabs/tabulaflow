@@ -152,7 +152,11 @@ async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> Non
         assert isinstance(picker, ModelPickerScreen)
         title = picker.query_one("#model-picker-title", Static).render()
         assert str(title) == "Choose model · Type to search or enter a custom model ID"
-        assert title.spans[0].style == "bold"
+        assert title.spans[0].style.bold
+        assert title.spans[0].style.foreground is None
+        assert title.spans[-1].style.dim
+        assert not title.spans[-1].style.bold
+        assert title.spans[-1].style.foreground is None
         hint = str(picker.query_one("#model-picker-hint", Static).render())
         assert "Navigate" not in hint
         assert "Type" not in hint
