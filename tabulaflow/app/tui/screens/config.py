@@ -123,11 +123,15 @@ class ModelPickerScreen(Screen[str | None]):
         return model if model not in self._searchable_models else None
 
     def _refresh(self) -> None:
-        title_text = "Choose model" if self._role == "main" else "Choose model for subagent"
-        title = Text(title_text, style=ACCENT_BOLD)
+        title_text = "Choose model" if self._role == "main" else "Choose subagent model"
+        title = Text(title_text, style="bold")
         if self._filter:
             title.append(" · ", style="dim")
             title.append(f"“{self._filter}”", style="bold")
+        else:
+            title.append(" · ", style="dim")
+            title.append("Type", style=KEY_HINT)
+            title.append(" to search or enter a custom model ID", style="dim")
         self.query_one("#model-picker-title", Static).update(title)
 
         custom_model = self._custom_model
@@ -161,10 +165,6 @@ class ModelPickerScreen(Screen[str | None]):
         hint = Text.assemble(
             ("Esc", KEY_HINT),
             (" Back · ", "dim"),
-            ("↑↓", KEY_HINT),
-            (" Navigate · ", "dim"),
-            ("Type", KEY_HINT),
-            (" Search or enter custom model ID · ", "dim"),
             ("Enter", KEY_HINT),
             (" Select", "dim"),
         )

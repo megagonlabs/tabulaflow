@@ -142,6 +142,26 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "openai:" not in options
 
 
+async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        title = picker.query_one("#model-picker-title", Static).render()
+        assert str(title) == "Choose model · Type to search or enter a custom model ID"
+        assert title.spans[0].style == "bold"
+        hint = str(picker.query_one("#model-picker-hint", Static).render())
+        assert "Navigate" not in hint
+        assert "Type" not in hint
+
+        await pilot.press("escape", "down", "down", "enter")
+        await pilot.pause()
+        assert str(app.screen.query_one("#model-picker-title", Static).render()).startswith("Choose subagent model")
+
+
 async def test_filter_accepts_a_custom_model_identifier() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
@@ -152,7 +172,7 @@ async def test_filter_accepts_a_custom_model_identifier() -> None:
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
         assert "Use test:model  (custom)" in options
-        assert "Search or enter custom model ID" in str(picker.query_one("#model-picker-hint", Static).render())
+        assert "“test:model”" in str(picker.query_one("#model-picker-title", Static).render())
         assert "Tab" not in str(picker.query_one("#model-picker-hint", Static).render())
 
         await pilot.press("enter")
