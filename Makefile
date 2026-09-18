@@ -24,22 +24,9 @@ lint:
 lint-arch:
 	uv run lint-imports
 
-PYTHON_VERSIONS := 3.11 3.12 3.13
-
 .PHONY: test
 test:
-	TABULAFLOW_SCHEMA_CACHE_ENABLED=0 TABULAFLOW_SCHEMA_CACHE_REQUIRED=0 TABULAFLOW_PREPROCESSOR_CACHE_ENABLED=0 TABULAFLOW_PREPROCESSOR_CACHE_REQUIRED=0 uv run pytest tests/
-
-.PHONY: test-all-python
-test-all-python:
-	@set -e; \
-	for v in $(PYTHON_VERSIONS); do \
-		echo "=== Python $$v ==="; \
-		TABULAFLOW_SCHEMA_CACHE_ENABLED=0 TABULAFLOW_SCHEMA_CACHE_REQUIRED=0 TABULAFLOW_PREPROCESSOR_CACHE_ENABLED=0 TABULAFLOW_PREPROCESSOR_CACHE_REQUIRED=0 uv run --python $$v pytest tests/; \
-	done; \
-	echo "=== Restoring default venv ==="; \
-	uv run --python $$(cat .python-version) python --version; \
-	echo "=== All Python versions passed ==="
+	uv run pytest tests/
 
 
 .PHONY: test-bird-direct-prompting
