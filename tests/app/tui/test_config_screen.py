@@ -35,9 +35,11 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert "enabled" in _text(screen, "#field-enabled")
+        assert "‹ on ›" in _text(screen, "#field-enabled")
         assert "openai:gpt-5.6-sol" in _text(screen, "#field-main-model")
         assert "openai:gpt-5.4-mini" in _text(screen, "#field-subagent-model")
+        assert _text(screen, "#field-main-model").endswith("openai:gpt-5.6-sol")
+        assert _text(screen, "#field-subagent-model").endswith("openai:gpt-5.4-mini")
         assert "medium" in _text(screen, "#field-main-reasoning")
         assert "Subagent model" in _text(screen, "#field-subagent-model")
         assert "Subagent reasoning" in _text(screen, "#field-subagent-reasoning")
@@ -45,6 +47,16 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
         rendered = {str(widget.render()) for widget in screen.query(Static)}
         assert "MAIN AGENT" not in rendered
         assert "SUBAGENT" not in rendered
+
+
+async def test_config_title_and_spacing_match_the_plain_style() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        title = screen.query_one("#config-title", Static).render()
+        assert title.spans[0].style.bold
+        assert title.spans[0].style.foreground is None
+        assert str(screen.query("#config-body > Static").nodes[1].render()) == ""
 
 
 async def test_fields_are_edited_and_applied_atomically() -> None:
@@ -98,6 +110,21 @@ async def test_reasoning_changes_inline_with_left_and_right() -> None:
         await pilot.press("left", "escape")
         await pilot.pause()
         assert app.results == [None]
+
+
+async def test_non_model_options_rotate() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("right")
+        assert "‹ off ›" in _text(screen, "#field-enabled")
+        await pilot.press("left")
+        assert "‹ on ›" in _text(screen, "#field-enabled")
+
+        await pilot.press("down", "down", "right", "right", "right")
+        assert "minimal" in _text(screen, "#field-main-reasoning")
+        await pilot.press("left")
+        assert "xhigh" in _text(screen, "#field-main-reasoning")
 
 
 async def test_model_picker_filters_without_search_input() -> None:

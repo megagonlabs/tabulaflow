@@ -40,7 +40,7 @@ class ModelPickerScreen(Screen[str | None]):
     ModelPickerScreen { background: $background; }
     ModelPickerScreen #model-picker { height: 1fr; padding: 1 3; }
     ModelPickerScreen #model-picker-title { height: auto; margin-bottom: 1; }
-    ModelPickerScreen #model-options { height: 1fr; border: none; padding: 0; background: transparent; }
+    ModelPickerScreen #model-options { height: 1fr; padding: 0 0 1 0; }
     ModelPickerScreen #model-picker-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
 
@@ -137,7 +137,7 @@ class ModelPickerScreen(Screen[str | None]):
         options_widget = self.query_one("#model-options", Static)
         options = Text()
         if rows:
-            start, end, show_above, show_below = self._model_window(len(rows), options_widget.size.height)
+            start, end, show_above, show_below = self._model_window(len(rows), options_widget.content_size.height)
             if show_above:
                 options.append(f"  ↑ {start} more\n", style="dim")
             for index in range(start, end):
@@ -227,7 +227,8 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
         with Vertical(id="config-body"):
-            yield Static(Text.assemble(("Configuration", ACCENT_BOLD), (f" · saved to {config_path}", "dim")))
+            yield Static(Text.assemble(("Configuration", "bold"), (f" · saved to {config_path}", "dim")), id="config-title")
+            yield Static("")
             yield Static(id="field-enabled", classes="config-field")
             yield Static(id="field-main-model", classes="config-field")
             yield Static(id="field-main-reasoning", classes="config-field")
@@ -245,12 +246,12 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
     def action_change(self, delta: int) -> None:
         field = self._fields[self._cursor]
         if field == "enabled":
-            self._enabled = delta > 0
+            self._enabled = not self._enabled
         elif self._enabled and field.endswith("-reasoning"):
             role_name = field.split("-", 1)[0]
             role = cast(LLMRoleConfig, getattr(self._config, role_name))
             index = _REASONING_LEVELS.index(role.reasoning) if role.reasoning in _REASONING_LEVELS else 2
-            role.reasoning = _REASONING_LEVELS[max(0, min(len(_REASONING_LEVELS) - 1, index + delta))]
+            role.reasoning = _REASONING_LEVELS[(index + delta) % len(_REASONING_LEVELS)]
         self._refresh()
 
     def action_edit(self) -> None:
@@ -286,7 +287,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
 
     def _refresh(self) -> None:
         values = {
-            "enabled": "enabled" if self._enabled else "disabled",
+            "enabled": "on" if self._enabled else "off",
             "main-model": self._config.main.model,
             "main-reasoning": str(self._config.main.reasoning),
             "subagent-model": self._config.subagent.model,
@@ -303,15 +304,13 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             cursor = index == self._cursor
             text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
             text.append(f"{labels[field]:<22}", style="bold" if cursor else "")
-            if field.endswith("-reasoning"):
+            if field == "enabled" or field.endswith("-reasoning"):
                 text.append("‹ ", style="dim")
             text.append(
                 values[field], style="bold" if cursor else ("" if self._enabled or field == "enabled" else "dim")
             )
-            if field.endswith("-reasoning"):
+            if field == "enabled" or field.endswith("-reasoning"):
                 text.append(" ›", style="dim")
-            elif field.endswith("-model"):
-                text.append("  ›", style="dim")
             self.query_one(f"#field-{field}", Static).update(text)
 
         field = self._fields[self._cursor]
