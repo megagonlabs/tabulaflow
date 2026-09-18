@@ -53,6 +53,60 @@ def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
     assert sum(model.startswith("openai-chat:") for model in catalog) == 1
 
 
+def test_model_catalog_prioritizes_current_provider_and_newer_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    known = (
+        "vendor:model",
+        "zai:glm-5.2",
+        "deepseek:deepseek-v4-pro",
+        "moonshotai:kimi-k3",
+        "xai:grok-4.6",
+        "openai:gpt-4.1",
+        "anthropic:claude-opus-4-6",
+        "anthropic:claude-opus-5-20260101",
+        "anthropic:claude-opus-5",
+        "anthropic:claude-sonnet-4-5",
+    )
+    monkeypatch.setattr("tabulaflow.app.config.known_model_names", lambda: known)
+
+    catalog = llm_model_catalog(
+        current="anthropic:claude-sonnet-4-5",
+        recommended=("openai:gpt-5.6-sol",),
+    )
+
+    assert catalog == (
+        "openai:gpt-5.6-sol",
+        "anthropic:claude-sonnet-4-5",
+        "anthropic:claude-opus-5",
+        "anthropic:claude-opus-5-20260101",
+        "anthropic:claude-opus-4-6",
+        "openai:gpt-4.1",
+        "xai:grok-4.6",
+        "moonshotai:kimi-k3",
+        "deepseek:deepseek-v4-pro",
+        "zai:glm-5.2",
+        "vendor:model",
+    )
+
+
+def test_model_catalog_does_not_treat_snapshot_dates_as_versions(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "tabulaflow.app.config.known_model_names",
+        lambda: ("xai:grok-4-0709", "xai:grok-4.6", "xai:grok-4.20", "xai:grok-4-1-fast"),
+    )
+
+    catalog = llm_model_catalog(current="xai:custom", recommended=())
+
+    assert catalog == (
+        "xai:custom",
+        "xai:grok-4.20",
+        "xai:grok-4.6",
+        "xai:grok-4-1-fast",
+        "xai:grok-4-0709",
+    )
+
+
 def test_model_identifier_must_be_provider_qualified() -> None:
     with pytest.raises(ValueError, match="provider:model"):
         LLMRoleConfig(model="gpt-5")

@@ -78,12 +78,91 @@ RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
     "openai:gpt-5.4-mini",
     "openai:gpt-5-mini",
 )
+_PROVIDER_ORDER = (
+    "openai",
+    "anthropic",
+    "google",
+    "google-cloud",
+    "xai",
+    "moonshotai",
+    "deepseek",
+    "zai",
+    "bedrock",
+    "bedrock-mantle",
+    "groq",
+    "mistral",
+    "cerebras",
+    "cohere",
+    "huggingface",
+    "snowflake",
+    "heroku",
+    "crusoe",
+)
+_MODEL_VERSION_PATTERNS = {
+    "openai": (
+        re.compile(r"^(?P<family>gpt)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),
+        re.compile(r"^(?P<family>o)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),
+    ),
+    "anthropic": (re.compile(r"^(?P<family>claude-[^-]+)-(?P<major>\d+)(?:-(?P<minor>\d+))?"),),
+    "google": (re.compile(r"^(?P<family>gemini)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
+    "google-cloud": (re.compile(r"^(?P<family>gemini)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
+    "xai": (
+        re.compile(
+            r"^(?P<family>grok)-(?P<major>\d+)"
+            r"(?:\.(?P<minor_dot>\d+)|-(?P<minor_dash>\d{1,2})(?=-|$))?"
+        ),
+    ),
+    "moonshotai": (re.compile(r"^(?P<family>kimi-k)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
+    "deepseek": (re.compile(r"^(?P<family>deepseek-v)(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
+    "zai": (re.compile(r"^(?P<family>glm)-(?P<major>\d+)(?:\.(?P<minor>\d+))?"),),
+}
+_MODEL_SNAPSHOT_RE = re.compile(r"-(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})$")
+
+
+def _provider_sort_key(provider: str, current_provider: str) -> tuple[int, int, bool, str]:
+    if provider == current_provider:
+        return (0, 0, False, provider)
+    gateway = provider.startswith("gateway/")
+    base_provider = provider.removeprefix("gateway/")
+    try:
+        rank = _PROVIDER_ORDER.index(base_provider)
+    except ValueError:
+        return (2, len(_PROVIDER_ORDER), gateway, provider)
+    return (1, rank, gateway, provider)
+
+
+def _model_sort_key(model: str) -> tuple[int, int, int, str, str, bool, int, str]:
+    provider, _, name = model.partition(":")
+    base_provider = provider.removeprefix("gateway/")
+    snapshot_match = _MODEL_SNAPSHOT_RE.search(name)
+    base_name = name[: snapshot_match.start()] if snapshot_match else name
+    snapshot = int("".join(snapshot_match.group("year", "month", "day"))) if snapshot_match else 0
+    for pattern in _MODEL_VERSION_PATTERNS.get(base_provider, ()):
+        if match := pattern.match(base_name):
+            groups = match.groupdict()
+            minor = groups.get("minor") or groups.get("minor_dot") or groups.get("minor_dash") or "0"
+            return (
+                0,
+                -int(match.group("major")),
+                -int(minor),
+                match.group("family"),
+                base_name.casefold(),
+                snapshot_match is not None,
+                -snapshot,
+                name.casefold(),
+            )
+    return (1, 0, 0, "", name.casefold(), False, 0, name.casefold())
 
 
 def llm_model_catalog(*, current: str, recommended: tuple[str, ...]) -> tuple[str, ...]:
     """Return recommendations, the current model, and browsable Pydantic AI model ids."""
+    current_provider = current.partition(":")[0]
     known = sorted(
-        model for model in known_model_names() if model != "test" and not model.startswith("openai-chat:")
+        (model for model in known_model_names() if model != "test" and not model.startswith("openai-chat:")),
+        key=lambda model: (
+            _provider_sort_key(model.partition(":")[0], current_provider),
+            _model_sort_key(model),
+        ),
     )
     models = (*recommended, current, *known)
     return tuple(dict.fromkeys(models))
