@@ -134,13 +134,21 @@ class HistoryInput(TextArea):
         """Push the schema browser. Delegates to the app's action."""
         cast("TabulaflowApp", self.app).action_open_data_explorer()
 
-    def __init__(self, history_path: Path, *, placeholder: str = "", id: str | None = None) -> None:
+    def __init__(
+        self,
+        history_path: Path,
+        *,
+        placeholder: str = "",
+        empty_tab_completion: str | None = None,
+        id: str | None = None,
+    ) -> None:
         self._pasted_contents: dict[int, _PasteRecord] = {}
         self._active_images: dict[int, BinaryContent] = {}
         self._image_counter = 0
         self.highlighter = _ReferenceHighlighter(self._pasted_contents, self._active_images)
         self._suggester = InputSuggester()
         self._dismissed_suggestion_value: str | None = None
+        self._empty_tab_completion = empty_tab_completion
         super().__init__(
             placeholder=placeholder,
             id=id,
@@ -396,12 +404,16 @@ class HistoryInput(TextArea):
     def action_accept_suggestion(self) -> None:
         """Accept the current autocomplete suggestion, if any."""
         menu = self._suggestion_menu()
-        if menu is None or menu.selected is None:
+        if menu is not None and menu.selected is not None:
+            suggestion = menu.selected
+            self.value = suggestion.value
+            self.cursor_position = len(self.value)
+            menu.dismiss()
             return
-        suggestion = menu.selected
-        self.value = suggestion.value
+        if self.text or self._empty_tab_completion is None:
+            return
+        self.value = self._empty_tab_completion
         self.cursor_position = len(self.value)
-        menu.dismiss()
 
     def action_dismiss_suggestions(self) -> None:
         menu = self._suggestion_menu()

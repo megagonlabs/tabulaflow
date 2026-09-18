@@ -311,7 +311,8 @@ class TabulaflowApp(App[None]):
             with Horizontal(id="input-row"):
                 yield HistoryInput(
                     history_path=self._runtime_paths.history_path,
-                    placeholder="Ask a question or type /help",
+                    placeholder="Show me a table and chart on sample data",
+                    empty_tab_completion="Show me a table and chart on sample data",
                     id="input-bar",
                 )
                 with Vertical(id="explorer-control"):

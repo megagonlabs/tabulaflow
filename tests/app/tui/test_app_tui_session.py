@@ -122,6 +122,22 @@ def test_crash_console_disables_color(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _app(None).error_console.color_system is None
 
 
+async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+
+    async with app.run_test() as pilot:
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        assert input_bar.placeholder == "Show me a table and chart on sample data"
+
+        await pilot.press("tab")
+        assert input_bar.value == "Show me a table and chart on sample data"
+
+        input_bar.value = ""
+        await pilot.press("tab")
+        assert input_bar.value == "Show me a table and chart on sample data"
+
+
 async def test_escape_returns_to_previously_focused_result(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     _stub_app_startup(app, monkeypatch)
