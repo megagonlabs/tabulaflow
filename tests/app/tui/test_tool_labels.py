@@ -331,14 +331,20 @@ class TestVerbLedLabels:
 
     def test_subagent_bare_noun(self) -> None:
         args = {"connector_alias": "main", "table_name": "customers"}
-        assert summarize_tool_args("run_subagent_for_each_row", args) == "Subagent [main] customers"
+        assert summarize_tool_args("run_subagent_for_each_row", args) == "Run Subagents on [main] customers"
 
-    def test_transfer_uses_to_not_arrow(self) -> None:
-        # "->" would collide with the result-metric arrow, so the target reads "to"
+    def test_create_parameterized_source(self) -> None:
+        args = {"connector_alias": "workspace", "parameters": [{"id": "metric"}, {"id": "limit"}]}
+        assert (
+            summarize_tool_args("create_parameterized_source", args)
+            == "Create Parameterized Source [workspace] (2 controls)"
+        )
+
+    def test_write_table_names_the_destination_before_the_source(self) -> None:
         args = {"source_id": "S42", "target_alias": "dw", "target_table": "orders", "mode": "append"}
-        assert summarize_tool_args("write_result_table", args) == "Write S42 to [dw] orders (append)"
+        assert summarize_tool_args("write_result_table", args) == "Write Table [dw] orders from S42 (append)"
         del args["mode"]
-        assert summarize_tool_args("write_result_table", args) == "Write S42 to [dw] orders (create)"
+        assert summarize_tool_args("write_result_table", args) == "Write Table [dw] orders from S42 (create)"
 
     def test_browser_navigate(self) -> None:
         assert summarize_tool_args("browser_navigate", {"url": "stripe.com"}) == "Navigate stripe.com"
@@ -398,6 +404,30 @@ class TestVerbLedLabels:
 
 
 class TestStyledLabel:
+    def test_multi_word_action_is_bold(self) -> None:
+        text = _styled_label("render_chart", "Render Chart Revenue")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Render Chart"] == "bold dim"
+        assert styled[" Revenue"] == "dim"
+
+    def test_subagent_action_is_bold(self) -> None:
+        text = _styled_label("run_subagent_for_each_row", "Run Subagents on [main] customers")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Run Subagents"] == "bold dim"
+        assert styled[" on [main] customers"] == "dim"
+
+    def test_parameterized_source_action_is_bold(self) -> None:
+        text = _styled_label("create_parameterized_source", "Create Parameterized Source [workspace]")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Create Parameterized Source"] == "bold dim"
+        assert styled[" [workspace]"] == "dim"
+
+    def test_write_table_action_is_bold(self) -> None:
+        text = _styled_label("write_result_table", "Write Table [workspace] orders from S42 (create)")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Write Table"] == "bold dim"
+        assert styled[" [workspace] orders from S42 (create)"] == "dim"
+
     def test_diffstat_colored(self) -> None:
         text = _styled_label("edit_file", "Edit x.sql +2 -1")
         styled = {text.plain[s.start : s.end]: s.style for s in text.spans}

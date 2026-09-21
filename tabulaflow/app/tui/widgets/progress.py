@@ -47,6 +47,14 @@ _NOISE_ARG_KEYS = frozenset({"connector_alias", "refresh", "tab", "tool_call_id"
 _DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
 _UNLISTED_TOOL = "show_artifacts"
 _BASH_COMMAND_PREVIEW_LIMIT = 180
+_ACTION_PHRASES = {
+    "render_chart": "Render Chart",
+    "render_map": "Render Map",
+    "render_graph": "Render Graph",
+    "run_subagent_for_each_row": "Run Subagents",
+    "create_parameterized_source": "Create Parameterized Source",
+    "write_result_table": "Write Table",
+}
 
 
 def _fmt_arg_value(value: object, limit: int = 40) -> str:
@@ -327,9 +335,14 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         target_table = str(args.get("target_table", ""))
         mode = str(args.get("mode", "create"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
-        return f"Write {source_id} to [{target_alias}] {target} ({mode})"
+        return f"Write Table [{target_alias}] {target} from {source_id} ({mode})"
     if name == "run_subagent_for_each_row":
-        return f"Subagent {connector_prefix}{args.get('table_name', '')}"
+        return f"Run Subagents on {connector_prefix}{args.get('table_name', '')}"
+    if name == "create_parameterized_source":
+        parameters = args.get("parameters")
+        count = len(parameters) if isinstance(parameters, list) else 0
+        suffix = f" ({count} control{'s' if count != 1 else ''})" if count else ""
+        return f"Create Parameterized Source {connector_prefix.rstrip()}{suffix}".rstrip()
     if name == "extract_rows_from_documents":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
@@ -401,14 +414,20 @@ def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text
     outcome stays dim like the rest of the label.
     """
     text = Text()
-    verb_end = label.find(" ")
-    if verb_end == -1:
+    action = _ACTION_PHRASES.get(name)
+    if action and not label.startswith(action):
+        action = None
+    if action is None:
+        verb_end = label.find(" ")
+        action = label if verb_end == -1 else label[:verb_end]
+
+    if len(label) == len(action):
         text.append(label, style="bold dim")
         return text
 
-    text.append(label[:verb_end], style="bold dim")
+    text.append(action, style="bold dim")
     pos = 0
-    rest = label[verb_end:]
+    rest = label[len(action) :]
     if not color_diffstat or name not in {"edit_file", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
         text.append(rest, style="dim")
         return text
