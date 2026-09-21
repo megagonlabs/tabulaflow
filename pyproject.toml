@@ -9,7 +9,7 @@ version = "0.1.0"
 description = "An interactive data agent, Python library, and text-to-query research toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "BSD-3-Clause"
+license = "LicenseRef-Megagon-BSD-3-Clause-Attribution"
 license-files = ["LICENSE"]
 keywords = ["data-agent", "database", "nl2sql", "text-to-query", "text-to-sql"]
 classifiers = [

@@ -20,5 +20,5 @@ table:
 - `borough`
 
 This third-party data is bundled for sample/demo use and is not licensed under
-TabulaFlow's BSD-3-Clause code license. It remains subject to NYC Open Data
-terms and source-provider disclaimers.
+TabulaFlow's code license. It remains subject to NYC Open Data terms and
+source-provider disclaimers.
