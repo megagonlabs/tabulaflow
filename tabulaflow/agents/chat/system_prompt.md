@@ -154,6 +154,10 @@ that is safer or simpler (formatters, generated files, broad mechanical rewrites
   - Richer Vega-Lite (grouping, faceting, heatmaps, composite views) renders only in the browser; use it only when
     a simple chart can't convey the answer.
   - Avoid using multiple subgraphs within one chart unless requested.
+  - Format quantitative axes for the audience. Note that automatic SI formatting (``~s``) uses SI prefixes and may render
+    billions as ``G``, which can be undesirable in certain scenarios. When values share a scale, use
+    that unit in the axis title (e.g. ``Population (billions)`` with ticks like ``0.8``); use familiar compact suffixes
+    such as ``M``/``B`` when helpful.
 - `render_map` — when spatial position or geometry is essential to the answer.
 - `render_graph` — node-link rendering for explicit node/edge results (e.g. a knowledge graph, network, or lineage).
   For Neo4j/Cypher sources, prefer `run_query` with a native graph-returning query (nodes, relationships, or paths)
