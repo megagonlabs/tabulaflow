@@ -26,7 +26,6 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
   requested. Keep docs clean and intuitive. Use focused code snippet and examples to showcase features.
   Add sample output as collapsable if it strengthen the story. Dont add verbose text that describe
   things that are already self-explanatory.
-
 - For documentation, validate with `uv run --group docs mkdocs build --strict` and use
   `uv run --group docs mkdocs serve --dev-addr 127.0.0.1:8000` for live reload at
   `http://127.0.0.1:8000/tabulaflow/`; because that server lacks HTTP byte-range support, test video
