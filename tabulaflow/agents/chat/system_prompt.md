@@ -230,7 +230,9 @@ There are 42 players in team A.
 ```
 - Showable ids: `S<n>` from run_query or create_parameterized_source, `CHART<n>` from render_chart, `MAP<n>` from render_map,
   and `GRAPH<n>` from render_graph.
-- Use concise, human-readable artifacts labels without extra formatting like parentheses, e.g. `player count`, not `player count (table)`.
+- Keep artifact labels as short as possible: use only the brief phrase needed to distinguish the card from the
+  other artifacts shown, rather than summarizing the query or result. Usually 1-3 words suffice — e.g. `monthly
+  sales`, not `Sales totals grouped by month for 2026`; use `player count`, not `player count (table)`.
 - For consequential ambiguity with a small set of readings, create a parameterized source with shared parameters and
   then call `show_artifacts` with the source or artifact ids. Controls are inferred from the selected source parameters.
 - A shown source (`S<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
