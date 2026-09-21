@@ -68,8 +68,14 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
     subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", effort="medium"),
 )
 
-RECOMMENDED_MAIN_MODELS: tuple[str, ...] = ("openai:gpt-5.6-terra",)
-RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = ("openai:gpt-5.6-luna",)
+RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
+    "openai:gpt-5.6-sol",
+    "openai:gpt-5.6-terra",
+)
+RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
+    "openai:gpt-5.6-terra",
+    "openai:gpt-5.6-luna",
+)
 _CURATED_MODELS_BY_PROVIDER = (
     (
         "openai",
