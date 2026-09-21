@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Mapping
 import pandas as pd
 
@@ -74,28 +75,33 @@ def validate_chart_spec(
     if "mark" not in spec and not _is_multiview_spec(spec):
         raise ChartSpecError("spec must have a 'mark' or be a multi-view spec (layer/facet/concat)")
 
-    field_refs, has_transform = _spec_field_refs(spec)
+    field_refs = _spec_field_refs(spec)
+    transform_outputs = _transform_output_fields(spec)
     errors: list[str] = []
     for label, df in sources.items():
+        column_names = [str(column) for column in df.columns]
+        duplicate_names = sorted(name for name, count in Counter(column_names).items() if count > 1)
+        if duplicate_names:
+            errors.append(
+                f"{label} — duplicate column name(s) cannot be charted: {duplicate_names}. "
+                "Alias them uniquely in the query"
+            )
         if len(df) > _CHART_MAX_ROWS:
             errors.append(f"{label} — {len(df):,} rows is too large to chart; max {_CHART_MAX_ROWS:,} rows")
-        if not has_transform:
-            missing = sorted(field for field in field_refs if not _field_resolves(df, field))
-            if missing:
-                errors.append(f"{label} — field(s) not found: {missing}. Available columns: {list(df.columns)}")
+        missing = sorted(
+            field for field in field_refs if field not in transform_outputs and not _field_resolves(df, field)
+        )
+        if missing:
+            errors.append(f"{label} — field(s) not found: {missing}. Available columns: {list(df.columns)}")
     if errors:
         raise ChartSpecError(f"chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors))
 
 
-def _spec_field_refs(spec: object) -> tuple[set[str], bool]:
+def _spec_field_refs(spec: object) -> set[str]:
     fields: set[str] = set()
-    has_transform = False
 
     def walk(node: object) -> None:
-        nonlocal has_transform
         if isinstance(node, Mapping):
-            if "transform" in node:
-                has_transform = True
             field = node.get("field")
             if isinstance(field, str):
                 fields.add(field)
@@ -106,7 +112,52 @@ def _spec_field_refs(spec: object) -> tuple[set[str], bool]:
                 walk(value)
 
     walk(spec)
-    return fields, has_transform
+    return fields
+
+
+def _transform_output_fields(spec: object) -> set[str]:
+    """Return fields created by transforms anywhere in a Vega-Lite spec.
+
+    For example, ``{"calculate": "datum.x * 2", "as": "double_x"}``
+    produces ``double_x``, which is valid even though it is not a source column.
+    Also includes nested operation ``as`` names and standard default outputs.
+    Expressions are not parsed or executed.
+    """
+    outputs: set[str] = set()
+
+    def add_as(value: object) -> None:
+        if isinstance(value, str):
+            outputs.add(value)
+        elif isinstance(value, list):
+            outputs.update(item for item in value if isinstance(item, str))
+
+    def walk(node: object) -> None:
+        if isinstance(node, Mapping):
+            transforms = node.get("transform")
+            if isinstance(transforms, list):
+                for transform in transforms:
+                    if not isinstance(transform, Mapping):
+                        continue
+                    add_as(transform.get("as"))
+                    for value in transform.values():
+                        if isinstance(value, list):
+                            for item in value:
+                                if isinstance(item, Mapping):
+                                    add_as(item.get("as"))
+                    if "fold" in transform and "as" not in transform:
+                        outputs.update(("key", "value"))
+                    elif "density" in transform and "as" not in transform:
+                        outputs.update(("value", "density"))
+                    elif "quantile" in transform and "as" not in transform:
+                        outputs.update(("prob", "value"))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(spec)
+    return outputs
 
 
 def _field_resolves(df: pd.DataFrame, field: str) -> bool:

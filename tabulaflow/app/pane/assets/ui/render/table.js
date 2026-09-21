@@ -88,7 +88,9 @@ export function tableToTsv(columns, rows) {
 /** @param {HTMLElement} container @param {import('../contract').CardData} cardData */
 export function renderTable(container, cardData) {
   var tableData = cardData.table || {};
-  var rows = (cardData.dataset && cardData.dataset.rows) || [];
+  var dataset = cardData.dataset || {};
+  var columns = dataset.columns || [];
+  var rows = dataset.rows || [];
   var displayCap = tableData.displayCap || 120;
   var wrapClass = rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap';
   container.className = 'tf-view tf-table-view';
@@ -337,7 +339,7 @@ export function renderTable(container, cardData) {
     return out;
   }
 
-  var cols = (tableData.columns || []).map(buildColumn);
+  var cols = columns.map(buildColumn);
 
   var fixedMax = tableData.maxHeight == null ? null : tableData.maxHeight;
   var fixedPanel = container.closest && container.closest('.manual-preview');
@@ -380,24 +382,26 @@ export function renderTable(container, cardData) {
   return {
     ready: ready,
     copy: {
-      text: function () { return tableToTsv(tableData.columns || [], rows); },
+      text: function () { return tableToTsv(columns, rows); },
       label: 'Copy table',
       copiedLabel: 'Copied table'
     },
     canUpdate: function (nextData) {
       var nextTable = nextData.table || {};
-      var nextRows = (nextData.dataset && nextData.dataset.rows) || [];
+      var nextDataset = nextData.dataset || {};
+      var nextRows = nextDataset.rows || [];
       var nextEstimatedHeight = 38 + nextRows.length * 29;
       var nextConstrained = panelHeight > 0 || nextRows.length > 100
         || (fixedMax != null && nextEstimatedHeight > viewportCap);
-      return JSON.stringify(nextTable.columns || []) === JSON.stringify(tableData.columns || [])
+      return JSON.stringify(nextDataset.columns || []) === JSON.stringify(columns)
         && nextConstrained === shouldConstrainHeight
         && nextTable.maxHeight === tableData.maxHeight
         && nextTable.displayCap === tableData.displayCap;
     },
     update: function (nextData) {
       tableData = nextData.table || {};
-      rows = (nextData.dataset && nextData.dataset.rows) || [];
+      dataset = nextData.dataset || {};
+      rows = dataset.rows || [];
       var wrapper = container.querySelector('.tf-table-wrap');
       if (wrapper) wrapper.classList.toggle('pane-short', rows.length <= 12);
       return table.replaceData(rows);

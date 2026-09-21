@@ -112,6 +112,32 @@ console.log(JSON.stringify({{
     }
 
 
+def test_chart_rows_expose_logical_fields_for_vega_expressions(tmp_path: Path) -> None:
+    node, module_path = _renderer_module(tmp_path, "shared.js", "color-domains.js", "chart.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+globalThis.window = {{}};
+const moduleUrl = pathToFileURL({json.dumps(module_path)}).href;
+const {{ withSourceFieldAliases }} = await import(moduleUrl);
+const rows = withSourceFieldAliases(
+  [{{ c0: 'India', c1: 1326093247 }}],
+  [{{ title: 'country', field: 'c0' }}, {{ title: 'population', field: 'c1' }}]
+);
+
+console.log(JSON.stringify({{
+  row: rows[0],
+  populationMillions: rows[0].population / 1000000
+}}));
+"""
+
+    result = _run_node(node, script)
+
+    assert result == {
+        "row": {"c0": "India", "c1": 1_326_093_247, "country": "India", "population": 1_326_093_247},
+        "populationMillions": 1326.093247,
+    }
+
+
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.start()

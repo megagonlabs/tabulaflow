@@ -92,9 +92,28 @@ function withStableColorDomains(spec, rows, artifactKey) {
   return spec;
 }
 
+export function withSourceFieldAliases(rows, columns) {
+  var entries = (columns || []).map(function (column) { return [column.title, column.field]; });
+  if (!entries.length) return rows;
+  return rows.map(function (row) {
+    var aliased = Object.assign({}, row);
+    entries.forEach(function (entry) {
+      Object.defineProperty(aliased, entry[0], {
+        value: row[entry[1]],
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    });
+    return aliased;
+  });
+}
+
 export function renderChart(container, cardData, artifactKey) {
   var chartData = clone(cardData.chart || {});
-  var rows = (cardData.dataset && cardData.dataset.rows) || [];
+  var dataset = cardData.dataset || {};
+  var sourceRows = dataset.rows || [];
+  var rows = withSourceFieldAliases(sourceRows, dataset.columns);
   var spec = clone(chartData.spec || {});
   withStableColorDomains(spec, rows, artifactKey || 'chart');
   chartData.spec = spec;
@@ -166,7 +185,9 @@ export function renderChart(container, cardData, artifactKey) {
       return !!view && !!vega && JSON.stringify(nextChart) === JSON.stringify(chartData);
     },
     update: function (nextData) {
-      rows = (nextData.dataset && nextData.dataset.rows) || [];
+      dataset = nextData.dataset || {};
+      sourceRows = dataset.rows || [];
+      rows = withSourceFieldAliases(sourceRows, dataset.columns);
       syncEmpty();
       var changes = vega.changeset().remove(function () { return true; }).insert(rows);
       return view.change(DATASET_NAME, changes).runAsync();

@@ -27,6 +27,10 @@ def _payload_table(payload: TableCardData) -> dict[str, Any]:
     return cast(dict[str, Any], payload["table"])
 
 
+def _payload_columns(payload: TableCardData) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], payload["dataset"]["columns"])
+
+
 class TestBuildTableData:
     def test_serializes_rows_nulls_and_metadata(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"name": ["valid", None], "score": [10.0, None]})
@@ -36,7 +40,7 @@ class TestBuildTableData:
         assert _payload_rows(payload) == [{"c0": "valid", "c1": 10.0}, {"c0": None, "c1": None}]
         table = _payload_table(payload)
         assert table["meta"] == "2 rows · 2 columns"
-        assert table["columns"][1]["role"] == "number"
+        assert _payload_columns(payload)[1]["role"] == "number"
 
     def test_serializes_empty_table(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
@@ -46,14 +50,23 @@ class TestBuildTableData:
         assert _payload_rows(payload) == []
         assert _payload_table(payload)["meta"] == "0 rows · 2 columns"
 
+    def test_wire_fields_do_not_collide_with_column_names(self, tmp_path: Path) -> None:
+        payload = build_table_data(
+            pd.DataFrame([["logical c0", "other"]], columns=["c0", "name"]),
+            asset_stem="card_collision",
+            output_dir=tmp_path,
+        )
+
+        assert _payload_rows(payload) == [{"_c0": "logical c0", "c1": "other"}]
+        assert _payload_columns(payload)[0]["field"] == "_c0"
+
     def test_renders_image_column_inline(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"img": [PNG_MAGIC, PNG_MAGIC], "name": ["a", "b"]})
         payload = build_table_data(df, asset_stem="card_abc", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
-        table = _payload_table(payload)
         assert rows[0]["c0"]["src"].startswith("data:image/png;base64,")
-        assert table["columns"][0]["role"] == "media"
+        assert _payload_columns(payload)[0]["role"] == "media"
         assert not (tmp_path / "card_abc").exists()
 
     def test_detects_media_type_per_cell(self, tmp_path: Path) -> None:
@@ -86,7 +99,7 @@ class TestBuildTableData:
         payload = build_table_data(df, asset_stem="card_media_list", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
-        assert _payload_table(payload)["columns"][0]["role"] == "media"
+        assert _payload_columns(payload)[0]["role"] == "media"
         assert rows[0]["c0"]["kind"] == "media-list"
         assert [item["mime"] for item in rows[0]["c0"]["items"]] == [
             "image/png",
@@ -126,7 +139,7 @@ class TestBuildTableData:
         payload = build_table_data(df, asset_stem="card_media_text", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
-        assert _payload_table(payload)["columns"][0]["role"] == "media"
+        assert _payload_columns(payload)[0]["role"] == "media"
         assert rows[3]["c0"] == "caption"
         assert rows[4]["c0"] == "<binary: 7 bytes>"
 
@@ -198,10 +211,10 @@ class TestBuildTableData:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
         payload = build_table_data(df, asset_stem="card_mix", output_dir=tmp_path)
 
-        assert _payload_table(payload)["columns"][0]["role"] == "text"
+        assert _payload_columns(payload)[0]["role"] == "text"
 
     def test_numeric_column_gets_number_role(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"a": [1, 2, 3]})
         payload = build_table_data(df, asset_stem="card_assets", output_dir=tmp_path)
 
-        assert _payload_table(payload)["columns"][0]["role"] == "number"
+        assert _payload_columns(payload)[0]["role"] == "number"

@@ -76,7 +76,6 @@ export interface MediaListCell {
 }
 
 export interface TableData {
-  columns: ColumnDesc[];
   maxHeight?: number | null;
   displayCap?: number;
   meta?: string;
@@ -88,7 +87,7 @@ export interface TableData {
 
 export interface DatasetData {
   rows: Record<string, unknown>[];
-  columns?: ColumnDesc[];
+  columns: ColumnDesc[];
 }
 
 export interface ChartData {

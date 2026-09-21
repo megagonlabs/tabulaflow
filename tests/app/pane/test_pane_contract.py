@@ -49,8 +49,7 @@ def _assert_dataset(value: object) -> None:
     rows = value.get("rows")
     assert isinstance(rows, list)
     assert all(isinstance(row, dict) for row in rows)
-    if "columns" in value:
-        _assert_columns(value["columns"])
+    _assert_columns(value.get("columns"))
 
 
 def _assert_card_payload(card: PaneCard, data: CardData) -> None:
@@ -62,7 +61,6 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
         assert "dataset" in data
         assert "table" in data
         _assert_dataset(data["dataset"])
-        _assert_columns(data["table"]["columns"])
 
     if "chart" in card["views"]:
         chart = data["chart"]

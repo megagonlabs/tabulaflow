@@ -89,7 +89,6 @@ class MediaListCell(TypedDict):
 
 
 class TableData(TypedDict, total=False):
-    columns: Required[list[ColumnDesc]]
     maxHeight: int | None
     displayCap: int
     meta: str
@@ -99,9 +98,9 @@ class TableData(TypedDict, total=False):
     maxRows: int
 
 
-class DatasetData(TypedDict, total=False):
+class DatasetData(TypedDict):
     rows: Required[list[dict[str, object]]]
-    columns: list[ColumnDesc]
+    columns: Required[list[ColumnDesc]]
 
 
 class ChartData(TypedDict):

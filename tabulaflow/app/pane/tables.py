@@ -50,6 +50,18 @@ class TableDataBuild:
     field_by_column: dict[str, str]
 
 
+def _wire_fields(columns: list[str]) -> list[str]:
+    """Return compact field ids that cannot collide with logical column names."""
+    logical_names = set(columns)
+    fields: list[str] = []
+    for index in range(len(columns)):
+        field = f"c{index}"
+        while field in logical_names:
+            field = f"_{field}"
+        fields.append(field)
+    return fields
+
+
 def _plural(n: int, word: str) -> str:
     return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
 
@@ -177,9 +189,11 @@ def _build_table_data(
     column_defs: list[ColumnDesc] = []
     fields: list[tuple[str, str]] = []
     field_by_column: dict[str, str] = {}
+    column_names = [str(col) for col in view.columns]
+    wire_fields = _wire_fields(column_names)
     for col_idx, col in enumerate(view.columns):
-        field = f"c{col_idx}"
-        title_str = str(col)
+        field = wire_fields[col_idx]
+        title_str = column_names[col_idx]
         field_by_column[title_str] = field
         if title_str in media_columns:
             column_defs.append(
@@ -246,7 +260,6 @@ def _build_table_data(
         rows.append(row_data)
 
     table_payload: TableData = {
-        "columns": column_defs,
         "maxHeight": max_height,
         "displayCap": _CELL_DISPLAY_CAP,
         "meta": table_view_meta(len(df), len(df.columns), max_rows=max_rows),
@@ -256,7 +269,10 @@ def _build_table_data(
     if truncated_rows:
         table_payload["truncatedRows"] = truncated_rows
         table_payload["maxRows"] = max_rows
-    return TableDataBuild(data={"dataset": {"rows": rows}, "table": table_payload}, field_by_column=field_by_column)
+    return TableDataBuild(
+        data={"dataset": {"rows": rows, "columns": column_defs}, "table": table_payload},
+        field_by_column=field_by_column,
+    )
 
 
 def build_table_data(

@@ -180,10 +180,9 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: 
             max_height=None,
         )
         dataset = table_build.data.get("dataset")
-        table_payload = table_build.data.get("table")
         sources_payload[source_id] = {
             "rows": dataset.get("rows", []) if isinstance(dataset, dict) else [],
-            "columns": table_payload.get("columns", []) if isinstance(table_payload, dict) else [],
+            "columns": dataset.get("columns", []) if isinstance(dataset, dict) else [],
             "field_by_column": table_build.field_by_column,
         }
     map_data = build_map_data(map_artifact.spec, sources_payload)

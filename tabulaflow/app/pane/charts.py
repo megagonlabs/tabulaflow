@@ -171,4 +171,10 @@ def build_chart_data(
         wrap_class = "content"
 
     renderer = "canvas" if len(df) > _SVG_ROW_LIMIT else "svg"
-    return {"chart": {"spec": spec, "renderer": renderer, "wrapClass": wrap_class}}
+    return {
+        "chart": {
+            "spec": spec,
+            "renderer": renderer,
+            "wrapClass": wrap_class,
+        }
+    }

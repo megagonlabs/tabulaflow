@@ -118,7 +118,7 @@ function fieldLabelsFromColumns(cols) {
 }
 
 function fieldLabels(cardData) {
-  return fieldLabelsFromColumns(cardData.table && cardData.table.columns);
+  return fieldLabelsFromColumns(cardData.dataset && cardData.dataset.columns);
 }
 
 function safeScalar(value) {

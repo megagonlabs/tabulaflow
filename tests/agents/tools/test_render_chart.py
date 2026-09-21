@@ -27,6 +27,24 @@ def test_validate_chart_spec_accepts_matching_fields() -> None:
     validate_chart_spec(SIMPLE_BAR, {"S1": pd.DataFrame({"a": [1], "b": [2]})})
 
 
+def test_validate_chart_spec_checks_source_fields_when_transform_present() -> None:
+    spec = {
+        "transform": [{"calculate": "datum.b * 2", "as": "derived"}],
+        "mark": "bar",
+        "encoding": {"x": {"field": "missing"}, "y": {"field": "derived"}},
+    }
+
+    with pytest.raises(ValueError, match="missing"):
+        validate_chart_spec(spec, {"S1": pd.DataFrame({"a": [1], "b": [2]})})
+
+
+def test_validate_chart_spec_rejects_duplicate_column_names() -> None:
+    df = pd.DataFrame([[1, 2]], columns=["value", "value"])
+
+    with pytest.raises(ValueError, match="duplicate column name"):
+        validate_chart_spec({"mark": "bar", "encoding": {"x": {"field": "value"}}}, {"S1": df})
+
+
 def _chart_artifact(output_store: OutputStore, chart_id: str) -> ChartArtifactSpec:
     artifact = output_store.get_artifact(chart_id)
     assert isinstance(artifact, ChartArtifactSpec)
@@ -110,6 +128,26 @@ class TestBuildChartData:
         out = self._chart(df, spec)["spec"]
         assert out["encoding"]["x"]["field"] == "status"
         assert out["encoding"]["y"]["field"] == "count"
+
+    def test_source_fields_are_available_to_transform_expressions(self) -> None:
+        df = pd.DataFrame({"country": ["India"], "population": [1_326_093_247]})
+        spec: dict[str, object] = {
+            "transform": [{"calculate": "datum.population / 1000000", "as": "population_millions"}],
+            "mark": "bar",
+            "encoding": {
+                "y": {"field": "country"},
+                "x": {"field": "population_millions"},
+            },
+        }
+
+        chart = cast(
+            dict[str, Any],
+            build_chart_data(df, spec, field_by_column={"country": "c0", "population": "c1"})["chart"],
+        )
+
+        assert chart["spec"]["transform"] == spec["transform"]
+        assert chart["spec"]["encoding"]["y"]["field"] == "c0"
+        assert chart["spec"]["encoding"]["x"]["field"] == "population_millions"
 
     def test_user_color_overrides_theme(self) -> None:
         df = pd.DataFrame({"a": ["x"], "b": [1]})
