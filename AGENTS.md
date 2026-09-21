@@ -27,6 +27,13 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
   Add sample output as collapsable if it strengthen the story. Dont add verbose text that describe
   things that are already self-explanatory.
 
+- For documentation, validate with `uv run --group docs mkdocs build --strict` and use
+  `uv run --group docs mkdocs serve --dev-addr 127.0.0.1:8000` for live reload at
+  `http://127.0.0.1:8000/tabulaflow/`; because that server lacks HTTP byte-range support, test video
+  seeking by building first and running
+  `npx --yes serve site --listen tcp://127.0.0.1:8000 --no-clipboard` instead (no live reload),
+  stopping any existing port-8000 server before switching.
+
 ## Principles
 
 - Think from first principles.
