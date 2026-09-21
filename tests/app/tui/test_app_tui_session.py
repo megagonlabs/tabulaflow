@@ -514,7 +514,7 @@ def test_bottom_status_uses_selected_startup_profile(
     assert model_status.value.startswith(expected)
 
 
-def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bottom_status_hides_priority_llm_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = _llm_config(model="openai:gpt-5.6-sol")
     app = _app_for_selection(_selection(config), project_dir=tmp_path, llm_service_tier="priority")
     model_status = _StatusCapture()
@@ -526,7 +526,8 @@ def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monke
     monkeypatch.setattr(app, "query_one", fake_query_one)
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("gpt-5.6-sol · Priority · ")
+    assert model_status.value.startswith("gpt-5.6-sol · ")
+    assert "Priority" not in model_status.value
 
 
 async def test_startup_llm_activation_reports_session_then_agent_progress(

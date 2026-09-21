@@ -704,8 +704,6 @@ class TabulaflowApp(App[None]):
             model_status_label = model_label(main.model)
         else:
             model_status_label = "LLM off"
-        if self._llm_service_tier == "priority" and self._llm_config.config is not None:
-            model_status_label = f"{model_status_label} · Priority"
         model_status.update(Text(f"{model_status_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View in browser: {url}" if url else "", style="dim"))
 
