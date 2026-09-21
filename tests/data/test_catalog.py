@@ -20,6 +20,7 @@ def test_wikidata_guidance_covers_multilingual_labels() -> None:
     definition = resolve_data_source_definition("wikidata")
 
     assert definition is not None
+    assert "omit explicit `PREFIX` declarations" in definition.description
     assert "user's requested language" in definition.description
     assert "`mul` language-neutral labels" in definition.description
     assert "Keep queries selective and efficient" in definition.description

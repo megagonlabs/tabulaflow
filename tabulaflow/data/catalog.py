@@ -31,6 +31,7 @@ def _normalize_catalog_source(source: str) -> str:
 WIKIDATA_DESCRIPTION = """Wikidata is a collaborative knowledge graph queried with SPARQL.
 
 Query notes:
+- Prefixes: Wikidata Query Service predefines common prefixes including `wd:`, `wdt:`, `p:`, `ps:`, `pq:`, `wikibase:`, `bd:`, and `rdfs:`; omit explicit `PREFIX` declarations.
 - Labels: Return readable labels in the user's requested language, accounting for Wikidata's `mul` language-neutral labels.
 - Discovery: For uncommon entities/properties or when unsure, resolve names to QIDs and PIDs with `SERVICE wikibase:mwapi` in the user's requested language, then query by those IDs; avoid graph-wide label scans.
 - Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` when qualifiers, ranks, dates, date precision, or calendar metadata matter.
