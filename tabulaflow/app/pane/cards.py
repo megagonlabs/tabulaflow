@@ -138,16 +138,16 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id
             views.append("graph")
     df = metadata.df
     if df is not None:
-        table_build = _build_table_data(
+        table_data = _build_table_data(
             df,
             asset_stem=card_id,
             output_dir=pane_dir,
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
-        card_data.update(table_build.data)
+        card_data.update(table_data)
         if metadata.chart_spec is not None:
             card_data.update(
-                build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column)
+                build_chart_data(df, dict(metadata.chart_spec), columns=table_data["dataset"]["columns"])
             )
             views.append("chart")
         views.append("data")
@@ -173,17 +173,16 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: 
     for source_id, df in map_artifact.sources.items():
         if df is None:
             continue
-        table_build = _build_table_data(
+        table_data = _build_table_data(
             df,
             asset_stem=f"{card_id}_{source_id}",
             output_dir=pane_dir,
             max_height=None,
         )
-        dataset = table_build.data.get("dataset")
+        dataset = table_data.get("dataset")
         sources_payload[source_id] = {
             "rows": dataset.get("rows", []) if isinstance(dataset, dict) else [],
             "columns": dataset.get("columns", []) if isinstance(dataset, dict) else [],
-            "field_by_column": table_build.field_by_column,
         }
     map_data = build_map_data(map_artifact.spec, sources_payload)
     if map_data is None:

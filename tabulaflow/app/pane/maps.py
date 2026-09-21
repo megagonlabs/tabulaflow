@@ -177,9 +177,8 @@ def build_map_data(
     Args:
         map_spec: Normalized map configuration whose layers carry a
             ``source_id``, with a non-empty ``layers`` list.
-        sources: Mapping from source id to a dataset dict with ``rows``,
-            ``columns``, and ``field_by_column`` (original column name → pane
-            field name).
+        sources: Mapping from source id to a dataset dict with ``rows`` and
+            ``columns`` containing original and pane field names.
 
     Returns:
         A ``{"map": ..., "datasets": ...}`` payload, or ``None`` when no valid
@@ -187,9 +186,13 @@ def build_map_data(
     """
     field_by_column_by_source: dict[str, Mapping[str, str]] = {}
     for rid, source in sources.items():
-        fbc = source.get("field_by_column", {})
-        if isinstance(fbc, Mapping):
-            field_by_column_by_source[rid] = {str(k): str(v) for k, v in fbc.items()}
+        columns = source.get("columns", [])
+        if isinstance(columns, list):
+            field_by_column_by_source[rid] = {
+                str(column["title"]): str(column["field"])
+                for column in columns
+                if isinstance(column, Mapping) and "title" in column and "field" in column
+            }
     layers = _normalize_layers(map_spec, field_by_column_by_source=field_by_column_by_source)
     if not layers:
         return None

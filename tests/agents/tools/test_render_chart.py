@@ -142,7 +142,14 @@ class TestBuildChartData:
 
         chart = cast(
             dict[str, Any],
-            build_chart_data(df, spec, field_by_column={"country": "c0", "population": "c1"})["chart"],
+            build_chart_data(
+                df,
+                spec,
+                columns=[
+                    {"title": "country", "field": "c0", "role": "text"},
+                    {"title": "population", "field": "c1", "role": "number"},
+                ],
+            )["chart"],
         )
 
         assert chart["spec"]["transform"] == spec["transform"]

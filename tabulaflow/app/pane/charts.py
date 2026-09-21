@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.pane.contract import ChartCardData
+from tabulaflow.app.pane.contract import ChartCardData, ColumnDesc
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -133,15 +133,14 @@ def build_chart_data(
     df: "pd.DataFrame",
     vegalite_spec: dict[str, object],
     *,
-    field_by_column: dict[str, str] | None = None,
+    columns: list[ColumnDesc] | None = None,
 ) -> ChartCardData:
     """Build a structured chart payload for the browser pane.
 
     Args:
         df: Source data.
         vegalite_spec: The Vega-Lite specification.
-        field_by_column: Optional mapping from DataFrame column names to shared
-            dataset field names.
+        columns: Shared dataset column descriptors.
 
     Returns:
         A card-data fragment containing a ``chart`` payload. Row values are
@@ -151,8 +150,8 @@ def build_chart_data(
     colmap = {str(c).lower(): str(c) for c in df.columns}
     _normalize_field_refs(spec, colmap)
     spec = _add_line_hover(spec)
-    if field_by_column:
-        _alias_field_refs(spec, field_by_column)
+    if columns:
+        _alias_field_refs(spec, {column["title"]: column["field"] for column in columns})
 
     spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
 

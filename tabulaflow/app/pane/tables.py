@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,14 +39,6 @@ _DEFAULT_MAX_ROWS = TABLE_RENDER_MAX_ROWS
 _DEFAULT_INLINE_CAP = 256 * 1024
 _CELL_TEXT_HARD_CAP = 1024 * 1024
 _CELL_DISPLAY_CAP = 120
-
-
-@dataclass(frozen=True)
-class TableDataBuild:
-    """Structured table payload plus Python-only field mapping."""
-
-    data: TableCardData
-    field_by_column: dict[str, str]
 
 
 def _wire_fields(columns: list[str]) -> list[str]:
@@ -175,7 +166,7 @@ def _build_table_data(
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
     max_height: int | None = None,
-) -> TableDataBuild:
+) -> TableCardData:
     """Build the structured table payload used by output-pane cards."""
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
@@ -188,13 +179,11 @@ def _build_table_data(
     sib_dir = output_dir / asset_stem
     column_defs: list[ColumnDesc] = []
     fields: list[tuple[str, str]] = []
-    field_by_column: dict[str, str] = {}
     column_names = [str(col) for col in view.columns]
     wire_fields = _wire_fields(column_names)
     for col_idx, col in enumerate(view.columns):
         field = wire_fields[col_idx]
         title_str = column_names[col_idx]
-        field_by_column[title_str] = field
         if title_str in media_columns:
             column_defs.append(
                 {
@@ -269,10 +258,7 @@ def _build_table_data(
     if truncated_rows:
         table_payload["truncatedRows"] = truncated_rows
         table_payload["maxRows"] = max_rows
-    return TableDataBuild(
-        data={"dataset": {"rows": rows, "columns": column_defs}, "table": table_payload},
-        field_by_column=field_by_column,
-    )
+    return {"dataset": {"rows": rows, "columns": column_defs}, "table": table_payload}
 
 
 def build_table_data(
@@ -304,4 +290,4 @@ def build_table_data(
         max_rows=max_rows,
         inline_cap=inline_cap,
         max_height=max_height,
-    ).data
+    )
