@@ -32,7 +32,7 @@ WIKIDATA_DESCRIPTION = """Wikidata is a collaborative knowledge graph queried wi
 
 Query notes:
 - Labels: Return readable labels in the user's requested language, accounting for Wikidata's `mul` language-neutral labels.
-- Discovery: When unsure, resolve names to QIDs and PIDs with `SERVICE wikibase:mwapi` in the user's requested language, then query by those IDs; avoid graph-wide label scans.
+- Discovery: For uncommon entities/properties or when unsure, resolve names to QIDs and PIDs with `SERVICE wikibase:mwapi` in the user's requested language, then query by those IDs; avoid graph-wide label scans.
 - Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` when qualifiers, ranks, dates, date precision, or calendar metadata matter.
 - Performance: Keep queries selective and efficient; avoid broad graph scans unless the requested scope requires them.
 
