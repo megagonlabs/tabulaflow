@@ -57,6 +57,12 @@ TabulaflowApp {
     background: transparent;
 }
 
+#input-bar .text-area--cursor {
+    color: #303030;
+    background: #888888;
+    text-style: none;
+}
+
 #explorer-control {
     width: 30;
     height: 100%;

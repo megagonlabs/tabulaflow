@@ -156,6 +156,7 @@ class HistoryInput(TextArea):
             compact=True,
             highlight_cursor_line=False,
         )
+        self.cursor_blink = False
         self._history_path = history_path
         self._history: list[str] = []
         self._history_index: int = -1

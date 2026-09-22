@@ -32,6 +32,10 @@ def test_build_chat_input_preserves_text_and_image_order(tmp_path: Path) -> None
     assert input_bar.build_chat_input("old [Image #2]") == "old [Image #2]"
 
 
+def test_input_cursor_is_steady(tmp_path: Path) -> None:
+    assert not HistoryInput(tmp_path / "history.jsonl").cursor_blink
+
+
 def test_history_restores_text_references_but_not_image_references(tmp_path: Path) -> None:
     history_path = tmp_path / "history.jsonl"
     input_bar = HistoryInput(history_path)
