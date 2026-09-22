@@ -860,9 +860,10 @@ def test_map_pin_uses_compact_classic_pushpin_design() -> None:
     assert 'width="22" height="35" viewBox="0 0 22 35"' in renderer
     assert '<radialGradient id="head"' in renderer
     assert '<linearGradient id="stem"' in renderer
-    assert "Math.round(22 * scale)" in renderer
-    assert "Math.round(35 * scale)" in renderer
-    assert "Math.max(24, 24 * pinScale)" in renderer
+    assert "node.style.width = '22px'" in renderer
+    assert "node.style.height = '35px'" in renderer
+    assert "__tfPinHitRadius: 24" in renderer
+    assert "__tfPinScale" not in renderer
     assert "radial-gradient(circle at 34% 27%" in css
     assert "clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)" in css
 

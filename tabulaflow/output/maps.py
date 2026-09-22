@@ -177,6 +177,8 @@ class PointsLayerSpec(_StrictModel):
             raise ValueError("inline points layers must not set source_id")
         if has_column_points and self.source_id is None:
             raise ValueError("points layers must set source_id")
+        if self.marker is not None and self.marker.type == "pin" and self.size is not None:
+            raise ValueError("pin markers do not support size encoding; use circle markers")
         return self
 
 

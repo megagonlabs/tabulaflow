@@ -259,6 +259,24 @@ class TestNormalizeMapSpec:
             ]
         }
 
+    def test_pin_marker_rejects_size_encoding(self) -> None:
+        df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "value": [10]})
+        spec = {
+            "layers": [
+                {
+                    "type": "points",
+                    "source_id": "S1",
+                    "lat": "lat",
+                    "lng": "lng",
+                    "marker": {"type": "pin"},
+                    "size": {"field": "value"},
+                }
+            ]
+        }
+
+        with pytest.raises(ValueError, match="pin markers do not support size encoding"):
+            _norm(spec, S1=df)
+
     def test_legend_is_not_agent_facing_map_spec(self) -> None:
         df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "status": ["open"]})
         spec = {

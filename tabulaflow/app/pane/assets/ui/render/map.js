@@ -108,13 +108,11 @@ function mapPinSvg(color) {
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
 }
 
-function mapPinElement(color, scale, title) {
+function mapPinElement(color, title) {
   var node = document.createElement('div');
-  var width = Math.round(22 * scale);
-  var height = Math.round(35 * scale);
   node.className = 'tf-map-pin';
-  node.style.width = width + 'px';
-  node.style.height = height + 'px';
+  node.style.width = '22px';
+  node.style.height = '35px';
   node.style.backgroundImage = 'url("' + mapPinSvg(color) + '")';
   if (title) node.setAttribute('aria-label', title);
   return node;
@@ -484,7 +482,6 @@ function buildPointFeatures(layer, rows, labels) {
     var popup = detailHtml(row, layer.tooltip, labels, label);
     var color = colorFor(layer.color, row, markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor);
     var radius = sizeScale.radius(row);
-    var pinScale = Math.max(0.8, Math.min(1.45, radius / 6));
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [lng, lat] },
@@ -492,8 +489,7 @@ function buildPointFeatures(layer, rows, labels) {
         __tfColor: color,
         __tfStrokeColor: circleStrokeColor(color),
         __tfSize: radius,
-        __tfPinScale: pinScale,
-        __tfPinHitRadius: Math.max(24, 24 * pinScale),
+        __tfPinHitRadius: 24,
         __tfPopup: popup,
         __tfTitle: label == null ? '' : displayValue(label),
         __tfMarker: markerType,
@@ -875,7 +871,7 @@ export function renderMap(container, cardData, artifactKey) {
           pointData.features.forEach(function (feature) {
             var props = feature.properties || {};
             var lngLat = feature.geometry.coordinates;
-            var node = mapPinElement(props.__tfColor, props.__tfPinScale || 1, props.__tfTitle);
+            var node = mapPinElement(props.__tfColor, props.__tfTitle);
             var marker = new maplibregl.Marker({ element: node, anchor: 'bottom' })
               .setLngLat(lngLat)
               .addTo(map);
@@ -890,7 +886,8 @@ export function renderMap(container, cardData, artifactKey) {
           pointData.markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor
         );
         if (pointLegend) legendSections.push(pointLegend);
-        var sizeLegend = buildSizeLegendSection(pointData.sizeScale, labels);
+        var sizeLegend = pointData.markerType === 'circle'
+          ? buildSizeLegendSection(pointData.sizeScale, labels) : null;
         if (sizeLegend) legendSections.push(sizeLegend);
         return;
       }

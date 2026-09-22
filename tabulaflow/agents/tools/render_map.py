@@ -60,8 +60,9 @@ class RenderMapTool:
           reference inline point property names.
           ``marker`` is ``{"type":"pin"}`` or ``{"type":"circle"}``.
           ``size`` is normally ``{"field":"value"}``; it defaults the marker
-          to circles. Add ``"domain":[0,1000]`` only when known bounds should
-          keep sizes comparable across updates.
+          to circles and cannot be combined with pin markers. Add
+          ``"domain":[0,1000]`` only when known bounds should keep sizes
+          comparable across updates.
         - ``geojson`` layer:
           ``{"type":"geojson","source_id":"S3","geojson":"geom_geojson"}`` plus
           optional ``label``, ``tooltip``, and ``color``. ``geojson`` is a
