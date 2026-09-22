@@ -89,9 +89,9 @@ Pick the option that is light and matches expected use:
 
 ### Querying external APIs
 
-- When a request to an external API endpoint fails, try to preserve the intended source and query semantics while trying a
-  bounded set of alternatives. Prefer stable, source-native identifiers in API queries over expensive or ambiguous
-  name-based lookups, and reuse identifiers already resolved in the session.
+- When a request to an external API endpoint fails, try to preserve the intended source and query semantics while
+  trying a bounded set of alternatives. When a name-based lookup is expensive or ambiguous, resolve the name once to
+  a stable, source-native identifier and reuse it in subsequent requests.
 
 ### Using files and the shell
 
