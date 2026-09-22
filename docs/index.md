@@ -15,10 +15,10 @@ it can also write code, work with files, run shell commands, and browse the web.
       data-type="Knowledge graph workflow"
       data-video-src="assets/demos/tabulaflow-wikidata-v2.mp4">Query Wikidata</button>
     <button type="button" role="tab" id="demo-hugging-face" aria-selected="false" tabindex="-1"
-      data-title="Browse a Hugging Face dataset"
-      data-description="Connect a Hugging Face dataset and explore its schema, rows, and media."
+      data-title="Explore a multimodal Hugging Face dataset"
+      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
       data-type="Data browsing workflow"
-      data-video-src="assets/demos/tabulaflow-huggingface-v2.mp4">Browse a Hugging Face Dataset</button>
+      data-video-src="assets/demos/tabulaflow-huggingface-v3.mp4">Explore a Multimodal Hugging Face Dataset</button>
     <button type="button" role="tab" id="demo-travel" aria-selected="false" tabindex="-1"
       data-title="Plan a trip"
       data-description="Research destinations and travel options, then organize the findings into a practical plan."
@@ -72,7 +72,7 @@ datasets.
 - **Multimodal data browsing.** Browse databases or Hugging Face datasets
   directly (no LLM needed). View images, PDFs, and other media directly inside
   tables, or ask an agent to analyze them.
-  Watch [Hugging Face dataset browsing](#demo-hugging-face).
+  Watch [multimodal Hugging Face dataset exploration](#demo-hugging-face).
 - **Cross-source analysis.** Combine files and databases in a local workspace
   without changing the original sources.
 - **Large-scale dataset construction.** Combine multiple sources and turn
