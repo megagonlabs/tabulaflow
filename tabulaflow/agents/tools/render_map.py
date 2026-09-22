@@ -58,10 +58,11 @@ class RenderMapTool:
           Add optional ``label``, ``tooltip``, ``color``, ``marker``, and
           ``size``. Inline ``label``, ``tooltip``, ``color``, and ``size``
           reference inline point property names.
-          ``marker`` is ``{"type":"pin"}`` or ``{"type":"circle"}``.
-          ``size`` is normally ``{"field":"value"}``; it defaults the marker
-          to circles and cannot be combined with pin markers. Add
-          ``"domain":[0,1000]`` only when known bounds should keep sizes
+          ``marker`` is optional; omit it to use fixed-size pins, the preferred
+          default for ordinary locations. Use ``{"type":"circle"}`` for circle
+          markers. ``size`` is supported only for circles; when ``size`` is
+          present and ``marker`` is omitted, circles are selected automatically.
+          Add ``"domain":[0,1000]`` only when known bounds should keep sizes
           comparable across updates.
         - ``geojson`` layer:
           ``{"type":"geojson","source_id":"S3","geojson":"geom_geojson"}`` plus
