@@ -49,21 +49,20 @@ _TOOL_RESULT_PLACEHOLDER = "[tool result omitted after execution during context 
 _CHECKPOINT_METADATA = "tabulaflow.context-checkpoint"
 # Host notifications use UserPromptPart for model visibility, but are not user turns.
 HOST_EVENT_METADATA_KEY = "tabulaflow.host-event"
-_CHECKPOINT_PROMPT = (
-    "Create a compact, self-contained checkpoint that will replace the earlier "
-    "conversation. Preserve everything needed to continue correctly, including "
-    "goals, constraints, decisions, important exact details, current state, and "
-    "next steps. Explicitly preserve durable information that cannot be recovered "
-    "from the local repository, such as user preferences, paths outside the "
-    "repository, external state, and a concise record of work already performed "
-    "and its outcomes. Retain workflow and provenance needed to avoid repeating or "
-    "contradicting prior work. Omit filler, superseded information, and low-level "
-    "execution traces."
-    "\n\n"
-    "Do not use tools unless needed to retrieve referenced content, and do not "
-    "change external state. Write at most approximately {checkpoint_tokens:,} "
-    "tokens. Return only the checkpoint."
-)
+_CHECKPOINT_PROMPT = """
+Create a compact, self-contained checkpoint that will replace the earlier conversation.
+
+<requirements>
+- Preserve goals, constraints, decisions, important exact details, current state, and next steps.
+- Preserve durable information not recoverable from the local repository, such as user preferences, external paths, and external state.
+- Preserve recurring workflows, operating conventions, and preferred procedures established in the conversation.
+- Record work already performed, its outcomes, and enough workflow or provenance to avoid repeating or contradicting it.
+- Omit filler, superseded information, and low-level execution traces.
+- Do not use tools unless needed to retrieve referenced content, and do not change external state.
+- Write at most approximately {checkpoint_tokens:,} tokens.
+- Return only the checkpoint.
+</requirements>
+""".strip()
 
 
 @dataclass(frozen=True)
