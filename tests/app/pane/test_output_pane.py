@@ -868,6 +868,16 @@ def test_map_pin_uses_compact_classic_pushpin_design() -> None:
     assert "clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)" in css
 
 
+def test_map_overlays_use_distinct_translucent_surfaces() -> None:
+    css = files("tabulaflow.app.pane.assets").joinpath("ui", "pane.css").read_text(encoding="utf-8")
+
+    assert "--map-legend-bg: rgba(255, 255, 255, 0.56)" in css
+    assert "--map-status-bg: rgba(255, 255, 255, 0.50)" in css
+    assert "--map-overlay-shadow: 0 2px 10px rgba(15, 23, 42, 0.12)" in css
+    assert "background: var(--map-legend-bg)" in css
+    assert "background: var(--map-status-bg)" in css
+
+
 def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
