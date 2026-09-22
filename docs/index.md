@@ -20,9 +20,10 @@ it can also write code, work with files, run shell commands, and browse the web.
       data-type="Data browsing workflow"
       data-video-src="assets/demos/tabulaflow-huggingface-v3.mp4">Explore a Multimodal Hugging Face Dataset</button>
     <button type="button" role="tab" id="demo-travel" aria-selected="false" tabindex="-1"
-      data-title="Plan a trip"
-      data-description="Research destinations and travel options, then organize the findings into a practical plan."
-      data-type="Travel research workflow">Plan a Trip</button>
+      data-title="Plan a trip on a map"
+      data-description="Find museums, add neighborhood boundaries, and map a walking route."
+      data-type="Mapping workflow"
+      data-video-src="assets/demos/tabulaflow-museums.mp4">Plan a Trip on a Map</button>
     <button type="button" role="tab" id="demo-literature" aria-selected="false" tabindex="-1"
       data-title="Review the literature"
       data-description="Find relevant papers, extract their details, and assemble a structured literature review."
