@@ -12,7 +12,13 @@ it can also write code, work with files, run shell commands, and browse the web.
     <button type="button" role="tab" id="demo-overview" aria-selected="true"
       data-title="From question to interactive result"
       data-description="Show a user entering a request, the agent working, the completed chart, and the Chart, Data, and Query views."
-      data-type="Product demo · 20–30 seconds">Overview</button>
+      data-type="Product demo · 20–30 seconds"
+      data-video-src="assets/demos/tabulaflow-wikidata-v2.mp4">Overview</button>
+    <button type="button" role="tab" id="demo-hugging-face" aria-selected="false" tabindex="-1"
+      data-title="Browse a Hugging Face dataset"
+      data-description="Connect a Hugging Face dataset and explore its schema, rows, and media."
+      data-type="Data browsing workflow"
+      data-video-src="assets/demos/tabulaflow-huggingface-v2.mp4">Browsing Hugging Face dataset</button>
     <button type="button" role="tab" id="demo-spending" aria-selected="false" tabindex="-1"
       data-title="Compare spending by merchant"
       data-description="Show the prompt, query execution, and completed bar chart."
@@ -43,8 +49,9 @@ it can also write code, work with files, run shell commands, and browse the web.
       data-type="Graph workflow">Relationships</button>
   </div>
   <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-overview">
-    <video class="demo-gallery__video" controls preload="none" hidden></video>
-    <figure class="media-placeholder media-placeholder--video" aria-live="polite">
+    <video class="demo-gallery__video" controls preload="metadata"
+      src="assets/demos/tabulaflow-wikidata-v2.mp4" aria-label="TabulaFlow Wikidata demo"></video>
+    <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
       <div class="media-placeholder__content">
         <span class="media-placeholder__type">Product demo · 20–30 seconds</span>
         <strong>From question to interactive result</strong>

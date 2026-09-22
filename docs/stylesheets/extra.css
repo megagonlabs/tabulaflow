@@ -714,7 +714,7 @@ body {
 .md-typeset .demo-gallery__video {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 8 / 5;
   background: #000;
 }
 
