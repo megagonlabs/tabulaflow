@@ -9,53 +9,33 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
   <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-overview" aria-selected="true"
-      data-title="From question to interactive result"
-      data-description="Show a user entering a request, the agent working, the completed chart, and the Chart, Data, and Query views."
-      data-type="Product demo · 20–30 seconds"
-      data-video-src="assets/demos/tabulaflow-wikidata-v2.mp4">Overview</button>
+    <button type="button" role="tab" id="demo-wikidata" aria-selected="true"
+      data-title="Query Wikidata"
+      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+      data-type="Knowledge graph workflow"
+      data-video-src="assets/demos/tabulaflow-wikidata-v2.mp4">Query Wikidata</button>
     <button type="button" role="tab" id="demo-hugging-face" aria-selected="false" tabindex="-1"
       data-title="Browse a Hugging Face dataset"
       data-description="Connect a Hugging Face dataset and explore its schema, rows, and media."
       data-type="Data browsing workflow"
-      data-video-src="assets/demos/tabulaflow-huggingface-v2.mp4">Browsing Hugging Face dataset</button>
-    <button type="button" role="tab" id="demo-spending" aria-selected="false" tabindex="-1"
-      data-title="Compare spending by merchant"
-      data-description="Show the prompt, query execution, and completed bar chart."
-      data-type="Visualization workflow">Spending</button>
-    <button type="button" role="tab" id="demo-model-evaluation" aria-selected="false" tabindex="-1"
-      data-title="Evaluate model performance"
-      data-description="Show the prompt, grouped evaluation results, and completed chart."
-      data-type="Analysis workflow">Model evaluation</button>
-    <button type="button" role="tab" id="demo-receipts" aria-selected="false" tabindex="-1"
-      data-title="Extract data from receipts"
-      data-description="Show the source images, extraction progress, and completed workspace table."
-      data-type="Multimodal workflow">Receipts</button>
-    <button type="button" role="tab" id="demo-multiple-sources" aria-selected="false" tabindex="-1"
-      data-title="Combine multiple sources"
-      data-description="Show both connections, the workspace join, and the final grouped result."
-      data-type="Cross-source workflow">Multiple sources</button>
-    <button type="button" role="tab" id="demo-web-dataset" aria-selected="false" tabindex="-1"
-      data-title="Build a dataset from the web"
-      data-description="Show parallel browsing, extraction, normalization, and the reusable table."
-      data-type="Dataset construction workflow">Web dataset</button>
-    <button type="button" role="tab" id="demo-maps" aria-selected="false" tabindex="-1"
-      data-title="Map geographic boundaries"
-      data-description="Show the prompt, rendered boundaries, and interactive tooltips."
-      data-type="Geospatial workflow">Maps</button>
-    <button type="button" role="tab" id="demo-relationships" aria-selected="false" tabindex="-1"
-      data-title="Explore relationships"
-      data-description="Show the prompt, graph construction, and interactive result."
-      data-type="Graph workflow">Relationships</button>
+      data-video-src="assets/demos/tabulaflow-huggingface-v2.mp4">Browse a Hugging Face Dataset</button>
+    <button type="button" role="tab" id="demo-travel" aria-selected="false" tabindex="-1"
+      data-title="Plan a trip"
+      data-description="Research destinations and travel options, then organize the findings into a practical plan."
+      data-type="Travel research workflow">Plan a Trip</button>
+    <button type="button" role="tab" id="demo-literature" aria-selected="false" tabindex="-1"
+      data-title="Review the literature"
+      data-description="Find relevant papers, extract their details, and assemble a structured literature review."
+      data-type="Research workflow">Review the Literature</button>
   </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-overview">
+  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-wikidata">
     <video class="demo-gallery__video" controls preload="metadata"
       src="assets/demos/tabulaflow-wikidata-v2.mp4" aria-label="TabulaFlow Wikidata demo"></video>
     <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
       <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Product demo · 20–30 seconds</span>
-        <strong>From question to interactive result</strong>
-        <span>Show a user entering a request, the agent working, the completed chart, and the Chart, Data, and Query views.</span>
+        <span class="media-placeholder__type">Knowledge graph workflow</span>
+        <strong>Query Wikidata</strong>
+        <span>Ask a knowledge-graph question, inspect the results, and explore their relationships.</span>
       </div>
       <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
     </figure>
@@ -88,27 +68,24 @@ datasets.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-  Watch [spending](#demo-spending), [model evaluation](#demo-model-evaluation),
-  [maps](#demo-maps), or [relationships](#demo-relationships).
+  Watch [Wikidata querying](#demo-wikidata).
 - **Multimodal data browsing.** Browse databases or Hugging Face datasets
   directly (no LLM needed). View images, PDFs, and other media directly inside
   tables, or ask an agent to analyze them.
-  Watch [receipt extraction](#demo-receipts).
+  Watch [Hugging Face dataset browsing](#demo-hugging-face).
 - **Cross-source analysis.** Combine files and databases in a local workspace
   without changing the original sources.
-  Watch [multiple-source analysis](#demo-multiple-sources).
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
-  Watch [web dataset construction](#demo-web-dataset).
+  Watch [literature review](#demo-literature).
 - **Agentic data enrichment.** Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
-  Watch [receipt extraction](#demo-receipts).
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
-  Watch [web dataset construction](#demo-web-dataset).
+  Watch [travel planning](#demo-travel).
 
 ## Why TabulaFlow?
 
