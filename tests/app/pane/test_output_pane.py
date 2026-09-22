@@ -852,6 +852,21 @@ def test_map_style_is_structurally_valid() -> None:
         assert assets.joinpath(f"{stem}@2x.png").is_file()
 
 
+def test_map_pin_uses_compact_classic_pushpin_design() -> None:
+    assets = files("tabulaflow.app.pane.assets").joinpath("ui")
+    renderer = assets.joinpath("render", "map.js").read_text(encoding="utf-8")
+    css = assets.joinpath("pane.css").read_text(encoding="utf-8")
+
+    assert 'width="22" height="35" viewBox="0 0 22 35"' in renderer
+    assert '<radialGradient id="head"' in renderer
+    assert '<linearGradient id="stem"' in renderer
+    assert "Math.round(22 * scale)" in renderer
+    assert "Math.round(35 * scale)" in renderer
+    assert "Math.max(24, 24 * pinScale)" in renderer
+    assert "radial-gradient(circle at 34% 27%" in css
+    assert "clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)" in css
+
+
 def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 

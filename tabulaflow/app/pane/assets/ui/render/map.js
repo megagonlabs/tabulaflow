@@ -18,11 +18,11 @@ var mapPalette = [
   cssVar('--map-category-7', '#7cb342')
 ];
 var mapPinDefaultColor = cssVar('--map-pin-default', '#ea4335');
+var mapPinHighlight = cssVar('--map-pin-highlight', '#ffb4ae');
 var mapPinTop = cssVar('--map-pin-top', '#ff6f61');
 var mapPinBottom = cssVar('--map-pin-bottom', '#d93025');
+var mapPinDark = cssVar('--map-pin-dark', '#a91f19');
 var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
-var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
-var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
 var mapCircleStroke = mixHex(mapDefaultColor, '#000000', 0.26);
 var mapStyleUrl = '/assets/vendor/maplibre/shortbread-light.json';
 var mapStyleSpriteUrl = '/assets/vendor/maplibre/osm-bright-sprite';
@@ -70,32 +70,48 @@ function circleStrokeColor(color) {
 function pinColorRamp(color) {
   var base = hexRgb(color) ? String(color).trim() : mapPinBottom;
   if (!hexRgb(base)) {
-    return { top: mapPinTop, bottom: mapPinBottom, outline: mapPinOutline };
+    return {
+      highlight: mapPinHighlight,
+      top: mapPinTop,
+      bottom: mapPinBottom,
+      dark: mapPinDark,
+      outline: mapPinOutline
+    };
   }
   return {
-    top: mixHex(base, '#ffffff', 0.46),
+    highlight: mixHex(base, '#ffffff', 0.66),
+    top: mixHex(base, '#ffffff', 0.28),
     bottom: base,
-    outline: mixHex(base, '#000000', 0.24)
+    dark: mixHex(base, '#000000', 0.26),
+    outline: mixHex(base, '#000000', 0.4)
   };
 }
 
 function mapPinSvg(color) {
   var ramp = pinColorRamp(color);
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
-    + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0" stop-color="' + ramp.top + '"/><stop offset="1" stop-color="' + ramp.bottom + '"/></linearGradient></defs>'
-    + '<path fill="' + ramp.outline + '" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
-    + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
-    + '<circle cx="12.5" cy="12.6" r="5.7" fill="' + mapPinHole + '"/>'
-    + '<circle cx="12.5" cy="12.6" r="4.2" fill="' + mapPinInner + '"/>'
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="35" viewBox="0 0 22 35">'
+    + '<defs><radialGradient id="head" cx="34%" cy="27%" r="72%">'
+    + '<stop offset="0" stop-color="' + ramp.highlight + '"/>'
+    + '<stop offset=".2" stop-color="' + ramp.top + '"/>'
+    + '<stop offset=".58" stop-color="' + ramp.bottom + '"/>'
+    + '<stop offset="1" stop-color="' + ramp.dark + '"/></radialGradient>'
+    + '<linearGradient id="stem" x1="0" y1="0" x2="1" y2="0">'
+    + '<stop stop-color="#515861"/><stop offset=".25" stop-color="#aeb6bf"/>'
+    + '<stop offset=".52" stop-color="#eef1f4"/><stop offset=".75" stop-color="#929ba5"/>'
+    + '<stop offset="1" stop-color="#414851"/></linearGradient></defs>'
+    + '<ellipse cx="12.5" cy="33.2" rx="4.5" ry="1.15" fill="rgba(31,41,55,.2)"/>'
+    + '<path d="M10.25 12.5h1.5v18.7L11 34.4l-.75-3.2Z" fill="url(#stem)" stroke="#535b64" stroke-width=".45" stroke-linejoin="round"/>'
+    + '<circle cx="11" cy="8" r="6.65" fill="url(#head)" stroke="' + ramp.outline + '" stroke-width="1.15"/>'
+    + '<ellipse cx="8.85" cy="5.25" rx="2.15" ry="1.45" fill="rgba(255,255,255,.56)"/>'
+    + '<path d="M6.1 10.2c1.1 2.8 4.7 4.1 7.5 2.7" fill="none" stroke="rgba(96,12,8,.24)" stroke-width=".75" stroke-linecap="round"/>'
     + '</svg>';
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
 }
 
 function mapPinElement(color, scale, title) {
   var node = document.createElement('div');
-  var width = Math.round(25 * scale);
-  var height = Math.round(41 * scale);
+  var width = Math.round(22 * scale);
+  var height = Math.round(35 * scale);
   node.className = 'tf-map-pin';
   node.style.width = width + 'px';
   node.style.height = height + 'px';
@@ -477,7 +493,7 @@ function buildPointFeatures(layer, rows, labels) {
         __tfStrokeColor: circleStrokeColor(color),
         __tfSize: radius,
         __tfPinScale: pinScale,
-        __tfPinHitRadius: Math.max(24, 26 * pinScale),
+        __tfPinHitRadius: Math.max(24, 24 * pinScale),
         __tfPopup: popup,
         __tfTitle: label == null ? '' : displayValue(label),
         __tfMarker: markerType,

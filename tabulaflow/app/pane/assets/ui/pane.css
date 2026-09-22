@@ -56,11 +56,11 @@
     --map-category-6: #46bdc6;
     --map-category-7: #7cb342;
     --map-pin-default: #ea4335;
+    --map-pin-highlight: #ffb4ae;
     --map-pin-top: #ff6f61;
     --map-pin-bottom: #d93025;
+    --map-pin-dark: #a91f19;
     --map-pin-outline: #a52714;
-    --map-pin-hole: #f8fafc;
-    --map-pin-inner: #fff4f2;
 }
 
 html, body { height: 100%; }
@@ -810,16 +810,19 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .tf-map-legend-swatch-pin::before {
     content: ""; position: absolute; left: 1px; top: 0; width: 10px; height: 10px;
-    border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
-    background: var(--legend-color); border: 1px solid rgba(17, 24, 39, 0.28); box-sizing: border-box;
+    border-radius: 50%; box-sizing: border-box;
+    background: radial-gradient(circle at 34% 27%, rgba(255, 255, 255, 0.72), var(--legend-color) 45%, color-mix(in srgb, var(--legend-color) 74%, #000));
+    border: 1px solid color-mix(in srgb, var(--legend-color) 62%, #000);
+    z-index: 1;
 }
 .tf-map-legend-swatch-pin::after {
-    content: ""; position: absolute; left: 4px; top: 3px; width: 4px; height: 4px;
-    border-radius: 50%; background: #fff;
+    content: ""; position: absolute; left: 5px; top: 8px; width: 2px; height: 9px;
+    background: linear-gradient(90deg, #515861, #eef1f4 52%, #414851);
+    clip-path: polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%);
 }
 .tf-map-pin {
     background-position: center; background-repeat: no-repeat; background-size: contain;
-    pointer-events: none; transform: translateY(1px);
+    pointer-events: none;
 }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup { z-index: 20; }
