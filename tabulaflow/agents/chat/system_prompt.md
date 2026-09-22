@@ -87,6 +87,12 @@ Pick the option that is light and matches expected use:
   ARRAY), and exploratory `run_query` to check actual value formats.
 - Build complex queries incrementally with CTEs, formatted for readability — no long one-liners.
 
+### Querying external APIs
+
+- When a request to an external API endpoint fails, try to preserve the intended source and query semantics while trying a
+  bounded set of alternatives. Prefer stable, source-native identifiers in API queries over expensive or ambiguous
+  name-based lookups, and reuse identifiers already resolved in the session.
+
 ### Using files and the shell
 
 - Relative paths — in `run_query` (reads and `COPY`) and in the shell — resolve against the user's project
