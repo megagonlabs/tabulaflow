@@ -559,6 +559,7 @@ function renderMapPopup(map, lngLat, html, className, closeButton) {
   return new maplibregl.Popup({
     closeButton: !!closeButton,
     closeOnClick: !!closeButton,
+    focusAfterOpen: !!closeButton,
     className: className,
     maxWidth: '420px',
     offset: 12
