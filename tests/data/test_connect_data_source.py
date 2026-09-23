@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from tabulaflow.core import RDFSchema
+from tabulaflow.data.catalog import WIKIDATA_DESCRIPTION
 from tabulaflow.data.connect import connect_data_source
 
 
@@ -27,8 +28,7 @@ async def test_catalog_source_uses_generic_connector_and_adds_description(monkey
         "display_name": "knowledge",
         "read_only": True,
     }
-    assert connector.schema.description is not None
-    assert "en,mul" in connector.schema.description
+    assert connector.schema.description == WIKIDATA_DESCRIPTION
 
 
 async def test_direct_sparql_url_gets_no_catalog_description(monkeypatch: pytest.MonkeyPatch) -> None:

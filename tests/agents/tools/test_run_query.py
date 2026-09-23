@@ -367,6 +367,8 @@ async def test_run_query_expands_text_cells_when_enabled(db_connector: SQLConnec
         "SELECT :content AS content", parameters=parameters, max_cell_chars=400
     )
 
+    assert isinstance(disabled.return_value, str)
+    assert isinstance(enabled.return_value, str)
     assert content not in disabled.return_value
     assert "max_cell_chars=200" in disabled.return_value
     assert content in enabled.return_value

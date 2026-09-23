@@ -9,6 +9,7 @@ from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.core import RDFSchema
+from tabulaflow.data.catalog import WIKIDATA_DESCRIPTION
 from tabulaflow.data.registry import DataConnectorRegistry
 
 
@@ -87,9 +88,7 @@ async def test_connect_catalog_source_returns_curated_guidance(tmp_path: Path, m
 
     result = await tool.execute("wikidata", "wikidata")
 
-    assert "en,mul" in result
-    assert "LANG(?label) IN" in result
-    assert "user's requested language" in result
+    assert WIKIDATA_DESCRIPTION.strip() in result
     assert "get_data_source_document" in result
 
 

@@ -15,7 +15,7 @@ from tabulaflow.app.tui.commands import (
     redact_command_credentials,
 )
 from tabulaflow.app.session import AppSession
-from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
+from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS, WIKIDATA_DESCRIPTION
 from tabulaflow.data.config import DataSourceConnectorConfigs
 from tabulaflow.data.loaders import HuggingFaceSubsetRequiredError
 
@@ -256,7 +256,7 @@ async def test_connect_catalog_source_uses_default_alias_and_announces_guidance(
     assert isinstance(result.output, Text)
     assert result.output.plain == "✓ Connected to wikidata (sparql)"
     assert session.registry.connectors == {"wikidata": connector}
-    assert "en,mul" in session.events[-1]
+    assert WIKIDATA_DESCRIPTION.strip() in session.events[-1]
     assert "get_data_source_document" in session.events[-1]
 
 
