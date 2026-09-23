@@ -45,10 +45,24 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
         assert "Subagent model" in _text(screen, "#field-subagent-model")
         assert "Effort" in _text(screen, "#field-main-effort")
         assert "Subagent effort" in _text(screen, "#field-subagent-effort")
+        assert "Max model requests/min" in _text(screen, "#field-requests-per-minute")
+        assert "300 RPM" in _text(screen, "#field-requests-per-minute")
         assert not list(screen.query("#config-credentials"))
         rendered = {str(widget.render()) for widget in screen.query(Static)}
         assert "MAIN AGENT" not in rendered
         assert "SUBAGENT" not in rendered
+
+
+async def test_request_rate_cycles_through_presets() -> None:
+    screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "down", "down", "down", "down", "right", "escape")
+        await pilot.pause()
+
+    result = app.results[0]
+    assert result is not None and result.config is not None
+    assert result.config.requests_per_minute == 600
 
 
 async def test_config_title_and_spacing_match_the_plain_style() -> None:

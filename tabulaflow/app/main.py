@@ -27,11 +27,17 @@ class AppLogLevel(StrEnum):
     ERROR = "error"
 
 
-def _app_agent_runtime_config() -> AgentRuntimeConfig:
+def _app_agent_runtime_config(max_llm_requests_per_minute: int = 300) -> AgentRuntimeConfig:
     """Return agent policy that keeps interactive sessions cache-free."""
     from tabulaflow.agents import AgentRuntimeConfig
 
-    return AgentRuntimeConfig(preprocessing_cache_mode="off")
+    from tabulaflow.app.config import APP_MAX_LLM_CONCURRENCY
+
+    return AgentRuntimeConfig(
+        preprocessing_cache_mode="off",
+        max_llm_concurrency=APP_MAX_LLM_CONCURRENCY,
+        max_llm_requests_per_minute=max_llm_requests_per_minute,
+    )
 
 
 def _resolve_startup_llm_config() -> ResolvedLLMConfig:
@@ -60,7 +66,7 @@ def run_chat(
     from tabulaflow.agents import initialize_agent_runtime
     from tabulaflow.app.tui import run_tui
 
-    initialize_agent_runtime(_app_agent_runtime_config())
+    initialize_agent_runtime(_app_agent_runtime_config(startup_llm.requests_per_minute))
     asyncio.run(
         run_tui(
             llm_config=startup_llm,

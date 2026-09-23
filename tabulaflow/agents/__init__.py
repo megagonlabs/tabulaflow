@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.chat.input import ChatInput
     from tabulaflow.agents.chat.session import ChatSession
     from tabulaflow.agents.config import AgentRuntimeConfig
-    from tabulaflow.agents.runtime import initialize_agent_runtime
+    from tabulaflow.agents.runtime import initialize_agent_runtime, set_llm_requests_per_minute
     from tabulaflow.agents.trace import instrument_agents
 
 _LAZY_EXPORTS = {
@@ -15,10 +15,18 @@ _LAZY_EXPORTS = {
     "ChatInput": ("tabulaflow.agents.chat.input", "ChatInput"),
     "ChatSession": ("tabulaflow.agents.chat", "ChatSession"),
     "initialize_agent_runtime": ("tabulaflow.agents.runtime", "initialize_agent_runtime"),
+    "set_llm_requests_per_minute": ("tabulaflow.agents.runtime", "set_llm_requests_per_minute"),
     "instrument_agents": ("tabulaflow.agents.trace", "instrument_agents"),
 }
 
-__all__ = ["AgentRuntimeConfig", "ChatInput", "ChatSession", "initialize_agent_runtime", "instrument_agents"]
+__all__ = [
+    "AgentRuntimeConfig",
+    "ChatInput",
+    "ChatSession",
+    "initialize_agent_runtime",
+    "instrument_agents",
+    "set_llm_requests_per_minute",
+]
 
 
 def __getattr__(name: str) -> Any:

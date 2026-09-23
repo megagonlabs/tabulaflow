@@ -243,6 +243,12 @@ class AddCanonicalNameTool:
         self.subagent_llm = llm
         self.model_settings = model_settings
 
+    def apply_execution_limits(self, *, max_concurrency: int) -> None:
+        """Apply the concurrency limit used by subsequent calls."""
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be greater than 0")
+        self.max_concurrency = max_concurrency
+
     async def __call__(
         self,
         ctx: RunContext[Any],
@@ -848,9 +854,7 @@ class AddCanonicalNameTool:
         finally:
             # Best-effort cleanup of the mapping table.
             try:
-                await self._connector.run_query_async(
-                    sqlalchemy.text(f'DROP TABLE IF EXISTS "{mapping_table_name}"')
-                )
+                await self._connector.run_query_async(sqlalchemy.text(f'DROP TABLE IF EXISTS "{mapping_table_name}"'))
             except Exception:
                 logger.exception("Failed to drop mapping table %s", mapping_table_name)
 

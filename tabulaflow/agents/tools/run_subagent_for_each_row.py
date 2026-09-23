@@ -132,6 +132,12 @@ class RunSubagentForEachRowTool:
         self.subagent_llm = llm
         self.model_settings = model_settings
 
+    def apply_execution_limits(self, *, max_concurrency: int) -> None:
+        """Apply the concurrency limit used by subsequent calls."""
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be greater than 0")
+        self.max_concurrency = max_concurrency
+
     async def __call__(
         self,
         ctx: RunContext[Any],
@@ -317,6 +323,7 @@ class RunSubagentForEachRowTool:
         tool_call_id: str | None = None,
     ) -> str:
         """Run row-wise subagents without requiring an agent run context."""
+        max_concurrency = self.max_concurrency
         if not output_columns:
             raise ValueError("output_columns must be a non-empty list")
 
@@ -326,7 +333,7 @@ class RunSubagentForEachRowTool:
         runner = RowRunner(
             llm=self.subagent_llm,
             model_settings=self.model_settings,
-            max_concurrency=self.max_concurrency,
+            max_concurrency=max_concurrency,
             enable_browser_tools=enable_browser_tools,
             enable_run_query_tool=enable_run_query_tool,
             registry=self.registry,
@@ -412,14 +419,14 @@ class RunSubagentForEachRowTool:
                     self.connector,
                     subagent_llm=self.subagent_llm,
                     model_settings=self.model_settings,
-                    max_concurrency=self.max_concurrency,
+                    max_concurrency=max_concurrency,
                     trajectory_log_dir=self.trajectory_log_dir,
                 ).as_pydantic_ai_tool()
             )
             canonical_tool = AddCanonicalNameTool(
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
-                max_concurrency=self.max_concurrency,
+                max_concurrency=max_concurrency,
                 trajectory_log_dir=self.trajectory_log_dir,
             )
             canonical_tool.attach_connector(self.connector)
@@ -433,7 +440,7 @@ class RunSubagentForEachRowTool:
                     message_store=self.message_store,
                     subagent_llm=self.subagent_llm,
                     model_settings=self.model_settings,
-                    max_concurrency=self.max_concurrency,
+                    max_concurrency=max_concurrency,
                     store_metadata=self.store_metadata,
                     trajectory_log_dir=self.trajectory_log_dir,
                 ).as_pydantic_ai_tool()

@@ -6,7 +6,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from tabulaflow._paths import DEFAULT_HOME_DIR
@@ -14,6 +14,10 @@ from tabulaflow.agents.llm import ReasoningLevel, uses_openai_responses
 
 APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF: Literal["off"] = "off"
+LLMRequestsPerMinute: TypeAlias = Literal[300, 600, 1500, 3000, 6000]
+LLM_REQUEST_RATE_OPTIONS: tuple[LLMRequestsPerMinute, ...] = (300, 600, 1500, 3000, 6000)
+APP_MAX_LLM_CONCURRENCY = 1200
+APP_MAX_FANOUT_CONCURRENCY = 1000
 
 
 class InvalidAppConfigError(ValueError):
@@ -51,12 +55,18 @@ class LLMRoleConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    """Atomic model configuration for the main agent and subagent."""
+    """Atomic model and request-rate configuration for app agents."""
 
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=(), extra="forbid")
 
     main: LLMRoleConfig
     subagent: LLMRoleConfig
+    requests_per_minute: LLMRequestsPerMinute = 300
+
+
+def fanout_concurrency_for_rpm(requests_per_minute: int) -> int:
+    """Size app fan-out for ten seconds of request starts."""
+    return min(APP_MAX_FANOUT_CONCURRENCY, (requests_per_minute + 5) // 6)
 
 
 OPENAI_DEFAULT_LLM_CONFIG = LLMConfig(
@@ -246,6 +256,11 @@ class ResolvedLLMConfig:
     selection: LLMConfig | Literal["off"] | None
     config: LLMConfig | None
     detected_api_key_env: str | None = None
+
+    @property
+    def requests_per_minute(self) -> LLMRequestsPerMinute:
+        """Return the active request rate, including the app default."""
+        return self.config.requests_per_minute if self.config is not None else 300
 
     def __post_init__(self) -> None:
         if self.selection is not None and self.selection != LLM_OFF and not isinstance(self.selection, LLMConfig):

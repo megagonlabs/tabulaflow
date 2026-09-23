@@ -128,6 +128,12 @@ class ExtractRowsFromDocumentsTool:
         self.subagent_llm = llm
         self.model_settings = model_settings
 
+    def apply_execution_limits(self, *, max_concurrency: int) -> None:
+        """Apply the concurrency limit used by subsequent calls."""
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be greater than 0")
+        self.max_concurrency = max_concurrency
+
     async def __call__(
         self,
         ctx: RunContext[Any],
@@ -225,6 +231,7 @@ class ExtractRowsFromDocumentsTool:
         tool_call_id: str | None = None,
     ) -> str:
         """Extract and append document rows without requiring an agent run context."""
+        max_concurrency = self.max_concurrency
         if not output_columns:
             raise ValueError("output_columns must be non-empty")
 
@@ -296,7 +303,7 @@ class ExtractRowsFromDocumentsTool:
         extractor = EntityExtractor(
             llm=self.subagent_llm,
             model_settings=self.model_settings,
-            max_concurrency=self.max_concurrency,
+            max_concurrency=max_concurrency,
             chunk_target=self.chunk_target,
             chunk_max=self.chunk_max,
         )

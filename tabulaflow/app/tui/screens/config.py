@@ -19,6 +19,7 @@ from tabulaflow.app.config import (
     ANTHROPIC_DEFAULT_LLM_CONFIG,
     APP_CONFIG_PATH,
     LLM_OFF,
+    LLM_REQUEST_RATE_OPTIONS,
     OPENAI_DEFAULT_LLM_CONFIG,
     RECOMMENDED_MAIN_MODELS,
     RECOMMENDED_SUBAGENT_MODELS,
@@ -218,7 +219,14 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         self._initial_enabled = self._enabled
         self._initial_config = self._config.model_copy(deep=True)
         self._cursor = 0
-        self._fields = ("enabled", "main-model", "main-effort", "subagent-model", "subagent-effort")
+        self._fields = (
+            "enabled",
+            "main-model",
+            "main-effort",
+            "subagent-model",
+            "subagent-effort",
+            "requests-per-minute",
+        )
 
     @property
     def dirty(self) -> bool:
@@ -227,13 +235,16 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
         with Vertical(id="config-body"):
-            yield Static(Text.assemble(("Configuration", "bold"), (f" · saved to {config_path}", "dim")), id="config-title")
+            yield Static(
+                Text.assemble(("Configuration", "bold"), (f" · saved to {config_path}", "dim")), id="config-title"
+            )
             yield Static("")
             yield Static(id="field-enabled", classes="config-field")
             yield Static(id="field-main-model", classes="config-field")
             yield Static(id="field-main-effort", classes="config-field")
             yield Static(id="field-subagent-model", classes="config-field")
             yield Static(id="field-subagent-effort", classes="config-field")
+            yield Static(id="field-requests-per-minute", classes="config-field")
         yield Static(id="config-hint")
 
     def on_mount(self) -> None:
@@ -249,6 +260,9 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         field = self._fields[self._cursor]
         if field == "enabled":
             self._enabled = not self._enabled
+        elif self._enabled and field == "requests-per-minute":
+            index = LLM_REQUEST_RATE_OPTIONS.index(self._config.requests_per_minute)
+            self._config.requests_per_minute = LLM_REQUEST_RATE_OPTIONS[(index + delta) % len(LLM_REQUEST_RATE_OPTIONS)]
         elif self._enabled and field.endswith("-effort"):
             role_name = field.split("-", 1)[0]
             role = cast(LLMRoleConfig, getattr(self._config, role_name))
@@ -263,6 +277,9 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             self._refresh()
             return
         if not self._enabled:
+            return
+        if field == "requests-per-minute":
+            self.action_change(1)
             return
         role_name, setting = field.split("-", 1)
         role = cast(LLMRoleConfig, getattr(self._config, role_name))
@@ -294,6 +311,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             "main-effort": str(self._config.main.effort),
             "subagent-model": self._config.subagent.model,
             "subagent-effort": str(self._config.subagent.effort),
+            "requests-per-minute": f"{self._config.requests_per_minute:,} RPM",
         }
         labels = {
             "enabled": "LLM",
@@ -301,16 +319,17 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             "main-effort": "Effort",
             "subagent-model": "Subagent model",
             "subagent-effort": "Subagent effort",
+            "requests-per-minute": "Max model requests/min",
         }
         for index, field in enumerate(self._fields):
             cursor = index == self._cursor
             enabled = self._enabled or field == "enabled"
             text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
             text.append(f"{labels[field]:<22}", style="bold" if cursor else ("" if enabled else "dim"))
-            if field == "enabled" or field.endswith("-effort"):
+            if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
                 text.append("‹ ", style="dim")
             text.append(values[field], style="bold" if cursor else ("" if enabled else "dim"))
-            if field == "enabled" or field.endswith("-effort"):
+            if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
                 text.append(" ›", style="dim")
             self.query_one(f"#field-{field}", Static).update(text)
 
@@ -318,7 +337,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         hint = Text()
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
-        if field == "enabled" or field.endswith("-effort"):
+        if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
             hint.append("←→", style=KEY_HINT)
             hint.append(" Change", style="dim")
         elif self._enabled:

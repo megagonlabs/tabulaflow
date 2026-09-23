@@ -11,7 +11,10 @@ from tabulaflow.app.tui import app as tui
 
 def test_app_disables_preprocessing_cache_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_PREPROCESSING_CACHE_MODE", "read_write")
-    assert _app_agent_runtime_config().preprocessing_cache_mode == "off"
+    config = _app_agent_runtime_config()
+    assert config.preprocessing_cache_mode == "off"
+    assert config.max_llm_concurrency == 1200
+    assert config.max_llm_requests_per_minute == 300
 
 
 def test_resolve_startup_uses_app_config(monkeypatch: pytest.MonkeyPatch) -> None:

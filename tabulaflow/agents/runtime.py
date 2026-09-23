@@ -41,6 +41,19 @@ class _AgentRuntime:
             self.config.max_embedding_requests_per_minute,
         )
 
+    def set_llm_requests_per_minute(self, value: int | None) -> None:
+        """Apply a new request rate to model calls started after this update."""
+        if value is not None and value <= 0:
+            raise ValueError("max_llm_requests_per_minute must be greater than 0 or None")
+        with self._resource_lock:
+            self.config = AgentRuntimeConfig(
+                **{
+                    **self.config.model_dump(),
+                    "max_llm_requests_per_minute": value,
+                }
+            )
+            self._llm_throttles.clear()
+
     def get_base_model(self, name: str, factory: Callable[[], _ModelT]) -> _ModelT:
         loop = asyncio.get_running_loop()
         per_loop = self._base_models.setdefault(loop, {})
@@ -77,7 +90,7 @@ class _AgentRuntime:
         loop = asyncio.get_running_loop()
         if loop not in cache:
             semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
-            limiter = AsyncLimiter(max_requests_per_minute, 60) if max_requests_per_minute is not None else None
+            limiter = AsyncLimiter(1, 60 / max_requests_per_minute) if max_requests_per_minute is not None else None
             cache[loop] = (semaphore, limiter)
         return cache[loop]
 
@@ -103,6 +116,15 @@ def initialize_agent_runtime(config: AgentRuntimeConfig) -> None:
         _runtime = _AgentRuntime(config)
 
 
+def set_llm_requests_per_minute(value: int | None) -> None:
+    """Set the process-wide model request rate for subsequent requests.
+
+    Hosts should apply changes while no model calls are active. Existing calls
+    retain the throttle they acquired before the update.
+    """
+    _get_agent_runtime().set_llm_requests_per_minute(value)
+
+
 def _get_agent_runtime() -> _AgentRuntime:
     global _runtime
     if _runtime is None:
@@ -121,4 +143,4 @@ async def _reset_agent_runtime_for_tests() -> None:
         await runtime.close()
 
 
-__all__ = ["initialize_agent_runtime"]
+__all__ = ["initialize_agent_runtime", "set_llm_requests_per_minute"]

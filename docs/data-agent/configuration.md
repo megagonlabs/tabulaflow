@@ -46,9 +46,9 @@ export ANTHROPIC_API_KEY="your-api-key"
 You need only one key. Without a saved configuration, TabulaFlow checks OpenAI
 first, then Anthropic, and selects recommended models for both agent roles.
 
-Run `/config` to configure the main agent and subagent independently. The model
-picker accepts any provider-qualified identifier supported by the installed
-model stack, such as `openai:gpt-5.6-sol`. Disabling the LLM turns off
+Run `/config` to configure the main agent, subagent, and model request rate. The
+model picker accepts any provider-qualified identifier supported by the
+installed model stack, such as `openai:gpt-5.6-sol`. Disabling the LLM turns off
 conversational analysis but keeps data connections and browsing available.
 
 TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
@@ -172,8 +172,6 @@ an unlimited value.
 
 | Variable | Default | Purpose |
 | --- | ---: | --- |
-| `TABULAFLOW_MAX_LLM_CONCURRENCY` | `64` | Simultaneous model requests |
-| `TABULAFLOW_MAX_LLM_REQUESTS_PER_MINUTE` | `600` | Process-wide model request rate |
 | `TABULAFLOW_MAX_EMBEDDING_CONCURRENCY` | `16` | Simultaneous embedding requests |
 | `TABULAFLOW_MAX_EMBEDDING_REQUESTS_PER_MINUTE` | `150` | Process-wide embedding request rate |
 | `TABULAFLOW_BROWSER_MAX_TABS` | `20` | Simultaneously open browser pages |

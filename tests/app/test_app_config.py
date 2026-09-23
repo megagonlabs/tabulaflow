@@ -19,6 +19,7 @@ from tabulaflow.app.config import (
     LLMRoleConfig,
     RECOMMENDED_MAIN_MODELS,
     ResolvedLLMConfig,
+    fanout_concurrency_for_rpm,
     llm_model_catalog,
     load_app_config,
     model_supports_apply_patch,
@@ -37,6 +38,20 @@ def _config() -> LLMConfig:
 
 def test_default_config_is_automatic() -> None:
     assert AppConfig().llm is None
+
+
+def test_resolved_config_exposes_effective_request_rate() -> None:
+    assert ResolvedLLMConfig(None, None).requests_per_minute == 300
+    config = _config().model_copy(update={"requests_per_minute": 1500})
+    assert ResolvedLLMConfig(config, config).requests_per_minute == 1500
+
+
+@pytest.mark.parametrize(
+    ("rpm", "expected"),
+    [(300, 50), (600, 100), (1500, 250), (3000, 500), (6000, 1000)],
+)
+def test_fanout_concurrency_tracks_ten_seconds_of_requests(rpm: int, expected: int) -> None:
+    assert fanout_concurrency_for_rpm(rpm) == expected
 
 
 def test_model_catalog_contains_recommendations_current_and_curated_models() -> None:

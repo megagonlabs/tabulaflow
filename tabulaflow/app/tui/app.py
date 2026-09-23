@@ -1197,6 +1197,8 @@ class TabulaflowApp(App[None]):
         session = self._session
         if session is None:
             raise RuntimeError("Config closed before the session was initialized.")
+        if selection.config is not None:
+            session.apply_llm_request_rate(selection.config.requests_per_minute)
         session.select_llm_config(selection.config)
         self._llm_config = selection
         update_app_config(llm=selection.selection)

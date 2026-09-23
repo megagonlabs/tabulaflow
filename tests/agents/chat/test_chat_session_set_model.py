@@ -488,6 +488,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
             workspace=workspace,
             subagent_model="anthropic:claude-opus-4-8",
             subagent_reasoning="low",
+            fanout_concurrency=50,
         )
         assert agent._tools.run_subagent_for_each_row is not None
         assert agent._tools.extract_rows_from_documents is not None
@@ -498,6 +499,14 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         subagent_settings = {"thinking": "low", "timeout": SUBAGENT_REQUEST_TIMEOUT}
         assert agent._tools.run_subagent_for_each_row.model_settings == subagent_settings
         assert agent._tools.get_data_source_document.model_settings == subagent_settings
+        assert agent._tools.run_subagent_for_each_row.max_concurrency == 50
+        assert agent._tools.extract_rows_from_documents.max_concurrency == 50
+        assert agent._tools.add_canonical_name.max_concurrency == 50
+
+        agent.set_fanout_concurrency(100)
+        assert agent._tools.run_subagent_for_each_row.max_concurrency == 100
+        assert agent._tools.extract_rows_from_documents.max_concurrency == 100
+        assert agent._tools.add_canonical_name.max_concurrency == 100
 
         agent._tools.get_data_source_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
         agent.activate_llm_profile(

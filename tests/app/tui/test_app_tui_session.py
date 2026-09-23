@@ -43,9 +43,13 @@ class _StatusCapture:
 
 class _InactiveSession:
     selected_llm_config: LLMConfig | None = None
+    requests_per_minute: int | None = None
 
     def select_llm_config(self, config: LLMConfig | None) -> None:
         self.selected_llm_config = config
+
+    def apply_llm_request_rate(self, requests_per_minute: int) -> None:
+        self.requests_per_minute = requests_per_minute
 
     def activate_llm_config(self, config: LLMConfig | None) -> tuple[None, None]:
         return None, None

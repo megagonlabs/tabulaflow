@@ -138,6 +138,7 @@ class ChatSession:
         service_tier: ServiceTier | None = None,
         subagent_model: str = DEFAULT_SUBAGENT_MODEL,
         subagent_reasoning: ReasoningLevel = DEFAULT_SUBAGENT_REASONING,
+        fanout_concurrency: int = 200,
         use_apply_patch: bool = False,
         extra_instructions: str | None = None,
         trajectory_log_dir: Path | None = None,
@@ -155,6 +156,7 @@ class ChatSession:
         self._service_tier = service_tier
         self._subagent_model = subagent_model
         self._subagent_reasoning = subagent_reasoning
+        self._fanout_concurrency = fanout_concurrency
         self._use_apply_patch = use_apply_patch
         self._extra_instructions = extra_instructions
         self._trajectory_log_dir = trajectory_log_dir
@@ -222,6 +224,19 @@ class ChatSession:
         """Whether the active profile uses ``apply_patch`` instead of ``edit_file``."""
         return self._use_apply_patch
 
+    def set_fanout_concurrency(self, value: int) -> None:
+        """Apply a concurrency limit to subsequent fan-out tool calls."""
+        if value <= 0:
+            raise ValueError("fanout concurrency must be greater than 0")
+        self._fanout_concurrency = value
+        for tool in (
+            self._tools.run_subagent_for_each_row,
+            self._tools.extract_rows_from_documents,
+            self._tools.add_canonical_name,
+        ):
+            if tool is not None:
+                tool.apply_execution_limits(max_concurrency=value)
+
     @property
     def last_usage(self) -> Usage | None:
         """Latest turn usage, including partial usage after interruption, or ``None``."""
@@ -280,6 +295,7 @@ class ChatSession:
                 message_store=self._message_store,
                 subagent_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
+                max_concurrency=self._fanout_concurrency,
                 store_metadata=True,
                 trajectory_log_dir=subagent_dir,
             )
@@ -287,6 +303,7 @@ class ChatSession:
                 self._workspace,
                 subagent_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
+                max_concurrency=self._fanout_concurrency,
                 trajectory_log_dir=subagent_dir,
             )
 
@@ -351,6 +368,7 @@ class ChatSession:
             add_canonical_name=AddCanonicalNameTool(
                 subagent_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
+                max_concurrency=self._fanout_concurrency,
                 trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderChartTool(output_store=self._output_store),
@@ -603,9 +621,7 @@ class ChatSession:
         """Record model and tool-capability changes in conversation history."""
         parts = []
         if model != previous_model:
-            parts.append(
-                f"you are now powered by {model_label(model)} instead of {model_label(previous_model)}"
-            )
+            parts.append(f"you are now powered by {model_label(model)} instead of {model_label(previous_model)}")
         if self._tools.apply_patch is not None and use_apply_patch != previous_use_apply_patch:
             if use_apply_patch:
                 parts.append("apply_patch is now available and replaces edit_file")

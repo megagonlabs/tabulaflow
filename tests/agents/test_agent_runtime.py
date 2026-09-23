@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.models.test import TestModel
 
-from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
+from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime, set_llm_requests_per_minute
 from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute_model
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.summarization import DataSourceSummarizer, _data_source_system_prompt
@@ -75,6 +75,41 @@ async def test_runtime_shares_loop_bound_resources() -> None:
     assert runtime.embedding_throttles() is runtime.embedding_throttles()
     assert runtime.get_base_model("model", build) is runtime.get_base_model("model", build)
     assert builds == 1
+
+
+async def test_runtime_evenly_paces_request_rate_limits() -> None:
+    initialize_agent_runtime(
+        AgentRuntimeConfig(
+            max_llm_requests_per_minute=600,
+            max_embedding_requests_per_minute=150,
+        )
+    )
+    runtime = _get_agent_runtime()
+
+    _, llm_limiter = runtime.llm_throttles()
+    _, embedding_limiter = runtime.embedding_throttles()
+
+    assert llm_limiter is not None
+    assert llm_limiter.max_rate == 1
+    assert llm_limiter.time_period == pytest.approx(0.1)
+    assert embedding_limiter is not None
+    assert embedding_limiter.max_rate == 1
+    assert embedding_limiter.time_period == pytest.approx(0.4)
+
+
+async def test_runtime_reconfigures_request_rate() -> None:
+    initialize_agent_runtime(AgentRuntimeConfig(max_llm_requests_per_minute=300))
+    runtime = _get_agent_runtime()
+    _, original = runtime.llm_throttles()
+
+    set_llm_requests_per_minute(1500)
+
+    _, updated = runtime.llm_throttles()
+    assert updated is not None
+    assert updated is not original
+    assert updated.max_rate == 1
+    assert updated.time_period == pytest.approx(0.04)
+    assert runtime.config.max_llm_requests_per_minute == 1500
 
 
 async def test_agents_default_to_unlimited_requests(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from tabulaflow.app.config import LLMConfig, model_supports_apply_patch
+from tabulaflow.app.config import LLMConfig, fanout_concurrency_for_rpm, model_supports_apply_patch
 from tabulaflow.app.runtime_paths import RuntimePaths
 
 if TYPE_CHECKING:
@@ -190,6 +190,7 @@ class AppSession:
             trajectory_log_dir=self._runtime_paths.trajectories_dir,
             subagent_model=config.subagent.model,
             subagent_reasoning=config.subagent.effort,
+            fanout_concurrency=fanout_concurrency_for_rpm(config.requests_per_minute),
             project_dir=self.project_dir,
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
@@ -201,6 +202,14 @@ class AppSession:
     def select_llm_config(self, config: LLMConfig | None) -> None:
         """Select the only LLM configuration allowed to answer new turns."""
         self._selected_llm_config = config
+
+    def apply_llm_request_rate(self, requests_per_minute: int) -> None:
+        """Apply app request-rate and fan-out limits between turns."""
+        from tabulaflow.agents import set_llm_requests_per_minute
+
+        set_llm_requests_per_minute(requests_per_minute)
+        if self._chat_session is not None:
+            self._chat_session.set_fanout_concurrency(fanout_concurrency_for_rpm(requests_per_minute))
 
     def activate_llm_config(self, config: LLMConfig | None) -> tuple[str | None, str | None]:
         """Activate ``config`` without changing the session's current selection."""
