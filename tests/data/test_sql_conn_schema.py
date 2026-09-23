@@ -214,6 +214,31 @@ async def test_table_without_column_stats_uses_one_bounded_sample(
     assert table_queries[0][1:] == (7, True)
 
 
+async def test_table_sample_bounds_unbounded_text_values_and_rows(tmp_path: Path) -> None:
+    db_path = tmp_path / "large-text-sample.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE documents (id INTEGER, body TEXT)")
+        connection.executemany(
+            "INSERT INTO documents VALUES (?, ?)",
+            [(index, ("x" if index < 10 else "y") * 20_000) for index in range(20)],
+        )
+
+    connector = await SQLConnector.from_url_async(
+        global_id="large-text-sample",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        display_name="large-text-sample",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+    try:
+        table = connector.schema.tables[0]
+        assert table.sampled_df is not None
+        assert len(table.sampled_df) == 10
+        assert table.sampled_df["body"].str.len().tolist() == [10_000] * 10
+        assert table.columns[1].examples == ["x" * 10_000, "y" * 10_000]
+    finally:
+        await connector.close_async()
+
+
 async def test_view_profiling_uses_one_bounded_sample(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

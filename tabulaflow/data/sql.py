@@ -1765,8 +1765,40 @@ DISTINCT_SAFE_TYPES = {
     "BYTES",
 }
 
-_PROFILE_SAMPLE_ROWS = 1000
+_PROFILE_SAMPLE_ROWS = 100
 _STORED_SAMPLE_ROWS = 10
+_PROFILE_MAX_CELL_LENGTH = 10_000
+
+
+def _is_potentially_unbounded_type(dtype: sqlalchemy.types.TypeEngine[Any]) -> bool:
+    try:
+        generic = dtype.as_generic()
+    except NotImplementedError:
+        generic = dtype
+    if getattr(generic, "length", None) is not None:
+        return False
+    return isinstance(generic, (sqlalchemy.String, sqlalchemy.LargeBinary))
+
+
+def _sample_query(
+    table_name: str,
+    schema_name: str | None,
+    columns: Sequence[dict[str, Any]],
+    backend: str,
+) -> sqlalchemy.sql.expression.Select[Any]:
+    tbl = sqlalchemy.table(
+        table_name,
+        *(sqlalchemy.column(column["name"]) for column in columns),
+        schema=schema_name,
+    )
+    truncate = func.substring if backend == "mssql" else func.substr
+    projections = [
+        truncate(tbl.c[column["name"]], 1, _PROFILE_MAX_CELL_LENGTH).label(column["name"])
+        if _is_potentially_unbounded_type(column["type"])
+        else tbl.c[column["name"]]
+        for column in columns
+    ]
+    return select(*projections).select_from(tbl).limit(_PROFILE_SAMPLE_ROWS)
 
 
 def _canonicalize_dtype(native: str) -> str:
@@ -2043,7 +2075,7 @@ async def _build_table_async(
     if sample_rows:
         sample_result = await _try_profile_query_async(
             t_eng,
-            select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
+            _sample_query(table_name, schema_name, col_dicts, t_eng.engine.dialect.name),
             timeout=query_timeout_seconds,
             operation=f"sample relation {_qualified_name(schema_name, table_name)}",
             return_df=True,
