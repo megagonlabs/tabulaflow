@@ -440,6 +440,58 @@ async def test_agent_failure_without_message_shows_exception_type(
     assert messages == ["Agent turn failed: TimeoutError."]
 
 
+async def test_table_result_focus_does_not_scroll_chat_to_banner(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tabulaflow.agents.chat import ToolFinished, ToolStarted, TurnFinished
+
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+    focus_scroll_visible: list[bool] = []
+
+    class TableResultWidget(Static):
+        can_focus = True
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            super().__init__("\n".join(f"table row {index}" for index in range(20)))
+
+        def focus(self, scroll_visible: bool = True) -> TableResultWidget:
+            focus_scroll_visible.append(scroll_visible)
+            return super().focus(scroll_visible=scroll_visible)
+
+    class TurnOutput:
+        async def resolve(self) -> object:
+            return object()
+
+    class Session:
+        async def run_stream(self, _question: object) -> Any:
+            for index in range(20):
+                tool_call_id = str(index)
+                yield ToolStarted(tool_call_id=tool_call_id, name="run_query", args={"query": "SELECT 1"})
+                yield ToolFinished(tool_call_id=tool_call_id, name="run_query")
+            app.post_message(events.AppBlur())
+            yield TurnFinished(result=ChatResult(text="answer"))
+
+        def turn_output(self, _output: object) -> TurnOutput:
+            return TurnOutput()
+
+    async def ignore_pane_update(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(tui, "AgentResultWidget", TableResultWidget)
+    monkeypatch.setattr(tui, "build_resolved_output_card_views", lambda *_args: [object()])
+    monkeypatch.setattr(app, "_push_turn_to_pane", ignore_pane_update)
+
+    async with app.run_test(size=(80, 15)) as pilot:
+        chat_log = app.query_one(ChatLog)
+        await app._run_agent("question", Session(), chat_log, "question")  # type: ignore[arg-type]
+        app.post_message(events.AppFocus())
+        await pilot.pause()
+        await pilot.pause()
+
+        assert chat_log.scroll_y > 0
+        assert chat_log.is_vertical_scroll_end
+        assert focus_scroll_visible == [False]
+
+
 async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
     project_dir.mkdir()

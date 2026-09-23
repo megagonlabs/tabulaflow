@@ -1297,7 +1297,7 @@ class TabulaflowApp(App[None]):
             # focus mid-typing would be hostile.
             inp = self.query_one("#input-bar", HistoryInput)
             if chat_log.following_tail and not inp.value:
-                result_widget.focus()
+                result_widget.focus(scroll_visible=False)
 
         chat_log.follow_new_content()
 
