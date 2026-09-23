@@ -566,6 +566,10 @@ function renderMapPopup(map, lngLat, html, className, closeButton) {
 }
 
 function clearHoverPopup(map, popupState) {
+  if (popupState.hoverOpenTimer) {
+    clearTimeout(popupState.hoverOpenTimer);
+    popupState.hoverOpenTimer = null;
+  }
   if (popupState.hoverCloseTimer) {
     clearTimeout(popupState.hoverCloseTimer);
     popupState.hoverCloseTimer = null;
@@ -575,12 +579,18 @@ function clearHoverPopup(map, popupState) {
   popupState.hover = null;
   popupState.hoverHtml = '';
   popupState.hoverAnchor = '';
+  popupState.pendingHoverKey = '';
   popupState.hoverOverFeature = false;
   popupState.hoverOverPopup = false;
 }
 
 function scheduleHoverPopupClose(map, popupState) {
   popupState.hoverOverFeature = false;
+  if (popupState.hoverOpenTimer) {
+    clearTimeout(popupState.hoverOpenTimer);
+    popupState.hoverOpenTimer = null;
+    popupState.pendingHoverKey = '';
+  }
   if (popupState.hoverOverPopup) return;
   if (popupState.hoverCloseTimer) clearTimeout(popupState.hoverCloseTimer);
   popupState.hoverCloseTimer = setTimeout(function () {
@@ -619,14 +629,25 @@ function syncHoverPopup(map, lngLat, html, popupState) {
     popupState.hoverCloseTimer = null;
   }
   var hoverAnchor = JSON.stringify(lngLat);
-  if (!popupState.hover || popupState.hoverHtml !== html || popupState.hoverAnchor !== hoverAnchor) {
-    if (popupState.hover) popupState.hover.remove();
+  var hoverKey = html + '\u0000' + hoverAnchor;
+  if (popupState.hover && popupState.hoverHtml === html && popupState.hoverAnchor === hoverAnchor) return;
+  if (popupState.hoverOpenTimer && popupState.pendingHoverKey === hoverKey) return;
+
+  if (popupState.hover) popupState.hover.remove();
+  popupState.hover = null;
+  popupState.hoverHtml = '';
+  popupState.hoverAnchor = '';
+  if (popupState.hoverOpenTimer) clearTimeout(popupState.hoverOpenTimer);
+  popupState.pendingHoverKey = hoverKey;
+  popupState.hoverOpenTimer = setTimeout(function () {
+    popupState.hoverOpenTimer = null;
+    if (!popupState.hoverOverFeature || popupState.pendingHoverKey !== hoverKey || popupState.click) return;
     popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
     bindHoverPopupPointer(map, popupState.hover, popupState);
     popupState.hoverHtml = html;
     popupState.hoverAnchor = hoverAnchor;
-    return;
-  }
+    popupState.pendingHoverKey = '';
+  }, 300);
 }
 
 function setClickPopup(map, lngLat, html, popupState) {
@@ -636,9 +657,14 @@ function setClickPopup(map, lngLat, html, popupState) {
   }
   if (popupState.hover) popupState.hover.remove();
   if (popupState.click) popupState.click.remove();
+  if (popupState.hoverOpenTimer) {
+    clearTimeout(popupState.hoverOpenTimer);
+    popupState.hoverOpenTimer = null;
+  }
   popupState.hover = null;
   popupState.hoverHtml = '';
   popupState.hoverAnchor = '';
+  popupState.pendingHoverKey = '';
   popupState.hoverOverFeature = false;
   popupState.hoverOverPopup = false;
   var popup = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
@@ -830,8 +856,10 @@ export function renderMap(container, cardData, artifactKey) {
     hover: null,
     hoverHtml: '',
     hoverAnchor: '',
+    pendingHoverKey: '',
     hoverOverFeature: false,
     hoverOverPopup: false,
+    hoverOpenTimer: null,
     hoverCloseTimer: null,
     click: null
   };
@@ -968,17 +996,8 @@ export function renderMap(container, cardData, artifactKey) {
   }
 
   function destroyMap() {
-    if (popupState.hoverCloseTimer) {
-      clearTimeout(popupState.hoverCloseTimer);
-      popupState.hoverCloseTimer = null;
-    }
-    if (popupState.hover) popupState.hover.remove();
+    clearHoverPopup(map, popupState);
     if (popupState.click) popupState.click.remove();
-    popupState.hover = null;
-    popupState.hoverHtml = '';
-    popupState.hoverAnchor = '';
-    popupState.hoverOverFeature = false;
-    popupState.hoverOverPopup = false;
     popupState.click = null;
     clearLegend(stageNode);
     markers.forEach(function (marker) { marker.remove(); });
