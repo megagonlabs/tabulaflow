@@ -140,6 +140,8 @@ class RegistryRunQueryTool:
         outcome = None
         if exec_result.df is not None:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
+        elif exec_result.affected_rows is not None:
+            outcome = ToolCallOutcome(count=exec_result.affected_rows, unit="rows affected")
         try:
             source = await self._output_store.add_fixed_artifact_source(
                 connector_alias=connector_alias,

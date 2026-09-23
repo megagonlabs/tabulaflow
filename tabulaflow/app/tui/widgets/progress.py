@@ -402,7 +402,16 @@ def summarize_outcome(outcome: ToolCallOutcome | None) -> str:
         return "error"
     if outcome.count is None:
         return ""
-    return f"{outcome.count} {outcome.unit}" if outcome.unit is not None else str(outcome.count)
+    if outcome.unit is None:
+        return str(outcome.count)
+    unit = outcome.unit
+    if outcome.count == 1:
+        unit = {
+            "rows": "row",
+            "columns": "column",
+            "rows affected": "row affected",
+        }.get(unit, unit)
+    return f"{outcome.count} {unit}"
 
 
 def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text:

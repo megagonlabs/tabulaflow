@@ -33,7 +33,10 @@ async def _make_connector(tmp_path: Path) -> SQLConnector:
         await conn.execute(sqlalchemy.text("INSERT INTO t VALUES ('x', 1), ('y', 2), ('z', 3);"))
     await engine.dispose()
     return await SQLConnector.from_url_async(
-        global_id="test_outcome", url=f"sqlite+aiosqlite:///{db_path}", display_name="db"
+        global_id="test_outcome",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        display_name="db",
+        read_only=False,
     )
 
 
@@ -50,6 +53,21 @@ class TestRunQueryOutcome:
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
         assert result.metadata == ToolCallOutcome(count=3, unit="rows")
+
+    async def test_dml_reports_affected_rows(self, registry: DataConnectorRegistry) -> None:
+        result = await RegistryRunQueryTool(registry)("mydb", "UPDATE t SET b = b + 1 WHERE a != 'z'")
+        assert isinstance(result, ToolReturn)
+        assert result.metadata == ToolCallOutcome(count=2, unit="rows affected")
+
+    async def test_dml_reports_zero_affected_rows(self, registry: DataConnectorRegistry) -> None:
+        result = await RegistryRunQueryTool(registry)("mydb", "DELETE FROM t WHERE a = 'missing'")
+        assert isinstance(result, ToolReturn)
+        assert result.metadata == ToolCallOutcome(count=0, unit="rows affected")
+
+    async def test_ddl_has_no_outcome(self, registry: DataConnectorRegistry) -> None:
+        result = await RegistryRunQueryTool(registry)("mydb", "CREATE TABLE other (id INTEGER)")
+        assert isinstance(result, ToolReturn)
+        assert result.metadata is None
 
     async def test_query_error_reports_error(self, registry: DataConnectorRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM missing")

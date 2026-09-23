@@ -493,6 +493,15 @@ class TestSummarizeOutcome:
     def test_rows_kept(self) -> None:
         assert summarize_outcome(ToolCallOutcome(count=42, unit="rows")) == "42 rows"
 
+    def test_single_row_is_singular(self) -> None:
+        assert summarize_outcome(ToolCallOutcome(count=1, unit="rows")) == "1 row"
+
+    def test_affected_rows_kept(self) -> None:
+        assert summarize_outcome(ToolCallOutcome(count=2, unit="rows affected")) == "2 rows affected"
+
+    def test_single_affected_row_is_singular(self) -> None:
+        assert summarize_outcome(ToolCallOutcome(count=1, unit="rows affected")) == "1 row affected"
+
     def test_count_without_unit_kept(self) -> None:
         assert summarize_outcome(ToolCallOutcome(count=42)) == "42"
 
