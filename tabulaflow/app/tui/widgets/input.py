@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 _MAX_HISTORY_BYTES = 10 * 1024 * 1024
 _HISTORY_COMPACTION_RATIO = 0.8
 _HISTORY_LOCK_TIMEOUT_SECONDS = 1
+_MAX_INLINE_PASTE_LINES = 5
+_MAX_INLINE_PASTE_CHARS = 1000
 
 logger = logging.getLogger(__name__)
 
@@ -85,14 +87,20 @@ def _normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def _should_collapse_paste(text: str) -> bool:
+    logical_text = text.rstrip("\n")
+    line_count = logical_text.count("\n") + 1
+    return line_count > _MAX_INLINE_PASTE_LINES or len(text) > _MAX_INLINE_PASTE_CHARS
+
+
 class HistoryInput(TextArea):
     """Auto-growing prompt editor with file-backed command history.
 
-    Multi-line pastes (text containing a newline) are stashed in an in-memory
-    registry and replaced with a compact ``[Pasted text #N +M lines]`` reference
-    so pasted payloads remain compact. Images use highlighted ``[Image #N]``
-    references backed only for the active composition. :meth:`build_chat_input`
-    expands both forms before submission.
+    Large pastes are stashed in an in-memory registry and replaced with a
+    compact ``[Pasted text #N +M lines]`` reference so pasted payloads remain
+    compact. Images use highlighted ``[Image #N]`` references backed only for
+    the active composition. :meth:`build_chat_input` expands both forms before
+    submission.
     """
 
     _MAX_HEIGHT = 5
@@ -435,12 +443,12 @@ class HistoryInput(TextArea):
         cast("TabulaflowApp", self.app).action_confirm_quit()
 
     async def _on_paste(self, event: events.Paste) -> None:
-        """Intercept bracketed-paste events with newlines and stash them.
+        """Insert small bracketed pastes inline and stash large ones.
 
         Textual dispatches ``_on_paste`` for every class in the MRO. For
         single-line pastes we return without doing anything so the parent's
         ``Input._on_paste`` runs normally via that same MRO walk — calling
-        ``super()._on_paste`` here would double-insert. For multi-line we
+        ``super()._on_paste`` here would double-insert. For multi-line pastes we
         do the insertion and call ``prevent_default`` to break the MRO walk
         (``stop`` only stops DOM bubbling, not in-widget dispatch).
 
@@ -450,7 +458,11 @@ class HistoryInput(TextArea):
         text = event.text
         if not text or not _has_newline(text):
             return
-        self._insert_paste_reference(_normalize_newlines(text))
+        text = _normalize_newlines(text)
+        if _should_collapse_paste(text):
+            self._insert_paste_reference(text)
+        else:
+            self.insert_text_at_cursor(text)
         event.prevent_default()
         event.stop()
 
@@ -466,7 +478,11 @@ class HistoryInput(TextArea):
             return
         clipboard = getattr(self.app, "clipboard", "") or ""
         if _has_newline(clipboard):
-            self._insert_paste_reference(_normalize_newlines(clipboard))
+            clipboard = _normalize_newlines(clipboard)
+            if _should_collapse_paste(clipboard):
+                self._insert_paste_reference(clipboard)
+            else:
+                self.insert_text_at_cursor(clipboard)
             return
         super().action_paste()
 

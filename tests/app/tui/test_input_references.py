@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic_ai.messages import BinaryContent
 import pytest
+from textual import events
 from textual.app import App, ComposeResult
 
 from tabulaflow.app.tui.widgets import input as input_module
@@ -116,6 +117,31 @@ def test_history_persistence_failure_does_not_reject_submission(
     input_bar.record_submission("still accepted")
 
     assert input_bar._history == ["still accepted"]
+
+
+def test_paste_collapse_policy() -> None:
+    assert not input_module._should_collapse_paste("\n".join(["line"] * 5))
+    assert not input_module._should_collapse_paste("\n".join(["line"] * 5) + "\n")
+    assert input_module._should_collapse_paste("\n".join(["line"] * 6))
+    assert not input_module._should_collapse_paste("x" * 1000)
+    assert input_module._should_collapse_paste("x" * 1001)
+
+
+async def test_multiline_paste_is_only_collapsed_above_threshold(tmp_path: Path) -> None:
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test():
+        input_bar = app.query_one(HistoryInput)
+        await input_bar._on_paste(events.Paste("first\rsecond"))
+
+        assert input_bar.value == "first\nsecond"
+
+        input_bar.value = ""
+        pasted = "\n".join(["line"] * 6)
+        await input_bar._on_paste(events.Paste(pasted))
+
+        assert input_bar.value == "[Pasted text #1 +6 lines]"
+        assert input_bar.build_chat_input(input_bar.value) == pasted
 
 
 async def test_input_soft_wraps_and_grows_to_five_rows(tmp_path: Path) -> None:
