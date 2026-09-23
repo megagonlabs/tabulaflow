@@ -325,7 +325,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             cursor = index == self._cursor
             enabled = self._enabled or field == "enabled"
             text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
-            text.append(f"{labels[field]:<22}", style="bold" if cursor else ("" if enabled else "dim"))
+            text.append(f"{labels[field]:<26}", style="bold" if cursor else ("" if enabled else "dim"))
             if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
                 text.append("‹ ", style="dim")
             text.append(values[field], style="bold" if cursor else ("" if enabled else "dim"))

@@ -47,6 +47,7 @@ async def test_config_screen_shows_role_fields_and_exact_identifiers() -> None:
         assert "Subagent effort" in _text(screen, "#field-subagent-effort")
         assert "Max model requests/min" in _text(screen, "#field-requests-per-minute")
         assert "300 RPM" in _text(screen, "#field-requests-per-minute")
+        assert "requests/min    ‹" in _text(screen, "#field-requests-per-minute")
         assert not list(screen.query("#config-credentials"))
         rendered = {str(widget.render()) for widget in screen.query(Static)}
         assert "MAIN AGENT" not in rendered
