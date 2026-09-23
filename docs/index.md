@@ -9,34 +9,40 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
   <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-wikidata" aria-selected="true"
-      data-title="Query Wikidata"
-      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
-      data-type="Knowledge graph workflow"
-      data-video-src="assets/demos/tabulaflow-wikidata-v2.mp4">Query Wikidata</button>
-    <button type="button" role="tab" id="demo-hugging-face" aria-selected="false" tabindex="-1"
-      data-title="Explore a multimodal Hugging Face dataset"
-      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-      data-type="Data browsing workflow"
-      data-video-src="assets/demos/tabulaflow-huggingface-v3.mp4">Explore a Multimodal Hugging Face Dataset</button>
+    <button type="button" role="tab" id="demo-research" aria-selected="true"
+      data-title="Find Research Papers"
+      data-description="Find relevant conference papers and assemble them into a structured dataset."
+      data-type="Research workflow"
+      data-video-src="assets/demos/find-research-papers.mp4">Find Research Papers</button>
+    <button type="button" role="tab" id="demo-database" aria-selected="false" tabindex="-1"
+      data-title="Chat to a Database"
+      data-description="Connect a database and ask TabulaFlow to introduce and explore it."
+      data-type="Database workflow"
+      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Database</button>
     <button type="button" role="tab" id="demo-travel" aria-selected="false" tabindex="-1"
       data-title="Plan a trip on a map"
       data-description="Find museums, add neighborhood boundaries, and map a walking route."
       data-type="Mapping workflow"
-      data-video-src="assets/demos/tabulaflow-museums.mp4">Plan a Trip on a Map</button>
-    <button type="button" role="tab" id="demo-literature" aria-selected="false" tabindex="-1"
-      data-title="Review the literature"
-      data-description="Find relevant papers, extract their details, and assemble a structured literature review."
-      data-type="Research workflow">Review the Literature</button>
+      data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
+    <button type="button" role="tab" id="demo-hugging-face" aria-selected="false" tabindex="-1"
+      data-title="Explore a multimodal Hugging Face dataset"
+      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+      data-type="Data browsing workflow"
+      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
+    <button type="button" role="tab" id="demo-wikidata" aria-selected="false" tabindex="-1"
+      data-title="Query Wikidata"
+      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+      data-type="Knowledge graph workflow"
+      data-video-src="assets/demos/query-wikidata.mp4">Query Wikidata</button>
   </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-wikidata">
+  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-research">
     <video class="demo-gallery__video" controls preload="metadata"
-      src="assets/demos/tabulaflow-wikidata-v2.mp4" aria-label="TabulaFlow Wikidata demo"></video>
+      src="assets/demos/find-research-papers.mp4" aria-label="TabulaFlow research papers demo"></video>
     <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
       <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Knowledge graph workflow</span>
-        <strong>Query Wikidata</strong>
-        <span>Ask a knowledge-graph question, inspect the results, and explore their relationships.</span>
+        <span class="media-placeholder__type">Research workflow</span>
+        <strong>Find Research Papers</strong>
+        <span>Find relevant conference papers and assemble them into a structured dataset.</span>
       </div>
       <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
     </figure>
@@ -79,7 +85,7 @@ datasets.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
-  Watch [literature review](#demo-literature).
+  Watch [research paper discovery](#demo-research).
 - **Agentic data enrichment.** Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
