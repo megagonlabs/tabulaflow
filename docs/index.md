@@ -15,10 +15,10 @@ it can also write code, work with files, run shell commands, and browse the web.
       data-type="Research workflow"
       data-video-src="assets/demos/find-research-papers.mp4">Find Research Papers</button>
     <button type="button" role="tab" id="demo-database" aria-selected="false" tabindex="-1"
-      data-title="Chat to a Database"
+      data-title="Ask Your Database Anything"
       data-description="Connect a database and ask TabulaFlow to introduce and explore it."
       data-type="Database workflow"
-      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Database</button>
+      data-video-src="assets/demos/chat-to-a-database.mp4">Ask Your Database Anything</button>
     <button type="button" role="tab" id="demo-travel" aria-selected="false" tabindex="-1"
       data-title="Plan a trip on a map"
       data-description="Find museums, add neighborhood boundaries, and map a walking route."
@@ -30,10 +30,10 @@ it can also write code, work with files, run shell commands, and browse the web.
       data-type="Data browsing workflow"
       data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
     <button type="button" role="tab" id="demo-wikidata" aria-selected="false" tabindex="-1"
-      data-title="Query Wikidata"
+      data-title="Query and Visualize Graphs"
       data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
       data-type="Knowledge graph workflow"
-      data-video-src="assets/demos/query-wikidata.mp4">Query Wikidata</button>
+      data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
   </div>
   <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-research">
     <video class="demo-gallery__video" controls preload="metadata"
