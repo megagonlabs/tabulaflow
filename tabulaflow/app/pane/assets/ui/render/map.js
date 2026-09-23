@@ -648,7 +648,7 @@ function syncHoverPopup(map, lngLat, html, popupState) {
     popupState.hoverHtml = html;
     popupState.hoverAnchor = hoverAnchor;
     popupState.pendingHoverKey = '';
-  }, 300);
+  }, 200);
 }
 
 function setClickPopup(map, lngLat, html, popupState) {
