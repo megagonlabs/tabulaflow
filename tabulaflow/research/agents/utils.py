@@ -65,7 +65,7 @@ class TaskRunContext:
 
 
 class BasicAgentConfig(BaseModel):
-    llm: str = "openai:gpt-5-mini"
+    llm: str = "openai:gpt-5.6-luna"
     schema_formatter: str | None = None
     compact_table_families: bool = True
     temperature: float | None = None

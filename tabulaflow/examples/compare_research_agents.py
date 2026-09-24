@@ -34,7 +34,7 @@ async def main() -> None:
     initialize_agent_runtime(AgentRuntimeConfig(preprocessing_cache_mode="read_write"))
     dataset = await BirdSQLDatasetLoader().get_split_async("dev", subsample_size=5)
     # --8<-- [start:strategies]
-    llm = "openai:gpt-5-mini"
+    llm = "openai:gpt-5.6-luna"
     strategies = [
         (DirectPromptAgent, BasicAgentConfig(llm=llm)),
         (

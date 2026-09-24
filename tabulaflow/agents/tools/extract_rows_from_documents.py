@@ -90,7 +90,7 @@ class ExtractRowsFromDocumentsTool:
         self,
         connector: SQLConnector,
         *,
-        subagent_llm: str | Model = "openai:gpt-5-mini",
+        subagent_llm: str | Model = "openai:gpt-5.6-luna",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,

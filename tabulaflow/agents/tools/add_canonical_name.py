@@ -205,7 +205,7 @@ class AddCanonicalNameTool:
     def __init__(
         self,
         *,
-        subagent_llm: str | Model = "openai:gpt-5-mini",
+        subagent_llm: str | Model = "openai:gpt-5.6-luna",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         trajectory_log_dir: Path | None = None,
