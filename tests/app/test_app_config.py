@@ -40,8 +40,8 @@ def test_default_config_is_automatic() -> None:
     assert AppConfig().llm is None
 
 
-def test_openai_defaults_use_gpt_6() -> None:
-    assert OPENAI_DEFAULT_LLM_CONFIG.main.model == "openai:gpt-6-sol"
+def test_openai_defaults_use_gpt_5_6_sol() -> None:
+    assert OPENAI_DEFAULT_LLM_CONFIG.main.model == "openai:gpt-5.6-sol"
     assert OPENAI_DEFAULT_LLM_CONFIG.subagent.model == "openai:gpt-6-luna"
 
 
