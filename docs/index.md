@@ -98,7 +98,8 @@ datasets.
 - **Agentic data enrichment.** Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
-  [Find research papers demo](#demo-research){ .inline-cta }
+  [Find research papers demo](#demo-research){ .inline-cta } ·
+  [Map demo](#demo-travel){ .inline-cta }
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
