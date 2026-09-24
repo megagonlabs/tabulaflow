@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from hashlib import file_digest
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,21 +39,31 @@ _FILENAME = "sample.sqlite"
 _SHARED_DIR = DEFAULT_HOME_DIR / "sample_data"
 
 
+def _sha256(path: Path) -> bytes:
+    with path.open("rb") as file:
+        return file_digest(file, "sha256").digest()
+
+
+def _copy_if_changed(source: Path, destination: Path) -> None:
+    if destination.exists() and _sha256(destination) == _sha256(source):
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+
+
 def materialize_sample_db() -> Path:
     """Return a real, writable path to the sample DB, copying it once if needed.
 
     The copy lives in a shared per-user dir (``~/.tabulaflow/sample_data``) rather
     than each session's dir, so it isn't duplicated per session. It's refreshed
-    only when the bundled file changes (size differs), so a new app version's
-    schema is picked up. A copy (vs opening the packaged file in place) is
+    only when the bundled file changes, so a new app version's schema is picked
+    up. A copy (vs opening the packaged file in place) is
     required: the package file may be read-only / inside a zipped wheel, and the
     SQLite connector opens read-write at the driver level.
     """
     dest = _SHARED_DIR / _FILENAME
     with as_file(files(_RESOURCE).joinpath(_FILENAME)) as src:
-        if not dest.exists() or dest.stat().st_size != Path(src).stat().st_size:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(src, dest)
+        _copy_if_changed(Path(src), dest)
     return dest
 
 

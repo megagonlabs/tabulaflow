@@ -402,7 +402,7 @@ def _push_controls_turn(pane: pane_mod.BrowserPane, pane_dir: Path) -> None:
         "-- preview NYC taxi zones filtered by minimum area",
     )
     taxi_zone_rows = json.loads(
-        (Path(__file__).resolve().parents[2] / "tabulaflow/app/assets/samples/nyc_taxi_zones.json").read_text(
+        (Path(__file__).parent / "fixtures" / "data" / "nyc_taxi_zones.json").read_text(
             encoding="utf-8"
         )
     )

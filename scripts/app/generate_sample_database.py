@@ -41,7 +41,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 _SAMPLE_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "samples"
 _OUT = _SAMPLE_DIR / "sample.sqlite"
-_NYC_TAXI_ZONES_JSON = _SAMPLE_DIR / "nyc_taxi_zones.json"
+_NYC_TAXI_ZONES_JSON = Path(__file__).parent / "fixtures" / "data" / "nyc_taxi_zones.json"
 _SEED = 7
 _YEAR = 2025  # fixed range keeps the file deterministic
 

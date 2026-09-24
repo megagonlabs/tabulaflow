@@ -1,15 +1,28 @@
 from __future__ import annotations
 
-import sqlite3
-import json
 import io
+import json
+import sqlite3
 from importlib.resources import as_file, files
+from pathlib import Path
 
 from PIL import Image
 from pypdf import PdfReader
 
 from tabulaflow.core.media import detect_media
-from tabulaflow.app.sample_data import SAMPLE_TABLES
+from tabulaflow.app.sample_data import SAMPLE_TABLES, _copy_if_changed
+
+
+def test_copy_sample_data_refreshes_same_size_changes(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "shared" / "sample.sqlite"
+    source.write_bytes(b"new")
+    destination.parent.mkdir()
+    destination.write_bytes(b"old")
+
+    _copy_if_changed(source, destination)
+
+    assert destination.read_bytes() == b"new"
 
 
 def test_sample_data_includes_raw_nyc_taxi_zones() -> None:
