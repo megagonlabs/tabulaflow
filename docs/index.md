@@ -76,9 +76,6 @@ uv tool run --from playwright playwright install chromium
 TabulaFlow opens with bundled sample data, so you can start exploring
 immediately.
 
-[Connect your data](data-agent/connecting-data.md){ .inline-cta }
-[Configuration](data-agent/configuration.md){ .inline-cta }
-
 ## What TabulaFlow can do
 
 Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
@@ -200,7 +197,7 @@ This design has three benefits:
   visual artifacts.
 - **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
   exposes its underlying data table, and each table exposes the query that
-  produced it. Our UI ensures a consistent look and efficient navigation.
+  produced it.
 - **Security.** The data agent remains fully functional for data work even when
   the shell tool is disabled.
 
