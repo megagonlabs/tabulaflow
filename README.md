@@ -1,4 +1,6 @@
-# TabulaFlow
+<h1>
+  <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/tabulaflow-wordmark.svg" alt="TabulaFlow" width="372">
+</h1>
 
 TabulaFlow is an open-source data agent built on a modular Python library.
 
