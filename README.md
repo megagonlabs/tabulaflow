@@ -15,6 +15,12 @@ guides and API references.
 
 https://github.com/user-attachments/assets/e13b4503-5d67-4f76-8539-5343b94f9a78
 
+**More demos:**
+[Find Research Papers](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
+[Ask Your Database Anything](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
+[Explore a Multimodal Hugging Face Dataset](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face) ·
+[Query and Visualize Graphs](https://megagonlabs.github.io/tabulaflow/#demo-wikidata)
+
 ## Get started
 
 Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
