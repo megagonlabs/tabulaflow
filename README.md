@@ -63,6 +63,8 @@ These building blocks are fully typed and organized into four layers:
 `core <- data <- output <- agents`. See the
 [API reference](https://megagonlabs.github.io/tabulaflow/python-library/api-reference/) for how they fit together.
 
+### Quick start
+
 Add TabulaFlow to your Python project:
 
 ```bash
@@ -212,6 +214,8 @@ experiments:
   analysis, with optional Langfuse and Phoenix tracing.
 - **Simple and performant agents.** Simple yet state-of-the-art agent
   implementations provide a performant starting point.
+
+### Quick start
 
 With the TabulaFlow tool installed and `OPENAI_API_KEY` set, download BIRD-SQL
 and run the bundled research example:
