@@ -187,7 +187,18 @@ async def test_escape_returns_to_previously_focused_result(monkeypatch: pytest.M
         assert first.has_focus
 
 
-async def test_clear_resets_tui_and_browser_pane(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("aliases", "expected_status"),
+    [
+        (["workspace", "sample_data"], None),
+        (["workspace", "sample_data", "sales", "inventory"], "Connected sources: sales, inventory"),
+    ],
+)
+async def test_clear_resets_tui_and_browser_pane(
+    monkeypatch: pytest.MonkeyPatch,
+    aliases: list[str],
+    expected_status: str | None,
+) -> None:
     app = _app(None)
     _stub_app_startup(app, monkeypatch)
 
@@ -200,6 +211,13 @@ async def test_clear_resets_tui_and_browser_pane(monkeypatch: pytest.MonkeyPatch
     pane = FakePane()
     app._browser_pane = pane  # type: ignore[assignment]
 
+    class FakeRegistry:
+        def list_aliases(self) -> list[str]:
+            return aliases
+
+    class FakeSession:
+        registry = FakeRegistry()
+
     async with app.run_test(size=(100, 36)) as pilot:
         await pilot.pause()
         chat_log = app.query_one(ChatLog)
@@ -207,12 +225,13 @@ async def test_clear_resets_tui_and_browser_pane(monkeypatch: pytest.MonkeyPatch
 
         await app._show_command_result(
             CommandResult(action="clear"),
-            cast(AppSession, object()),
+            cast(AppSession, FakeSession()),
             chat_log,
         )
 
         assert pane.cleared
-        assert len(app.query(SystemMessage)) == 0
+        statuses = [str(message.render()) for message in app.query(SystemMessage)]
+        assert statuses == ([] if expected_status is None else [expected_status])
         assert len(app.query(BannerWidget)) == 1
 
 

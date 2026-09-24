@@ -45,7 +45,8 @@ from tabulaflow.app.pane.contract import (
     turn_payload,
 )
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
-from tabulaflow.app.session import AppSession
+from tabulaflow.app.sample_data import SAMPLE_ALIAS
+from tabulaflow.app.session import WORKSPACE_ALIAS, AppSession
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.app.tui.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
@@ -1103,6 +1104,13 @@ class TabulaflowApp(App[None]):
         if result.action == "clear":
             await chat_log.remove_children()
             await chat_log.mount(self._banner())
+            aliases = [
+                alias for alias in session.registry.list_aliases() if alias not in {WORKSPACE_ALIAS, SAMPLE_ALIAS}
+            ]
+            if aliases:
+                connected = Text("Connected sources: ", style="dim")
+                connected.append(", ".join(aliases), style="bold dim")
+                await chat_log.mount(SystemMessage(connected))
             if self._browser_pane is not None:
                 try:
                     self._browser_pane.clear()
