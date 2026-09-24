@@ -1,5 +1,7 @@
 <h1>
-  <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/tabulaflow-wordmark.svg?v=2" alt="TabulaFlow" width="200">
+  <a href="https://megagonlabs.github.io/tabulaflow/">
+    <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/tabulaflow-wordmark.svg?v=2" alt="TabulaFlow" width="240">
+  </a>
 </h1>
 
 TabulaFlow is an open-source data agent built on a modular Python library.
