@@ -95,3 +95,11 @@ jobs:
             "$GITHUB_WORKSPACE/scripts/check_installed_package.py"
           HOME="$RUNNER_TEMP/home" "$RUNNER_TEMP/smoke/bin/tabulaflow" --help >/dev/null
           HOME="$RUNNER_TEMP/home" "$RUNNER_TEMP/smoke/bin/tabulaflow" benchmark list >/dev/null
+      - name: Smoke-test uv tool installation
+        run: |
+          wheel="$GITHUB_WORKSPACE/$(find dist -name '*.whl' -print -quit)"
+          export UV_TOOL_DIR="$RUNNER_TEMP/tools"
+          export UV_TOOL_BIN_DIR="$RUNNER_TEMP/tool-bin"
+          uv tool install "$wheel"
+          HOME="$RUNNER_TEMP/home" "$UV_TOOL_BIN_DIR/tabulaflow" --help >/dev/null
+          HOME="$RUNNER_TEMP/home" "$UV_TOOL_BIN_DIR/tabulaflow" benchmark list >/dev/null
