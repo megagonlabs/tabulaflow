@@ -73,7 +73,11 @@ body {
   outline-color: var(--tf-focus-ring) !important;
 }
 
-.md-nav__link.focus-visible,
+.md-nav__link.focus-visible {
+  outline: 2px solid var(--tf-focus-ring);
+  outline-offset: -2px;
+}
+
 .md-pagination__link.focus-visible,
 .md-option.focus-visible + label {
   outline: 2px solid var(--tf-focus-ring);
