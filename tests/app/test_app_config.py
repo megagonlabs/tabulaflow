@@ -40,6 +40,16 @@ def test_default_config_is_automatic() -> None:
     assert AppConfig().llm is None
 
 
+def test_openai_defaults_use_gpt_6() -> None:
+    assert OPENAI_DEFAULT_LLM_CONFIG.main.model == "openai:gpt-6-sol"
+    assert OPENAI_DEFAULT_LLM_CONFIG.subagent.model == "openai:gpt-6-luna"
+
+
+def test_anthropic_defaults_use_claude_5() -> None:
+    assert ANTHROPIC_DEFAULT_LLM_CONFIG.main.model == "anthropic:claude-opus-5-5"
+    assert ANTHROPIC_DEFAULT_LLM_CONFIG.subagent.model == "anthropic:claude-sonnet-5"
+
+
 def test_resolved_config_exposes_effective_request_rate() -> None:
     assert ResolvedLLMConfig(None, None).requests_per_minute == 300
     config = _config().model_copy(update={"requests_per_minute": 1500})
@@ -57,7 +67,7 @@ def test_fanout_concurrency_tracks_ten_seconds_of_requests(rpm: int, expected: i
 def test_model_catalog_contains_recommendations_current_and_curated_models() -> None:
     catalog = llm_model_catalog(current="vendor:new-model", recommended=RECOMMENDED_MAIN_MODELS)
     assert catalog[: len(RECOMMENDED_MAIN_MODELS) + 1] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
-    assert "anthropic:claude-opus-5" in catalog
+    assert "anthropic:claude-opus-5-5" in catalog
     assert "test" not in catalog
     assert not any(model.startswith("openai-chat:") for model in catalog)
     assert len(catalog) == len(set(catalog))
@@ -119,7 +129,7 @@ def test_model_catalog_prioritizes_current_provider() -> None:
     assert catalog[:4] == (
         "openai:gpt-5.6-sol",
         "anthropic:claude-sonnet-5",
-        "anthropic:claude-opus-5",
+        "anthropic:claude-opus-5-5",
         "anthropic:claude-haiku-4-5",
     )
     assert catalog.index("xai:grok-4.6") < catalog.index("moonshotai:kimi-k3")

@@ -70,12 +70,12 @@ def fanout_concurrency_for_rpm(requests_per_minute: int) -> int:
 
 
 OPENAI_DEFAULT_LLM_CONFIG = LLMConfig(
-    main=LLMRoleConfig(model="openai:gpt-5.6-terra", effort="medium"),
-    subagent=LLMRoleConfig(model="openai:gpt-5.6-luna", effort="medium"),
+    main=LLMRoleConfig(model="openai:gpt-6-sol", effort="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-6-luna", effort="medium"),
 )
 ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
-    main=LLMRoleConfig(model="anthropic:claude-opus-5", effort="high"),
-    subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", effort="medium"),
+    main=LLMRoleConfig(model="anthropic:claude-opus-5-5", effort="high"),
+    subagent=LLMRoleConfig(model="anthropic:claude-sonnet-5", effort="medium"),
 )
 
 RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
@@ -106,7 +106,7 @@ _CURATED_MODELS_BY_PROVIDER = (
     (
         "anthropic",
         (
-            "claude-opus-5",
+            "claude-opus-5-5",
             "claude-sonnet-5",
             "claude-haiku-4-5",
             "claude-fable-5-1",
