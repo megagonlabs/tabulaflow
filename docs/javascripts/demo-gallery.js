@@ -29,7 +29,15 @@ const selectDemo = (gallery, tab, updateHash = false) => {
     placeholder.hidden = false
   }
 
-  if (updateHash) history.replaceState(null, "", `#${tab.id}`)
+  if (updateHash) history.replaceState(null, "", `#${tab.dataset.anchorId}`)
+}
+
+const tabForDemoHash = gallery => {
+  const anchor = document.getElementById(location.hash.slice(1))
+  if (!anchor?.classList.contains("demo-gallery__anchor")) return null
+
+  const tab = document.getElementById(anchor.dataset.tabId)
+  return tab?.closest(".demo-gallery") === gallery ? tab : null
 }
 
 const initializeDemoGallery = gallery => {
@@ -52,14 +60,15 @@ const initializeDemoGallery = gallery => {
     })
   }
 
-  const tab = tabs.find(candidate => `#${candidate.id}` === location.hash)
+  const tab = tabForDemoHash(gallery)
   if (tab) selectDemo(gallery, tab)
 }
 
 window.addEventListener("hashchange", () => {
-  const tab = document.getElementById(location.hash.slice(1))
-  const gallery = tab?.closest(".demo-gallery")
-  if (gallery && tab.getAttribute("role") === "tab") selectDemo(gallery, tab)
+  const anchor = document.getElementById(location.hash.slice(1))
+  const gallery = anchor?.closest(".demo-gallery")
+  const tab = gallery ? tabForDemoHash(gallery) : null
+  if (tab) selectDemo(gallery, tab)
 })
 
 document$.subscribe(() => {

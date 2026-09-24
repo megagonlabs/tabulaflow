@@ -639,6 +639,12 @@ body {
   scroll-margin-top: 4rem;
 }
 
+.md-typeset .demo-gallery__anchor {
+  display: block;
+  height: 0;
+  scroll-margin-top: 4rem;
+}
+
 .md-typeset .demo-gallery__tabs {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
