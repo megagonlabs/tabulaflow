@@ -110,11 +110,11 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
             "--enable-schema-cache",
             "--log-level",
             "debug",
-            "--output-pane-port",
+            "--browser-pane-port",
             "61211",
-            "--output-pane-host",
+            "--browser-pane-host",
             "0.0.0.0",
-            "--output-pane-public-url",
+            "--browser-pane-public-url",
             "https://example.test/output",
         ],
     )
@@ -124,9 +124,9 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
         "llm_service_tier": AppLLMServiceTier.PRIORITY,
         "enable_schema_cache": True,
         "log_level": AppLogLevel.DEBUG,
-        "output_pane_port": 61211,
-        "output_pane_host": "0.0.0.0",
-        "output_pane_public_url": "https://example.test/output",
+        "browser_pane_port": 61211,
+        "browser_pane_host": "0.0.0.0",
+        "browser_pane_public_url": "https://example.test/output",
     }
 
 

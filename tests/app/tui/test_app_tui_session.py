@@ -109,7 +109,7 @@ def _app(
 
 def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
 
 
 def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:
@@ -187,7 +187,7 @@ async def test_escape_returns_to_previously_focused_result(monkeypatch: pytest.M
         assert first.has_focus
 
 
-async def test_clear_resets_tui_and_output_pane(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_clear_resets_tui_and_browser_pane(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     _stub_app_startup(app, monkeypatch)
 
@@ -198,7 +198,7 @@ async def test_clear_resets_tui_and_output_pane(monkeypatch: pytest.MonkeyPatch)
             self.cleared = True
 
     pane = FakePane()
-    app._pane = pane  # type: ignore[assignment]
+    app._browser_pane = pane  # type: ignore[assignment]
 
     async with app.run_test(size=(100, 36)) as pilot:
         await pilot.pause()
@@ -369,7 +369,7 @@ async def test_huggingface_subset_connection_uses_submission_worker(monkeypatch:
         assert "Interrupted" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
 
 
-def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_close_browser_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     app = _app(None, runtime_paths=RuntimePaths.for_session("test-session"))
     pane_dir = app._runtime_paths.pane_dir
@@ -381,12 +381,12 @@ def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytes
         def stop(self) -> None:
             stopped.append(True)
 
-    app._pane = FakePane()  # type: ignore[assignment]
+    app._browser_pane = FakePane()  # type: ignore[assignment]
 
-    app._close_pane(remove_artifacts=True)
+    app._close_browser_pane(remove_artifacts=True)
 
     assert stopped == [True]
-    assert app._pane is None
+    assert app._browser_pane is None
     assert not pane_dir.exists()
 
 
@@ -396,7 +396,7 @@ async def test_agent_failure_is_logged_with_traceback(
 ) -> None:
     app = _app(None)
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
     monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
 
     class FailingSession:
@@ -422,7 +422,7 @@ async def test_agent_failure_without_message_shows_exception_type(
 ) -> None:
     app = _app(None)
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
     monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
 
     class FailingSession:
@@ -478,7 +478,7 @@ async def test_table_result_focus_does_not_scroll_chat_to_banner(monkeypatch: py
 
     monkeypatch.setattr(tui, "AgentResultWidget", TableResultWidget)
     monkeypatch.setattr(tui, "build_resolved_output_card_views", lambda *_args: [object()])
-    monkeypatch.setattr(app, "_push_turn_to_pane", ignore_pane_update)
+    monkeypatch.setattr(app, "_push_turn_to_browser_pane", ignore_pane_update)
 
     async with app.run_test(size=(80, 15)) as pilot:
         chat_log = app.query_one(ChatLog)

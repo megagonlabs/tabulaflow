@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.agents.chat import ChatInput, ChatResult
     from tabulaflow.agents.llm import ServiceTier
-    from tabulaflow.app.pane.server import OutputPane
+    from tabulaflow.app.pane.server import BrowserPane
     from tabulaflow.output.resolver import ResolvedOutput
 
 logger = logging.getLogger(__name__)
@@ -283,9 +283,9 @@ class TabulaflowApp(App[None]):
         llm_service_tier: ServiceTier = "default",
         enable_schema_cache: bool = False,
         log_level: int = logging.INFO,
-        output_pane_host: str = "127.0.0.1",
-        output_pane_port: int | None = None,
-        output_pane_public_url: str | None = None,
+        browser_pane_host: str = "127.0.0.1",
+        browser_pane_port: int | None = None,
+        browser_pane_public_url: str | None = None,
     ) -> None:
         import asyncio
 
@@ -295,13 +295,13 @@ class TabulaflowApp(App[None]):
         self._llm_service_tier = llm_service_tier
         self._enable_schema_cache = enable_schema_cache
         self._log_level = log_level
-        self._output_pane_host = output_pane_host
-        self._output_pane_port = output_pane_port
-        self._output_pane_public_url = output_pane_public_url
+        self._browser_pane_host = browser_pane_host
+        self._browser_pane_port = browser_pane_port
+        self._browser_pane_public_url = browser_pane_public_url
         self._runtime_paths = runtime_paths
         self._project_dir = project_dir
         self._session: AppSession | None = None
-        self._pane: OutputPane | None = None
+        self._browser_pane: BrowserPane | None = None
         self._session_lock = asyncio.Lock()
         self._llm_activation_in_progress = False
         self._llm_activation_error: str | None = None
@@ -353,7 +353,7 @@ class TabulaflowApp(App[None]):
         chat_log = self.query_one("#chat-log", ChatLog)
         self.query_one("#input-bar", HistoryInput).focus()
         chat_log.follow_new_content(force=True)
-        self._ensure_pane()
+        self._ensure_browser_pane()
         self.call_after_refresh(self._start_llm_activation, self._llm_config)
 
     def on_text_selected(self, event: events.TextSelected) -> None:
@@ -459,10 +459,10 @@ class TabulaflowApp(App[None]):
             event.stop()
 
     def on_click(self, event: events.Click) -> None:
-        """Reopen the output pane when its URL row is clicked."""
+        """Reopen the browser pane when its URL row is clicked."""
         if getattr(event.widget, "id", None) != "bottom-status-url":
             return
-        pane = self._pane
+        pane = self._browser_pane
         if pane is not None and pane.url is not None:
             pane.reopen()
             event.stop()
@@ -621,16 +621,16 @@ class TabulaflowApp(App[None]):
         and DuckDB file locks are always released cleanly.
         """
         if self._session is None:
-            self._close_pane()
+            self._close_browser_pane()
             self.exit()
             return
         self.run_worker(self._shutdown_then_exit(), exclusive=False, group="shutdown")
 
-    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
+    def _close_browser_pane(self, *, remove_artifacts: bool = False) -> None:
         """Stop the browser pane and optionally remove its session files."""
-        if self._pane is not None:
-            self._pane.stop()
-            self._pane = None
+        if self._browser_pane is not None:
+            self._browser_pane.stop()
+            self._browser_pane = None
         if remove_artifacts:
             import shutil
 
@@ -643,53 +643,53 @@ class TabulaflowApp(App[None]):
         except Exception:
             logger.warning("session close failed during exit", exc_info=True)
         finally:
-            self._close_pane()
+            self._close_browser_pane()
             self.exit()
 
-    def _ensure_pane(self) -> "OutputPane | None":
-        """Start the output pane if needed; return it, or None if it couldn't start."""
-        if self._pane is None:
-            from tabulaflow.app.pane.server import OutputPane
+    def _ensure_browser_pane(self) -> "BrowserPane | None":
+        """Start the browser pane if needed; return it, or None if it couldn't start."""
+        if self._browser_pane is None:
+            from tabulaflow.app.pane.server import BrowserPane
 
             try:
                 ensure_pane_dir(self._runtime_paths.pane_dir)
-                self._pane = OutputPane(
+                self._browser_pane = BrowserPane(
                     self._runtime_paths.pane_dir,
-                    host=self._output_pane_host,
-                    port=self._output_pane_port,
-                    public_url=self._output_pane_public_url,
+                    host=self._browser_pane_host,
+                    port=self._browser_pane_port,
+                    public_url=self._browser_pane_public_url,
                     session_id=self._runtime_paths.session_id,
                 )
-                self._pane.start()
+                self._browser_pane.start()
                 self._refresh_bottom_status()
             except Exception:
-                logger.warning("output pane failed to start", exc_info=True)
-                self._pane = None
+                logger.warning("browser pane failed to start", exc_info=True)
+                self._browser_pane = None
                 self._refresh_bottom_status()
-        return self._pane
+        return self._browser_pane
 
-    def view_card_in_pane(self, card: PaneCard, *, title: str | None = None) -> bool:
+    def view_card_in_browser_pane(self, card: PaneCard, *, title: str | None = None) -> bool:
         """Push an already-written card-data payload to the pane."""
-        pane = self._ensure_pane()
+        pane = self._ensure_browser_pane()
         if pane is None or pane.url is None:
             return False
         try:
             pane.push(manual_card_turn(card, title=title))
         except Exception:
-            logger.warning("publishing manual output pane turn failed", exc_info=True)
+            logger.warning("publishing manual browser pane turn failed", exc_info=True)
             return False
         return True
 
-    def show_table_in_pane(self, df: pd.DataFrame, *, title: str) -> bool:
+    def show_table_in_browser_pane(self, df: pd.DataFrame, *, title: str) -> bool:
         """Render and show a table from a TUI screen in the browser pane."""
         from tabulaflow.app.pane.cards import ResultCardInput, render_result_data
 
         try:
             card = render_result_data(ResultCardInput(df=df, label=None), self._runtime_paths.pane_dir)
         except Exception:
-            logger.warning("preparing manual table for output pane failed", exc_info=True)
+            logger.warning("preparing manual table for browser pane failed", exc_info=True)
             return False
-        return card is not None and self.view_card_in_pane(card, title=title or "Table preview")
+        return card is not None and self.view_card_in_browser_pane(card, title=title or "Table preview")
 
     def _refresh_bottom_status(self) -> None:
         """Show model status and the pane URL below the input row."""
@@ -698,7 +698,7 @@ class TabulaflowApp(App[None]):
             url_status = self.query_one("#bottom-status-url", Static)
         except Exception:
             return
-        url = self._pane.url if self._pane is not None else None
+        url = self._browser_pane.url if self._browser_pane is not None else None
         if self._llm_config.config is not None:
             main = self._llm_config.config.main
             model_status_label = model_label(main.model)
@@ -810,7 +810,7 @@ class TabulaflowApp(App[None]):
             return LLM_UNAVAILABLE_MESSAGE
         return f"{self._llm_activation_error} Data connections and browsing remain available."
 
-    async def _push_turn_to_pane(
+    async def _push_turn_to_browser_pane(
         self,
         result: "ChatResult",
         resolved_output: "ResolvedOutput",
@@ -818,7 +818,7 @@ class TabulaflowApp(App[None]):
         *,
         title: str,
         user_text: str,
-        pane: "OutputPane | None" = None,
+        pane: "BrowserPane | None" = None,
         turn_id: int | None = None,
     ) -> None:
         """Render a completed turn and push it to the browser pane.
@@ -833,7 +833,7 @@ class TabulaflowApp(App[None]):
         try:
             ensure_pane_dir(pane_dir)
         except Exception:
-            logger.warning("preparing output pane directory failed (turn_id=%s)", turn_id, exc_info=True)
+            logger.warning("preparing browser pane directory failed (turn_id=%s)", turn_id, exc_info=True)
             if pane is not None and turn_id is not None:
                 pane.discard_turn(turn_id)
             return
@@ -841,7 +841,7 @@ class TabulaflowApp(App[None]):
             if pane is not None and turn_id is not None:
                 pane.discard_turn(turn_id)
             return
-        pane = pane or self._ensure_pane()
+        pane = pane or self._ensure_browser_pane()
         if pane is None:
             return
 
@@ -867,7 +867,7 @@ class TabulaflowApp(App[None]):
                 return
             if exc is not None:
                 logger.warning(
-                    "output pane finalization failed (turn_id=%s)",
+                    "browser pane finalization failed (turn_id=%s)",
                     turn_id,
                     exc_info=(type(exc), exc, exc.__traceback__),
                 )
@@ -1098,11 +1098,11 @@ class TabulaflowApp(App[None]):
         if result.action == "clear":
             await chat_log.remove_children()
             await chat_log.mount(self._banner())
-            if self._pane is not None:
+            if self._browser_pane is not None:
                 try:
-                    self._pane.clear()
+                    self._browser_pane.clear()
                 except Exception:
-                    logger.warning("clearing output pane failed", exc_info=True)
+                    logger.warning("clearing browser pane failed", exc_info=True)
             return
 
         if result.action == "open_config":
@@ -1216,13 +1216,13 @@ class TabulaflowApp(App[None]):
 
         from tabulaflow.agents.chat import TurnFinished
 
-        pane = self._ensure_pane()
+        pane = self._ensure_browser_pane()
         pane_turn_id: int | None = None
         if pane is not None:
             try:
                 pane_turn_id = pane.begin_turn(title=display_text, user=display_text)
             except Exception:
-                logger.warning("publishing pending output pane turn failed", exc_info=True)
+                logger.warning("publishing pending browser pane turn failed", exc_info=True)
 
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
@@ -1271,7 +1271,7 @@ class TabulaflowApp(App[None]):
             if pane is not None and pane_turn_id is not None:
                 pane.discard_turn(pane_turn_id)
             raise
-        await self._push_turn_to_pane(
+        await self._push_turn_to_browser_pane(
             result,
             resolved_output,
             turn_output,
@@ -1312,9 +1312,9 @@ async def run_tui(
     llm_service_tier: ServiceTier = "default",
     enable_schema_cache: bool = False,
     log_level: int = logging.INFO,
-    output_pane_host: str = "127.0.0.1",
-    output_pane_port: int | None = None,
-    output_pane_public_url: str | None = None,
+    browser_pane_host: str = "127.0.0.1",
+    browser_pane_port: int | None = None,
+    browser_pane_public_url: str | None = None,
 ) -> None:
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
@@ -1324,12 +1324,12 @@ async def run_tui(
         llm_service_tier=llm_service_tier,
         enable_schema_cache=enable_schema_cache,
         log_level=log_level,
-        output_pane_host=output_pane_host,
-        output_pane_port=output_pane_port,
-        output_pane_public_url=output_pane_public_url,
+        browser_pane_host=browser_pane_host,
+        browser_pane_port=browser_pane_port,
+        browser_pane_public_url=browser_pane_public_url,
     )
     try:
         await app.run_async(mouse=True)
     finally:
-        app._close_pane(remove_artifacts=True)
+        app._close_browser_pane(remove_artifacts=True)
         _restore_terminal_modes()

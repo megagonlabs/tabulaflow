@@ -56,20 +56,20 @@ def root(
         "--log-level",
         help="Operational file-log level for this session.",
     ),
-    output_pane_port: int | None = typer.Option(
+    browser_pane_port: int | None = typer.Option(
         None,
-        "--output-pane-port",
-        help="Strict port for the browser output pane. Defaults to the first free port in 61111-61130.",
+        "--browser-pane-port",
+        help="Strict port for the browser pane. Defaults to the first free port in 61111-61130.",
     ),
-    output_pane_host: str = typer.Option(
+    browser_pane_host: str = typer.Option(
         "127.0.0.1",
-        "--output-pane-host",
-        help="Bind host for the browser output pane.",
+        "--browser-pane-host",
+        help="Bind host for the browser pane.",
     ),
-    output_pane_public_url: str | None = typer.Option(
+    browser_pane_public_url: str | None = typer.Option(
         None,
-        "--output-pane-public-url",
-        help="Browser-facing base URL for the output pane. The session token is appended automatically.",
+        "--browser-pane-public-url",
+        help="Public base URL for the browser pane. The session token is appended automatically.",
     ),
 ) -> None:
     """Start an interactive chat by default or run a subcommand."""
@@ -79,9 +79,9 @@ def root(
                 llm_service_tier=llm_service_tier,
                 enable_schema_cache=enable_schema_cache,
                 log_level=log_level,
-                output_pane_port=output_pane_port,
-                output_pane_host=output_pane_host,
-                output_pane_public_url=output_pane_public_url,
+                browser_pane_port=browser_pane_port,
+                browser_pane_host=browser_pane_host,
+                browser_pane_public_url=browser_pane_public_url,
             )
         except InvalidAppConfigError as error:
             typer.echo(str(error), err=True)

@@ -2,7 +2,7 @@
 
 TabulaFlow is an open-source data agent built on a modular Python library.
 It has three main product surface:
-- A data agent application (a TUI app with browser output pane for rich visualization) for everyone
+- A data agent application (a TUI app with browser pane for rich visualization) for everyone
 - A python library for developers build custom data applications
 - A research toolkit for AI researchers to run experiments
 They are organized into six layers: `core <- data <- output <- agents <- {app, research}`

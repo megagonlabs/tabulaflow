@@ -48,7 +48,7 @@ class RenderMapTool:
           ``label`` when present. String values that are full ``http(s)`` URLs
           render as links.
           ``color``: optional ``{"field":"status"}`` or
-          ``{"field":"status","domain":[...]}``; the output pane chooses the
+          ``{"field":"status","domain":[...]}``; the browser pane chooses the
           palette. An explicit ordered domain keeps category colors fixed across
           parameter selections.
         - ``points`` layer:

@@ -82,22 +82,22 @@ These options apply to one launch:
 | `--llm-service-tier` | Use `default` or `priority` request service; priority may cost more |
 | `--enable-schema-cache` | Persist database schemas for faster repeated connections |
 | `--log-level` | Set file logging to `debug`, `info`, `warning`, or `error` |
-| `--output-pane-port` | Require a specific browser-pane port instead of the first free port in `61111–61130` |
-| `--output-pane-host` | Change the bind host from `127.0.0.1` |
-| `--output-pane-public-url` | Set the browser-facing base URL when the bind address is not directly reachable |
+| `--browser-pane-port` | Require a specific browser-pane port instead of the first free port in `61111–61130` |
+| `--browser-pane-host` | Change the bind host from `127.0.0.1` |
+| `--browser-pane-public-url` | Set the browser-facing base URL when the bind address is not directly reachable |
 
 Run `tabulaflow --help` to see the full syntax.
 
 ## Use TabulaFlow on a remote server
 
 If you can open an interactive SSH session on the server, you can run the full
-TabulaFlow TUI in that terminal. The browser output pane runs as a separate
+TabulaFlow TUI in that terminal. The browser pane runs as a separate
 local web server, so accessing it from your computer requires a tunnel, direct
 network access, or a reverse proxy.
 
 ### SSH port forwarding
 
-SSH port forwarding is the recommended approach because the output pane does
+SSH port forwarding is the recommended approach because the browser pane does
 not need to be exposed to the network. From your local computer, connect with a
 fixed forwarded port:
 
@@ -108,44 +108,44 @@ ssh -L 61111:127.0.0.1:61111 user@server
 Then launch TabulaFlow in the SSH session with the same port:
 
 ```bash
-tabulaflow --output-pane-port 61111
+tabulaflow --browser-pane-port 61111
 ```
 
-Open the output-pane URL shown by the TUI in your local browser.
+Open the browser pane using the URL shown by the TUI.
 
 ### Direct private-network access
 
 If the server is reachable only through a trusted private network or VPN, you
-can bind the output pane to the server's network interfaces:
+can bind the browser pane to the server's network interfaces:
 
 ```bash
 tabulaflow \
-  --output-pane-host 0.0.0.0 \
-  --output-pane-port 61111 \
-  --output-pane-public-url http://server.internal:61111
+  --browser-pane-host 0.0.0.0 \
+  --browser-pane-port 61111 \
+  --browser-pane-public-url http://server.internal:61111
 ```
 
 Allow the selected port through the server's firewall only for the trusted
-network. `--output-pane-public-url` sets the address shown by the TUI;
+network. `--browser-pane-public-url` sets the address shown by the TUI;
 TabulaFlow automatically appends the session token. Do not expose the port
 directly to the public internet.
 
 ### Reverse proxy
 
-For shared or publicly reachable environments, place the output pane behind an
+For shared or publicly reachable environments, place the browser pane behind an
 authenticated HTTPS proxy. Keep the pane bound to the server's loopback
 interface, configure the proxy to forward to it, and provide the browser-facing
 URL:
 
 ```bash
 tabulaflow \
-  --output-pane-port 61111 \
-  --output-pane-public-url https://example.com/tabulaflow
+  --browser-pane-port 61111 \
+  --browser-pane-public-url https://example.com/tabulaflow
 ```
 
 !!! warning "Secure remote output access"
-    The output pane may display prompts, source data, and query results.
-    TabulaFlow includes a per-session token in every output-pane URL as a safety
+    The browser pane may display prompts, source data, and query results.
+    TabulaFlow includes a per-session token in every browser-pane URL as a safety
     measure, and requests without that token are rejected. Keep the URL private.
     When exposing the pane beyond a trusted machine, also restrict network
     access and use an authenticated HTTPS proxy.

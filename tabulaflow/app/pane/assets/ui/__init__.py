@@ -1,1 +1,1 @@
-"""Output pane browser shell assets."""
+"""Browser-pane shell assets."""

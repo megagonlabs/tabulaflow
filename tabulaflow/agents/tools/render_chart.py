@@ -1,7 +1,7 @@
 """Tool that renders a Vega-Lite chart from a query result as a chart artifact.
 
 Simple x/y specs also get a plotext terminal preview here; the full chart
-renders in the browser output pane.
+renders in the browser pane.
 """
 
 from __future__ import annotations

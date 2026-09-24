@@ -51,9 +51,9 @@ def run_chat(
     llm_service_tier: AppLLMServiceTier = AppLLMServiceTier.DEFAULT,
     enable_schema_cache: bool = False,
     log_level: AppLogLevel = AppLogLevel.INFO,
-    output_pane_port: int | None = None,
-    output_pane_host: str = "127.0.0.1",
-    output_pane_public_url: str | None = None,
+    browser_pane_port: int | None = None,
+    browser_pane_host: str = "127.0.0.1",
+    browser_pane_public_url: str | None = None,
 ) -> None:
     """Start an interactive data session."""
     import asyncio
@@ -73,8 +73,8 @@ def run_chat(
             llm_service_tier=llm_service_tier.value,
             enable_schema_cache=enable_schema_cache,
             log_level=getattr(logging, log_level.name),
-            output_pane_host=output_pane_host,
-            output_pane_port=output_pane_port,
-            output_pane_public_url=output_pane_public_url,
+            browser_pane_host=browser_pane_host,
+            browser_pane_port=browser_pane_port,
+            browser_pane_public_url=browser_pane_public_url,
         )
     )

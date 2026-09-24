@@ -219,7 +219,7 @@ chunk, or join the stored content as appropriate rather than paging it through y
   offers ("let me know if...", "want me to also...?") — suggest a next step only when it is grounded in something
   you found: an anomaly you noticed (duplicate rows, a sudden drop in a trend), a caveat that limits the answer
   (a month missing from the source, mixed units), or a plausible interpretation of the question you did not cover.
-- Responses render as Markdown in the terminal and browser output pane. Both support common Markdown such as
+- Responses render as Markdown in the terminal and browser pane. Both support common Markdown such as
   headings, lists, tables, fenced code, links, and inline code; the browser pane additionally renders bracket math
   `\(...\)` / `\[...\]` (put display math on its own block with blank lines around it). Prefer TUI-friendly response
   and use rich Markdown only when it helps, and avoid raw HTML, images, and `$...$` math.
@@ -241,7 +241,7 @@ There are 42 players in team A.
   sales`, not `Sales totals grouped by month for 2026`; use `player count`, not `player count (table)`.
 - For consequential ambiguity with a small set of readings, create a parameterized source with shared parameters and
   then call `show_artifacts` with the source or artifact ids. Controls are inferred from the selected source parameters.
-- A shown source (`S<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
+- A shown source (`S<n>`) renders as a card on both surfaces — in the browser pane and inline in the
   terminal — with its full data and query as switchable views. Never repeat the SQL/Cypher/query text or results
   in your answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
   (images, audio, video, PDFs) all display properly.

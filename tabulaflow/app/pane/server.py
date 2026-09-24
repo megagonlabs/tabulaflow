@@ -37,11 +37,11 @@ from tabulaflow.app.turn import TurnOutput
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OUTPUT_PANE_PORT_START = 61111
-DEFAULT_OUTPUT_PANE_PORT_END = 61130
-DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
-DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
-_OUTPUT_PANE_TOKEN_BYTES = 6
+DEFAULT_BROWSER_PANE_PORT_START = 61111
+DEFAULT_BROWSER_PANE_PORT_END = 61130
+DEFAULT_BROWSER_PANE_PORTS = tuple(range(DEFAULT_BROWSER_PANE_PORT_START, DEFAULT_BROWSER_PANE_PORT_END + 1))
+DEFAULT_BROWSER_PANE_HOST = "127.0.0.1"
+_BROWSER_PANE_TOKEN_BYTES = 6
 _RESOLVE_TIMEOUT_SECONDS = 30
 _SESSION_ID_PLACEHOLDER = "__SESSION_ID__"
 _MARKDOWN_CODE_PARSER = MarkdownIt("commonmark", {"html": False}).enable(["table"])
@@ -121,7 +121,7 @@ _PANE_HTML = _load_pane_html()
 
 _INVALID_PANE_URL_HTML = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-    "<title>Output pane URL incomplete</title>"
+    "<title>Browser pane URL incomplete</title>"
     "<style>"
     "html{color-scheme:dark;background:#0f1117;color:#e4e4e7;font-family:system-ui,sans-serif}"
     "body{margin:0;min-height:100vh;display:grid;place-items:center}"
@@ -129,7 +129,7 @@ _INVALID_PANE_URL_HTML = (
     "h1{font-size:1rem;margin:0 0 .5rem}"
     "p{margin:0;color:#a1a1aa}"
     "</style></head><body><main>"
-    "<h1>Output pane URL is incomplete.</h1>"
+    "<h1>Browser pane URL is incomplete.</h1>"
     "<p>Open the full URL shown in the tabulaflow terminal.</p>"
     "</main></body></html>"
 )
@@ -147,13 +147,13 @@ def _markdown_code_blocks(markdown: str) -> list[CodeData]:
 
 
 class _PaneServer(http.server.ThreadingHTTPServer):
-    """``ThreadingHTTPServer`` carrying a back-reference to its ``OutputPane``."""
+    """``ThreadingHTTPServer`` carrying a back-reference to its ``BrowserPane``."""
 
     def __init__(
         self,
         server_address: tuple[str, int],
         handler: Callable[..., http.server.BaseHTTPRequestHandler],
-        pane: OutputPane,
+        pane: BrowserPane,
     ) -> None:
         super().__init__(server_address, handler)
         self.pane = pane
@@ -218,11 +218,11 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"error": "turn is not available for live resolution"}, status=404)
             return
         except TimeoutError:
-            logger.warning("output pane selection resolution timed out (turn_id=%s)", turn_id)
+            logger.warning("browser pane selection resolution timed out (turn_id=%s)", turn_id)
             self._send_json({"error": "selection resolution timed out"}, status=500)
             return
         except Exception:
-            logger.warning("output pane selection resolution failed (turn_id=%s)", turn_id, exc_info=True)
+            logger.warning("browser pane selection resolution failed (turn_id=%s)", turn_id, exc_info=True)
             self._send_json({"error": "failed to resolve selection"}, status=500)
             return
         self._send_json({"selection": selection, "cards": cards})
@@ -397,20 +397,20 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         """Silence request logging — stray stderr would corrupt the TUI."""
 
 
-class OutputPanePortError(RuntimeError):
-    """Raised when the output pane cannot bind its configured loopback port(s)."""
+class BrowserPanePortError(RuntimeError):
+    """Raised when the browser pane cannot bind its configured loopback port(s)."""
 
 
-class OutputPane:
+class BrowserPane:
     """An HTTP server plus browser tab showing cited results as they arrive."""
 
     def __init__(
         self,
         pane_dir: Path,
         *,
-        host: str = DEFAULT_OUTPUT_PANE_HOST,
+        host: str = DEFAULT_BROWSER_PANE_HOST,
         port: int | None = None,
-        port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
+        port_range: Sequence[int] = DEFAULT_BROWSER_PANE_PORTS,
         public_url: str | None = None,
         token: str | None = None,
         session_id: str | None = None,
@@ -419,21 +419,21 @@ class OutputPane:
         self._session_id = (session_id or generate_session_id()).strip() or "unknown"
         self._host = host.strip()
         if not self._host:
-            raise ValueError("Output pane host cannot be empty.")
+            raise ValueError("Browser pane host cannot be empty.")
         self._public_url = public_url.strip() if public_url is not None else None
         if self._public_url == "":
-            raise ValueError("Output pane public URL cannot be empty.")
+            raise ValueError("Browser pane public URL cannot be empty.")
         self._public_path_parts: tuple[str, ...] = ()
         if self._public_url is not None:
             public_parts = urlsplit(self._public_url)
             if not public_parts.scheme or not public_parts.netloc:
-                raise ValueError(f"Output pane public URL must be absolute, got {self._public_url!r}.")
+                raise ValueError(f"Browser pane public URL must be absolute, got {self._public_url!r}.")
             if public_parts.query or public_parts.fragment:
-                raise ValueError("Output pane public URL cannot include query parameters or a fragment.")
+                raise ValueError("Browser pane public URL cannot include query parameters or a fragment.")
             self._public_path_parts = tuple(unquote(part) for part in public_parts.path.split("/") if part)
-        self._token = token or secrets.token_urlsafe(_OUTPUT_PANE_TOKEN_BYTES)
+        self._token = token or secrets.token_urlsafe(_BROWSER_PANE_TOKEN_BYTES)
         if not self._token:
-            raise ValueError("Output pane token cannot be empty.")
+            raise ValueError("Browser pane token cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
         self._turns: dict[int, PaneTurn | PendingPaneTurn] = {}
@@ -463,7 +463,7 @@ class OutputPane:
         last_error: OSError | None = None
         for port in ports:
             if not 1 <= port <= 65535:
-                raise ValueError(f"Output pane port must be between 1 and 65535, got {port}.")
+                raise ValueError(f"Browser pane port must be between 1 and 65535, got {port}.")
             try:
                 self._server = _PaneServer((host, port), handler, self)
                 break
@@ -471,12 +471,12 @@ class OutputPane:
                 last_error = exc
         if self._server is None:
             if self._port_config is not None:
-                message = f"Output pane port {self._port_config} on {host} is unavailable."
+                message = f"Browser pane port {self._port_config} on {host} is unavailable."
             elif self._port_range:
-                message = f"Output pane ports {self._port_range[0]}-{self._port_range[-1]} on {host} are unavailable."
+                message = f"Browser pane ports {self._port_range[0]}-{self._port_range[-1]} on {host} are unavailable."
             else:
-                message = "Output pane has no ports configured."
-            raise OutputPanePortError(message) from last_error
+                message = "Browser pane has no ports configured."
+            raise BrowserPanePortError(message) from last_error
         self._port = self._server.server_address[1]
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
 
@@ -511,7 +511,7 @@ class OutputPane:
         """Append the session token as the final path segment of ``base_url``."""
         parsed = urlsplit(base_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(f"Output pane public URL must be absolute, got {base_url!r}.")
+            raise ValueError(f"Browser pane public URL must be absolute, got {base_url!r}.")
         path = parsed.path.rstrip("/")
         token_path = f"{path}/{self._token}/" if path else f"/{self._token}/"
         return urlunsplit((parsed.scheme, parsed.netloc, token_path, "", ""))
@@ -627,7 +627,7 @@ class OutputPane:
     def resolve_turn_threadsafe(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
         """Resolve a live turn on the app loop from the HTTP server thread."""
         if self._loop is None:
-            raise RuntimeError("output pane was not started from an event loop")
+            raise RuntimeError("browser pane was not started from an event loop")
         future = asyncio.run_coroutine_threadsafe(self.resolve_turn(turn_id, selection), self._loop)
         try:
             return future.result(timeout=_RESOLVE_TIMEOUT_SECONDS)

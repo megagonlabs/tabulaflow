@@ -1,11 +1,11 @@
-"""Run a local output-pane preview server with representative result fixtures.
+"""Run a local browser-pane preview server with representative result fixtures.
 
-    uv run scripts/app/preview_output_pane.py --port 61211
-    uv run scripts/app/preview_output_pane.py --port 61211 --full
+    uv run scripts/app/preview_browser_pane.py --port 61211
+    uv run scripts/app/preview_browser_pane.py --port 61211 --full
 
 The script reuses the production pane server, index shape, and card renderers,
 but pushes synthetic turns directly. It is intended for browser inspection while
-iterating on ``tabulaflow/app/pane.py`` and the HTML renderers.
+iterating on ``tabulaflow/app/pane`` and the HTML renderers.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from _output_pane_fixtures import (
+from _browser_pane_fixtures import (
     _cypher_graph_result,
     _cypher_non_graph_result,
     _graph_lineage_card,
@@ -318,7 +318,7 @@ Escapable characters include:
 
 
 def _push_turn(
-    pane: pane_mod.OutputPane,
+    pane: pane_mod.BrowserPane,
     pane_dir: Path,
     *,
     title: str,
@@ -339,7 +339,7 @@ def _push_turn(
     )
 
 
-def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
+def _push_controls_turn(pane: pane_mod.BrowserPane, pane_dir: Path) -> None:
     output_store = OutputStore()
     customer_parameters: list[ParameterSpec] = [
         ChoiceParameter(
@@ -644,7 +644,7 @@ def _palette_comparison_card(pane_dir: Path) -> PaneCard:
     domain = [f"{palette.lower()}-{category}" for palette, colors in palettes for category in range(len(colors))]
     spec: dict[str, object] = {
         "title": {
-            "text": "Output pane categorical palette",
+            "text": "Browser pane categorical palette",
             "subtitle": "Previous and current colors, category order 0–7",
         },
         "width": 800,
@@ -772,7 +772,7 @@ def _wide_manual_table_card(pane_dir: Path) -> PaneCard:
     return card
 
 
-def _push_manual_table_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
+def _push_manual_table_turn(pane: pane_mod.BrowserPane, pane_dir: Path) -> None:
     pane.push(
         turn_payload(
             title="manual_table",
@@ -881,8 +881,8 @@ def _long_text_json_result() -> ResultCardInput:
     )
 
 
-def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
-    pane = pane_mod.OutputPane(pane_dir, host=host, port=port, session_id=generate_session_id())
+def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.BrowserPane:
+    pane = pane_mod.BrowserPane(pane_dir, host=host, port=port, session_id=generate_session_id())
     handler = functools.partial(_PreviewHandler, directory=str(pane_dir))
     server = pane_server._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001
@@ -948,7 +948,7 @@ def _preview_url(host: str, port: int) -> str:
 
 
 def _populate_pane(
-    pane: pane_mod.OutputPane,
+    pane: pane_mod.BrowserPane,
     pane_dir: Path,
     *,
     large_rows: int,
@@ -961,11 +961,11 @@ def _populate_pane(
     pane.push(
         turn_payload(
             title="long text-only answer",
-            user="Explain the output pane experience in detail.",
+            user="Explain the browser pane experience in detail.",
             assistant="\n\n".join(
                 [
                     (
-                        "The output pane mirrors the agent's useful artifacts in a browser surface. "
+                        "The browser pane mirrors the agent's useful artifacts in a browser surface. "
                         "It is intentionally separate from the terminal so large tables, charts, query "
                         "text, and longer written answers can breathe without crowding the TUI."
                     ),
@@ -1028,7 +1028,7 @@ def _populate_pane(
             user="Show a large table as a normal agent result.",
             assistant=(
                 "This is a normal agent result card with 1,000 rows, so the Data view should use "
-                "the compact output-pane table frame and internal scrolling."
+                "the compact browser-pane table frame and internal scrolling."
             ),
             result_inputs=[_large_agent_table_result()],
         )

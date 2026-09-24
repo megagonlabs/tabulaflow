@@ -131,7 +131,7 @@ async def _run() -> None:
     try:
         await app.run_async(mouse=True)
     finally:
-        app._close_pane(remove_artifacts=True)
+        app._close_browser_pane(remove_artifacts=True)
         _restore_terminal_modes()
 
 

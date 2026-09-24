@@ -126,7 +126,7 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "Inspect cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
-        Binding("b", "send_table_to_output_pane", "Send table to output pane", show=True, priority=True),
+        Binding("b", "send_table_to_browser_pane", "Send table to browser pane", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
@@ -230,8 +230,8 @@ class DataBrowserScreen(Screen[None]):
             self._page_index = self._max_page_index
         self._render_page()
 
-    async def action_send_table_to_output_pane(self) -> None:
-        """Render the current DataFrame payload and send it to the output pane."""
+    async def action_send_table_to_browser_pane(self) -> None:
+        """Render the current DataFrame payload and send it to the browser pane."""
         import asyncio
 
         self._set_status_message(Text("Sending...", style="dim"))
@@ -246,13 +246,13 @@ class DataBrowserScreen(Screen[None]):
         from tabulaflow.app.tui.app import TabulaflowApp
 
         app = cast(TabulaflowApp, self.app)
-        if app.show_table_in_pane(self._df, title=self._title):
-            self._set_status_message(Text("sent to output pane", style="dim"))
+        if app.show_table_in_browser_pane(self._df, title=self._title):
+            self._set_status_message(Text("sent to browser pane", style="dim"))
         else:
-            self._set_status_message(Text("results pane unavailable", style=ERROR))
+            self._set_status_message(Text("browser pane unavailable", style=ERROR))
 
     def _set_status_message(self, message: "Text") -> None:
-        """Display a transient status message from an output-pane helper."""
+        """Display a transient status message from a browser-pane helper."""
         self._status.update(message)
 
     @property
@@ -325,7 +325,7 @@ class DataBrowserScreen(Screen[None]):
             ("]", KEY_HINT),
             (" Prev/Next page    ", hint_fg),
             ("B", KEY_HINT),
-            (" Send table to output pane", hint_fg),
+            (" Send table to browser pane", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:

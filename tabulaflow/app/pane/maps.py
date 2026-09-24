@@ -1,4 +1,4 @@
-"""Build structured map payloads for the browser output pane."""
+"""Build structured map payloads for the browser pane."""
 
 from __future__ import annotations
 

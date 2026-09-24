@@ -1,1 +1,1 @@
-"""Vendored MapLibre GL browser assets for the output pane."""
+"""Vendored MapLibre GL browser assets for the browser pane."""

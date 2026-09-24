@@ -1,4 +1,4 @@
-"""Build structured table payloads for the browser output pane."""
+"""Build structured table payloads for the browser pane."""
 
 from __future__ import annotations
 
@@ -167,7 +167,7 @@ def _build_table_data(
     inline_cap: int = _DEFAULT_INLINE_CAP,
     max_height: int | None = None,
 ) -> TableCardData:
-    """Build the structured table payload used by output-pane cards."""
+    """Build the structured table payload used by browser-pane cards."""
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
 

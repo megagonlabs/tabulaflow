@@ -1,4 +1,4 @@
-"""Build structured Vega-Lite chart payloads for the browser output pane."""
+"""Build structured Vega-Lite chart payloads for the browser pane."""
 
 from __future__ import annotations
 

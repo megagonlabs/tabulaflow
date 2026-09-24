@@ -7,7 +7,7 @@ from pygments.token import Token
 
 ACCENT = "#5FAF87"  # mint
 
-# Project repository — shown in the TUI banner and browser output pane.
+# Project repository — shown in the TUI banner and browser pane.
 GITHUB_SLUG = "megagonlabs/tabulaflow"
 GITHUB_URL = f"https://github.com/{GITHUB_SLUG}"
 

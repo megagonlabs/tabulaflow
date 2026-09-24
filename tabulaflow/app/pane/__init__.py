@@ -1,5 +1,5 @@
-"""Browser output pane."""
+"""Browser pane."""
 
-from tabulaflow.app.pane.server import OutputPane, OutputPanePortError
+from tabulaflow.app.pane.server import BrowserPane, BrowserPanePortError
 
-__all__ = ["OutputPane", "OutputPanePortError"]
+__all__ = ["BrowserPane", "BrowserPanePortError"]

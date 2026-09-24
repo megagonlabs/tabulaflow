@@ -63,7 +63,7 @@ class _FakeRunTuiApp:
         if error is not None:
             raise error
 
-    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
+    def _close_browser_pane(self, *, remove_artifacts: bool = False) -> None:
         type(self).pane_close_args.append(remove_artifacts)
 
 

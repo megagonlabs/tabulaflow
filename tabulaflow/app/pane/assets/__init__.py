@@ -1,1 +1,1 @@
-"""Bundled browser output-pane assets."""
+"""Bundled browser-pane assets."""

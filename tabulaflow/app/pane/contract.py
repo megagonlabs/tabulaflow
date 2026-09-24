@@ -1,4 +1,4 @@
-"""Python side of the browser output-pane wire contract."""
+"""Python side of the browser-pane wire contract."""
 
 from __future__ import annotations
 
@@ -184,7 +184,7 @@ def turn_payload(
     source: PaneSource | None = None,
     panel: PanePanel | None = None,
 ) -> PaneTurn:
-    """Build one output-pane turn."""
+    """Build one browser-pane turn."""
     turn: PaneTurn = {"title": title, "cards": cards}
     if user is not None:
         turn["user"] = user

@@ -108,7 +108,7 @@ async def _run(dataset_id: str, subsets: tuple[str, ...]) -> None:
     try:
         await app.run_async(mouse=True)
     finally:
-        app._close_pane(remove_artifacts=True)
+        app._close_browser_pane(remove_artifacts=True)
         _restore_terminal_modes()
 
 

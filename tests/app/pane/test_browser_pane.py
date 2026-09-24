@@ -24,7 +24,7 @@ from tabulaflow.app.pane.cards import (
     render_result_data,
 )
 from tabulaflow.app.pane.contract import PaneCard, PanePanel, PaneTurn, turn_payload
-from tabulaflow.app.pane.server import OutputPane, OutputPanePortError
+from tabulaflow.app.pane.server import BrowserPane, BrowserPanePortError
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
@@ -138,8 +138,8 @@ console.log(JSON.stringify({{
     }
 
 
-def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_serves_text_only_turn(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         pane.push(
@@ -172,8 +172,8 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_replays_only_missed_turns(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_replays_only_missed_turns(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         pane.push(turn_payload(title="first", cards=[]))
@@ -194,8 +194,8 @@ def test_output_pane_replays_only_missed_turns(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_completes_pending_turn_in_place(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_completes_pending_turn_in_place(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
 
     turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
     pane.complete_turn(
@@ -219,8 +219,8 @@ def test_output_pane_completes_pending_turn_in_place(tmp_path: Path) -> None:
     ]
 
 
-def test_output_pane_discards_pending_turn(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_discards_pending_turn(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
 
     turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
     pane.discard_turn(turn_id)
@@ -228,8 +228,8 @@ def test_output_pane_discards_pending_turn(tmp_path: Path) -> None:
     assert pane._wait_for_events(0, timeout=0) == [(1, "turn-remove", {"id": turn_id})]  # noqa: SLF001
 
 
-def test_output_pane_clear_resets_current_history(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_clear_resets_current_history(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
     stale_turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
     pane.push(turn_payload(title="result", cards=[]))
 
@@ -246,11 +246,11 @@ def test_output_pane_clear_resets_current_history(tmp_path: Path) -> None:
     ]
 
 
-def test_output_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
+def test_browser_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright
 
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
@@ -298,10 +298,10 @@ def test_output_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
+def test_browser_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
     with _bound_loopback_port() as occupied_port:
         available_port = _unused_loopback_port()
-        pane = OutputPane(tmp_path, port_range=(occupied_port, available_port))
+        pane = BrowserPane(tmp_path, port_range=(occupied_port, available_port))
         pane.start()
         try:
             assert pane.url == f"http://127.0.0.1:{available_port}/{pane.token}/"
@@ -309,20 +309,20 @@ def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
             pane.stop()
 
 
-def test_output_pane_default_token_is_48_bits(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_default_token_is_48_bits(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
 
     assert len(pane.token) == 8
 
 
-def test_output_pane_fallback_session_id_uses_cli_format(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_fallback_session_id_uses_cli_format(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
 
     assert re.fullmatch(r"[0-9a-z]{6}", pane.session_id)
 
 
-def test_output_pane_page_displays_runtime_session_id(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path, session_id="k3x9qe")
+def test_browser_pane_page_displays_runtime_session_id(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path, session_id="k3x9qe")
     assert pane.session_id == "k3x9qe"
 
     pane.start()
@@ -338,16 +338,16 @@ def test_output_pane_page_displays_runtime_session_id(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_explicit_port_is_strict(tmp_path: Path) -> None:
+def test_browser_pane_explicit_port_is_strict(tmp_path: Path) -> None:
     with _bound_loopback_port() as occupied_port:
-        pane = OutputPane(tmp_path, port=occupied_port)
-        with pytest.raises(OutputPanePortError, match=str(occupied_port)):
+        pane = BrowserPane(tmp_path, port=occupied_port)
+        with pytest.raises(BrowserPanePortError, match=str(occupied_port)):
             pane.start()
 
 
-def test_output_pane_wildcard_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
+def test_browser_pane_wildcard_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
     available_port = _unused_loopback_port()
-    pane = OutputPane(tmp_path, host="0.0.0.0", port=available_port)
+    pane = BrowserPane(tmp_path, host="0.0.0.0", port=available_port)
     pane.start()
     try:
         assert pane.bind_host == "0.0.0.0"
@@ -358,9 +358,9 @@ def test_output_pane_wildcard_bind_uses_loopback_browser_url(tmp_path: Path) -> 
         pane.stop()
 
 
-def test_output_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
+def test_browser_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
     available_port = _unused_loopback_port()
-    pane = OutputPane(tmp_path, host="localhost", port=available_port)
+    pane = BrowserPane(tmp_path, host="localhost", port=available_port)
     pane.start()
     try:
         assert pane.bind_host == "localhost"
@@ -369,9 +369,9 @@ def test_output_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) ->
         pane.stop()
 
 
-def test_output_pane_public_url_gets_token_path(tmp_path: Path) -> None:
+def test_browser_pane_public_url_gets_token_path(tmp_path: Path) -> None:
     available_port = _unused_loopback_port()
-    pane = OutputPane(tmp_path, port=available_port, public_url=f"http://127.0.0.1:{available_port}/tf")
+    pane = BrowserPane(tmp_path, port=available_port, public_url=f"http://127.0.0.1:{available_port}/tf")
     pane.start()
     try:
         assert pane.url == f"http://127.0.0.1:{available_port}/tf/{pane.token}/"
@@ -381,8 +381,8 @@ def test_output_pane_public_url_gets_token_path(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
@@ -395,7 +395,7 @@ def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
                 rejected = exc.code == 404
                 body = exc.read().decode("utf-8")
             assert rejected
-            assert "Output pane URL is incomplete." in body
+            assert "Browser pane URL is incomplete." in body
             assert "Open the full URL shown in the tabulaflow terminal." in body
             assert pane.token not in body
     finally:
@@ -418,9 +418,9 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
         runtime_paths=runtime_paths,
         project_dir=tmp_path,
     )
-    app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
+    app._browser_pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    assert app.show_table_in_pane(df, title="manual_table")
+    assert app.show_table_in_browser_pane(df, title="manual_table")
 
     path = next(runtime_paths.pane_dir.glob("card_*.data.json"))
     payload = json.loads(path.read_text())
@@ -438,7 +438,7 @@ def test_large_manual_table_scrolls_inside_viewport(tmp_path: Path) -> None:
         tmp_path,
     )
     assert card is not None
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
@@ -758,8 +758,8 @@ process.stdout.write(JSON.stringify({{
     }
 
 
-def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+def test_browser_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
+    pane = BrowserPane(tmp_path)
     pane.push(
         turn_payload(
             title="code",
@@ -790,7 +790,7 @@ def test_live_view_survives_replay_and_view_switching(tmp_path: Path) -> None:
         assert card is not None
         cards.append(card)
 
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
@@ -878,7 +878,7 @@ def test_map_overlays_use_distinct_translucent_surfaces() -> None:
     assert "background: var(--map-status-bg)" in css
 
 
-def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
+def test_view_card_in_browser_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
     class FakePane:
@@ -892,10 +892,10 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
         runtime_paths=_runtime_paths(tmp_path),
         project_dir=tmp_path,
     )
-    app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
+    app._browser_pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     card: PaneCard = {"id": "card_orders", "artifact_id": "orders", "label": None, "views": ["data"]}
-    assert app.view_card_in_pane(card, title="orders")
+    assert app.view_card_in_browser_pane(card, title="orders")
     assert pushed == [
         {
             "title": "orders",
@@ -905,7 +905,7 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     ]
 
 
-async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
+async def test_browser_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     class FakeOutputStore:
         async def get_result(self, result_id: str) -> MaterializedResult:
             return MaterializedResult(
@@ -918,7 +918,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     result = ChatResult(
         text="x",
         output=OutputSpec(
@@ -963,7 +963,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     assert (tmp_path / f"{cards[0]['id']}.data.json").exists()
 
 
-async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None:
+async def test_browser_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None:
     app_loop = asyncio.get_running_loop()
 
     class LoopCheckingOutputStore:
@@ -979,7 +979,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 
-    pane = OutputPane(tmp_path, port=_unused_loopback_port())
+    pane = BrowserPane(tmp_path, port=_unused_loopback_port())
     pane.start()
     try:
         result = ChatResult(
@@ -1014,7 +1014,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
         pane.stop()
 
 
-def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
+def test_browser_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a"], "n": [3]})
     card = render_result_data(
         ResultCardInput(df=df, label="x"),
@@ -1022,7 +1022,7 @@ def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
     )
     assert card is not None
 
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
@@ -1041,7 +1041,7 @@ def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
 
 
 def test_pane_serves_bundled_assets_with_expected_cache_policy(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path)
+    pane = BrowserPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
