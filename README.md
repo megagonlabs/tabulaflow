@@ -13,9 +13,7 @@ commands, and browse the web.
 See the [documentation](https://megagonlabs.github.io/tabulaflow/) for complete
 guides and API references.
 
-> **Demo video coming soon**
->
-> A short walkthrough of TabulaFlow will appear here.
+https://github.com/user-attachments/assets/7cf9a44f-6485-41d6-8788-7360109421d5
 
 ## Get started
 
