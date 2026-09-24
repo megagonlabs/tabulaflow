@@ -329,20 +329,24 @@ While Megagon makes commercially reasonable efforts to ensure that citations in 
 document are complete and accurate, errors may occur. If you see any error or omission, please
 help us improve this document by sending information to contact_oss@megagon.ai.
 
-## Research Benchmark Datasets
+<details>
+<summary><strong>Research benchmark datasets</strong></summary>
 
 Benchmark data is downloaded separately unless noted below and remains subject to
 the upstream license and access terms.
 
 | Benchmark | Included | Upstream | License / terms |
 |---|---|---|---|
-| BIRD-SQL | Column descriptions | [BIRD-SQL](https://github.com/AlibabaResearch/DAMO-ConvAI/tree/main/bird) | CC BY-SA 4.0 |
+| BIRD-SQL | No | [BIRD-SQL](https://github.com/AlibabaResearch/DAMO-ConvAI/tree/main/bird) | CC BY-SA 4.0 |
 | AMBROSIA | No | [AMBROSIA](https://github.com/saparina/ambrosia) | CC BY 4.0; upstream asks that the dataset not be uploaded to GitHub or Hugging Face. |
 | Spider 2.0 (Lite, Snow, DBT) | No | [Spider 2.0](https://github.com/xlang-ai/Spider2) | MIT; hosted database access is subject to provider terms. |
 | BEAVER | No | [BEAVER](https://github.com/peterbaile/beaver-may-2025) | MIT; separately hosted database dumps are subject to upstream terms. |
 | CypherBench | No | [CypherBench](https://huggingface.co/datasets/megagonlabs/cypherbench) | Apache-2.0; graph data is derived from Wikidata (CC0). |
 
-## Open Source Software (OSS) Components
+</details>
+
+<details>
+<summary><strong>Open source software components</strong></summary>
 
 TabulaFlow uses the unmodified direct runtime dependencies below. Transitive
 Python dependencies and exact resolved versions are recorded in
@@ -412,3 +416,5 @@ The application also bundles the following unmodified browser-side components:
 | Vega | No | [vega/vega](https://github.com/vega/vega) | BSD-3-Clause |
 | Vega-Embed | No | [vega/vega-embed](https://github.com/vega/vega-embed) | BSD-3-Clause |
 | Vega-Lite | No | [vega/vega-lite](https://github.com/vega/vega-lite) | BSD-3-Clause |
+
+</details>
