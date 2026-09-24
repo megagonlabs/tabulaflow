@@ -1,6 +1,6 @@
-# Quick start
+# TabulaFlow for Researchers
 
-TabulaFlow Research extends the main Python library for AI researchers working
+TabulaFlow Research extends the main Python library for AI and database researchers working
 on text-to-SQL and data agents. Its main building blocks include benchmark
 loaders, agents, evaluation metrics, and experiment pipelines. It is
 designed around principles that enable flexible, rapid, and transparent
