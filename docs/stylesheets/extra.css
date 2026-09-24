@@ -38,6 +38,7 @@
   --tf-code-string: #7ec193;
   --tf-code-number: #c792ea;
   --tf-code-type: #ffc473;
+  --tf-focus-ring: rgb(96, 165, 250);
   --md-text-font: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --md-code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
   --md-primary-fg-color: var(--tf-bg);
@@ -65,6 +66,23 @@ html {
 
 body {
   font-family: var(--md-text-font);
+}
+
+.focus-visible,
+:focus-visible {
+  outline-color: var(--tf-focus-ring) !important;
+}
+
+.md-nav__link.focus-visible,
+.md-pagination__link.focus-visible,
+.md-option.focus-visible + label {
+  outline: 2px solid var(--tf-focus-ring);
+  outline-offset: 2px;
+}
+
+.md-typeset a.focus-visible,
+.md-typeset summary.focus-visible {
+  outline-color: var(--tf-focus-ring);
 }
 
 .md-header {
@@ -128,7 +146,9 @@ body {
 
 .md-search__form:focus-within {
   background: var(--tf-card);
-  border-color: rgba(154, 164, 178, 0.22);
+  border-color: var(--tf-focus-ring);
+  outline: 2px solid var(--tf-focus-ring);
+  outline-offset: 2px;
 }
 
 .md-search__input,
@@ -455,6 +475,11 @@ body {
   background: var(--tf-code-hover);
 }
 
+.md-typeset .md-code__button.focus-visible {
+  outline: 2px solid var(--tf-focus-ring);
+  outline-offset: 2px;
+}
+
 .md-typeset .md-code__button--active {
   color: var(--tf-text) !important;
 }
@@ -689,7 +714,7 @@ body {
 }
 
 .md-typeset .demo-gallery__tabs button:focus-visible {
-  outline: 2px solid var(--tf-accent);
+  outline: 2px solid var(--tf-focus-ring);
   outline-offset: 2px;
 }
 
@@ -1594,7 +1619,7 @@ body {
 }
 
 .md-typeset details.example-details > summary:focus-visible {
-  outline: 2px solid var(--tf-accent);
+  outline: 2px solid var(--tf-focus-ring);
   outline-offset: -2px;
 }
 
