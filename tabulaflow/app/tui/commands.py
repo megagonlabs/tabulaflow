@@ -66,6 +66,12 @@ class CommandResult:
 CommandHandler = Callable[[list[str], AppSession], Awaitable[CommandResult]]
 
 
+def is_registered_command(text: str) -> bool:
+    """Return whether the input starts with a registered slash command."""
+    parts = text.split(maxsplit=1)
+    return bool(parts) and parts[0].lower() in _COMMANDS
+
+
 def redact_command_credentials(text: str) -> tuple[str, bool]:
     """Return safe display text and whether a command contains a URL password."""
     try:

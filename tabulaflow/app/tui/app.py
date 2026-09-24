@@ -23,11 +23,11 @@ from textual.widgets import Button, Static
 
 from tabulaflow.agents.llm import model_label
 from tabulaflow.app.tui.commands import (
-    COMMAND_PREFIX,
     CommandResult,
     HuggingFaceSubsetSelection,
     complete_hf_subset_selection,
     handle_command,
+    is_registered_command,
     redact_command_credentials,
 )
 from tabulaflow.app.config import (
@@ -977,11 +977,11 @@ class TabulaflowApp(App[None]):
             return
 
         question = inp.build_chat_input(display_text)
-        if not isinstance(question, str) and display_text.startswith(COMMAND_PREFIX):
+        if not isinstance(question, str) and is_registered_command(display_text):
             inp.notify("Images cannot be attached to slash commands", severity="error")
             return
 
-        _, contains_credentials = redact_command_credentials(display_text)
+        _, contains_credentials = redact_command_credentials(display_text) if is_registered_command(display_text) else (display_text, False)
         inp.record_submission(display_text, persist=not contains_credentials)
         inp.clear()
         inp.placeholder = _DEFAULT_INPUT_PLACEHOLDER
@@ -1003,7 +1003,7 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         chat_log = self.query_one("#chat-log", ChatLog)
-        is_command = isinstance(question, str) and question.startswith(COMMAND_PREFIX)
+        is_command = isinstance(question, str) and is_registered_command(question)
         visible_text = redact_command_credentials(display_text)[0] if is_command else display_text
         user_msg = UserMessage(visible_text)
         interrupted = False

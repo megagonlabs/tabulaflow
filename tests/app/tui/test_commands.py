@@ -12,6 +12,7 @@ from tabulaflow.app.tui.commands import (
     CommandResult,
     complete_hf_subset_selection,
     handle_command,
+    is_registered_command,
     redact_command_credentials,
 )
 from tabulaflow.app.session import AppSession
@@ -45,6 +46,20 @@ class _FakeSession:
 
     def reset_conversation(self) -> None:
         self.conversation_reset = True
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("", False),
+        ("/help", True),
+        ("  /CONNECT source", True),
+        ("/connect-anything source", False),
+        ("/summarize /tmp/report.csv", False),
+    ],
+)
+def test_is_registered_command(text: str, expected: bool) -> None:
+    assert is_registered_command(text) is expected
 
 
 def test_redact_connect_command_password_preserves_replayable_structure() -> None:

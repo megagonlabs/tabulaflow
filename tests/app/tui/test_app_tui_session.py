@@ -1005,6 +1005,32 @@ async def test_submission_builds_ordered_multimodal_input(monkeypatch: pytest.Mo
     assert captured == [(["inspect [Image #1]", image, " now"], "inspect [Image #1] now")]
 
 
+async def test_unknown_slash_prefixed_submission_reaches_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    captured: list[tuple[object, str]] = []
+
+    async def fake_run_submission(question: object, display_text: str, input_bar: HistoryInput | None) -> None:
+        captured.append((question, display_text))
+
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_run_submission", fake_run_submission)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        image = BinaryContent(b"image", media_type="image/png")
+        input_bar._active_images[1] = image
+        input_bar._image_counter = 1
+        input_bar.value = "/summarize [Image #1]"
+
+        await pilot.press("enter")
+        for _ in range(2):
+            await pilot.pause()
+
+    assert captured == [(["/summarize [Image #1]", image], "/summarize [Image #1]")]
+
+
 async def test_submission_displays_compact_paste_reference(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
 
