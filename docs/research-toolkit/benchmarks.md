@@ -7,7 +7,7 @@
 | [Spider 2.0 Lite](#spider-20-lite) | Text-to-SQL | BigQuery, Snowflake, SQLite | `test` |
 | [Spider 2.0 dbt](#spider-20-dbt) | Data transformation | DuckDB | `test` |
 | [Beaver](#beaver) | Text-to-SQL | MySQL | `test` |
-| [ARCS](#arcs) | Ambiguous text-to-SQL | SQLite | `test`, `test_unsampled` |
+| [ARCS](#arcs) (coming soon) | Ambiguous text-to-SQL | SQLite | `test`, `test_unsampled` |
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
 | [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
 
@@ -113,27 +113,7 @@ tabulaflow benchmark stop beaver
 
 ## ARCS
 
-Ambiguous text-to-SQL tasks with annotated interpretations and intended
-resolutions. ARCS requires manual setup. Place its task files and SQLite
-databases in this layout:
-
-```text
-~/.tabulaflow/benchmarks/arcs/
-├── tasks/
-│   ├── tasks_unsampled.json
-│   └── tasks_gold_intended_query_ids.json
-└── databases/
-    ├── column_meanings.json
-    └── sqlite/
-        ├── codebase_community.sqlite
-        ├── financial.sqlite
-        ├── github_repos.sqlite
-        ├── professional_basketball.sqlite
-        ├── retails.sqlite
-        └── student_club.sqlite
-```
-
-For an existing data directory, pass its path as `directory` to the loader.
+Coming soon.
 
 ## AMBROSIA
 
