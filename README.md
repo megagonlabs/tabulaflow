@@ -11,6 +11,10 @@ commands, and browse the web.
 See the [documentation](https://megagonlabs.github.io/tabulaflow/) for complete
 guides and API references.
 
+> **Demo video coming soon**
+>
+> A short walkthrough of TabulaFlow will appear here.
+
 ## Get started
 
 Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
