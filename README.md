@@ -10,9 +10,8 @@ it can also write code, work with files, run shell commands, and browse the web.
 [Documentation](https://megagonlabs.github.io/tabulaflow/) |
 [Python library](#python-library) | [Research toolkit](#research-toolkit)
 
-Requires Python 3.11 or later on macOS or Linux. Install with
-[`uv`](https://docs.astral.sh/uv/), set your API key, and launch from your
-working directory:
+TabulaFlow requires Python 3.11 or later on macOS or Linux. Install it with
+[`uv`](https://docs.astral.sh/uv/), set a model provider key, and launch it:
 
 ```bash
 uv tool install tabulaflow
@@ -20,26 +19,14 @@ export OPENAI_API_KEY="your-api-key"
 tabulaflow
 ```
 
-The app includes sample data. Try:
-
-```text
-Using the sample data, show the five merchants with the highest total spend as
-a bar chart.
-```
-
-The result opens as an interactive chart, with its underlying data and query
-available for inspection. Use `/connect` to add your own data.
-
-For web browsing, also install Chromium:
+We also recommend installing Chromium to enable agent-driven web browsing:
 
 ```bash
 uv tool run --from playwright playwright install chromium
 ```
 
-[Data agent guide](https://megagonlabs.github.io/tabulaflow/#get-started)
-
-TabulaFlow 0.1.0 is a public beta. Minor `0.x` releases may contain documented
-breaking changes.
+TabulaFlow opens with bundled sample data, so you can start exploring
+immediately.
 
 ## Python library
 

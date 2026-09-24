@@ -60,14 +60,14 @@ export OPENAI_API_KEY="your-api-key"
 tabulaflow
 ```
 
-TabulaFlow opens with bundled sample data, so you can start exploring
-immediately.
-
 We also recommend installing Chromium to enable agent-driven web browsing:
 
 ```bash
 uv tool run --from playwright playwright install chromium
 ```
+
+TabulaFlow opens with bundled sample data, so you can start exploring
+immediately.
 
 [Connect your data](data-agent/connecting-data.md){ .inline-cta }
 [Configuration](data-agent/configuration.md){ .inline-cta }
