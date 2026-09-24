@@ -69,8 +69,8 @@ Add TabulaFlow to your Python project:
 uv add tabulaflow
 ```
 
-With `OPENAI_API_KEY` set, create an in-memory database, ask for a chart, and
-inspect the SQL and DataFrame behind it:
+With `OPENAI_API_KEY` set, compare sales and support data from separate
+in-memory databases, then inspect the structured chart and table results:
 
 ```python
 import asyncio
@@ -79,38 +79,67 @@ import pandas as pd
 
 from tabulaflow.agents import ChatSession
 from tabulaflow.data import DataConnectorRegistry, SQLConnector
+from tabulaflow.output.specs import ChartArtifactSpec, TableArtifactSpec
 
 
-async def main():
-    sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+async def load_sample_data(sales: SQLConnector, support: SQLConnector) -> None:
     await sales.write_dataframe_async(
         pd.DataFrame(
-            columns=["region", "revenue_usd"],
+            columns=["order_id", "region", "revenue_usd"],
             data=[
-                ("West", 1200),
-                ("West", 800),
-                ("East", 1500),
+                (1001, "West", 1200),
+                (1002, "West", 800),
+                (1003, "East", 900),
+                (1004, "East", 600),
             ],
         ),
         "sales",
     )
-    registry = DataConnectorRegistry()
-    registry.register("sales", sales)
-    session = ChatSession(registry=registry, model="openai:gpt-5-mini", reasoning="low")
-
-    result = await session.run("Show total revenue by region as a bar chart.")
-    print("Answer:", result.text)
-    for artifact in result.output.artifacts:
-        if artifact.kind == "chart":
-            data = await session.output_store.resolve_artifact_source(artifact.source_id)
-            print("SQL:", data.metadata.query)
-            print("DataFrame:\n", data.df)
-
-    await session.aclose()
-    await sales.close_async()
+    await support.write_dataframe_async(
+        pd.DataFrame(
+            columns=["ticket_id", "subject", "priority", "status"],
+            data=[
+                (201, "Checkout payment failures", "high", "open"),
+                (202, "Invoice downloads unavailable", "high", "open"),
+                (203, "Profile image upload issue", "low", "open"),
+                (204, "Password reset emails delayed", "high", "resolved"),
+            ],
+        ),
+        "support",
+    )
 
 
-asyncio.run(main())
+async def main() -> None:
+    async with DataConnectorRegistry() as registry:
+        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        registry.register("sales", sales)
+        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        registry.register("support", support)
+        await load_sample_data(sales, support)
+
+        async with ChatSession(
+            registry=registry,
+            model="openai:gpt-5-mini",
+            reasoning="low",
+        ) as session:
+            result = await session.run(
+                "How does revenue compare across regions, and which high-priority "
+                "support tickets are still open? Show revenue as a bar chart "
+                "and the tickets in a table."
+            )
+            print("Answer:", result.text)
+
+            for artifact in result.output.artifacts:
+                if isinstance(artifact, (TableArtifactSpec, ChartArtifactSpec)):
+                    data = await session.output_store.resolve_artifact_source(artifact.source_id)
+                    print("Artifact:", artifact.label)
+                    print("Source:", data.metadata.connector_alias)
+                    print("SQL:", data.metadata.query)
+                    print("DataFrame:\n", data.df)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 `result.text` contains the answer; `result.output` contains structured artifact
@@ -127,9 +156,9 @@ import pandas as pd
 from tabulaflow.data import SQLConnector
 
 
-async def main():
+async def main() -> None:
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
-    try:
+    async with stock:
         await stock.write_dataframe_async(
             pd.DataFrame(
                 columns=["product", "on_hand", "reorder_point"],
@@ -141,10 +170,9 @@ async def main():
             ),
             "inventory",
         )
-        for table in stock.schema.tables:
-            print("Table:", table.name)
-            for column in table.columns:
-                print(f"  {column.name}: {column.dtype}, examples={column.examples}")
+        table = stock.schema.tables[0]
+        print("Table:", table.name)
+        print("Columns:", [(column.name, column.dtype) for column in table.columns])
 
         result = await stock.run_query_async(
             "SELECT product, reorder_point - on_hand AS units_to_order "
@@ -152,12 +180,11 @@ async def main():
         )
         if result.error is not None:
             raise RuntimeError(result.error.message)
-        print(result.df)
-    finally:
-        await stock.close_async()
+        print("DataFrame:\n", result.df)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 [Python library guide](https://megagonlabs.github.io/tabulaflow/python-library/quick-start/)
@@ -195,7 +222,7 @@ tabulaflow examples run research-quick-start
 ```
 
 To adapt the workflow in your own project, add TabulaFlow with `uv add
-tabulaflow`, then run and save experiments from Python:
+tabulaflow`, then run experiments from Python:
 
 ```python
 import asyncio
@@ -204,29 +231,51 @@ from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
 from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
+from tabulaflow.research.types import SimpleNL2QTaskOutput
 
 
-async def main():
+async def main() -> None:
     dataset = await BirdSQLDatasetLoader().get_split_async(
         "dev",
         databases=["california_schools"],
         subsample_size=3,
     )
+
     try:
-        result = await predict_async(FullSchemaAgent, BasicAgentConfig(), dataset, batch_size=3)
+        result = await predict_async(
+            FullSchemaAgent,
+            BasicAgentConfig(),
+            dataset,
+            batch_size=3,
+        )
         await execute_async(result, dataset, batch_size=3)
+        first = result.tasks[0]
+        assert isinstance(first, SimpleNL2QTaskOutput)
+        assert first.pred_query is not None
+        assert first.pred_query.exec_result is not None
+        print("Question:", first.question)
+        print("Predicted SQL:", first.pred_query.query)
+        print("Query result:")
+        print(first.pred_query.exec_result.df)
+
         await evaluate_async(result, dataset, metrics=[BirdSQLEx()], batch_size=3)
         print("Execution accuracy:", result.aggregated_eval_metrics["bird_sql_ex"]["avg"])
-        result.to_directory("runs/full-schema")
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-Work with typed tasks, schemas, and predictions. Saved runs keep results and
-readable reports together:
+To keep the predictions, scores, and readable reports together, save the result
+after evaluation inside the `try` block:
+
+```python
+result.to_directory("runs/full-schema")
+```
+
+The saved run has this structure:
 
 ```text
 runs/full-schema/
