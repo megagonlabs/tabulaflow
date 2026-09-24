@@ -51,8 +51,8 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 ## Get started
 
-TabulaFlow requires Python 3.11 or later on macOS or Linux. Install it with
-[`uv`](https://docs.astral.sh/uv/), set a model provider key, and launch it:
+Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
+key, and launch it:
 
 ```bash
 uv tool install tabulaflow
