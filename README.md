@@ -10,8 +10,8 @@ Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 
-Like a general-purpose coding agent, it can also write code, work with files,
-run shell commands, and browse the web.
+Like a general-purpose coding agent, it can also write code, run shell commands,
+and browse the web.
 
 Explore the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
