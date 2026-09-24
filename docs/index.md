@@ -3,8 +3,8 @@
 TabulaFlow is an open-source data agent built on a modular Python library.
 
 Think of it as Claude Code for data: describe in natural language what you want
-to analyze, visualize, or transform. Work with all kinds of data, from databases
-and files to Hugging Face datasets, Wikidata, and web pages. Like a
+to analyze, visualize, or transform. It works with all kinds of data, from
+databases and files to Hugging Face datasets, Wikidata, and web pages. Like a
 general-purpose coding agent, it can also write code, work with files, run shell
 commands, and browse the web.
 
