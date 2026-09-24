@@ -77,7 +77,7 @@ logger = logging.getLogger(__name__)
 _SYSTEM_PROMPT = files("tabulaflow.agents.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
 
 
-DEFAULT_SUBAGENT_MODEL: Final = "openai:gpt-5.4-mini"
+DEFAULT_SUBAGENT_MODEL: Final = "openai:gpt-5.6-luna"
 DEFAULT_SUBAGENT_REASONING: Final[ReasoningLevel] = "medium"
 # Non-streaming subagent requests occasionally stall server-side for many
 # minutes (a fan-out visibly stuck at "28/30" rows), while a re-sent identical

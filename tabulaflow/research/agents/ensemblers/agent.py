@@ -104,7 +104,7 @@ class AgentEnsemblerConfig(BasicAgentConfig):
     """Config for agent-based ensembler that combines LLM ensemble with agent tools."""
 
     result_dirs: list[str]
-    db_summarizer_llm: str = "openai:gpt-5.4"
+    db_summarizer_llm: str = "openai:gpt-5.6-sol"
     skip_empty_results: bool = True
     deduplicate_results: bool = True
 

@@ -21,7 +21,7 @@ from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
 
 agent = FullSchemaAgent(
     BasicAgentConfig(
-        llm="openai:gpt-4.1",
+        llm="openai:gpt-5.6-sol",
         max_steps=10,
     )
 )

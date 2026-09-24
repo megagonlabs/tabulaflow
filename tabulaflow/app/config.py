@@ -71,7 +71,7 @@ def fanout_concurrency_for_rpm(requests_per_minute: int) -> int:
 
 OPENAI_DEFAULT_LLM_CONFIG = LLMConfig(
     main=LLMRoleConfig(model="openai:gpt-5.6-sol", effort="medium"),
-    subagent=LLMRoleConfig(model="openai:gpt-6-luna", effort="medium"),
+    subagent=LLMRoleConfig(model="openai:gpt-5.6-luna", effort="medium"),
 )
 ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
     main=LLMRoleConfig(model="anthropic:claude-opus-5-5", effort="high"),
@@ -79,11 +79,9 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
 )
 
 RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
-    "openai:gpt-6-sol",
     "openai:gpt-5.6-sol",
 )
 RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
-    "openai:gpt-6-luna",
     "openai:gpt-6-sol",
     "openai:gpt-5.6-luna",
 )

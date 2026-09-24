@@ -42,7 +42,7 @@ def test_default_config_is_automatic() -> None:
 
 def test_openai_defaults_use_gpt_5_6_sol() -> None:
     assert OPENAI_DEFAULT_LLM_CONFIG.main.model == "openai:gpt-5.6-sol"
-    assert OPENAI_DEFAULT_LLM_CONFIG.subagent.model == "openai:gpt-6-luna"
+    assert OPENAI_DEFAULT_LLM_CONFIG.subagent.model == "openai:gpt-5.6-luna"
 
 
 def test_anthropic_defaults_use_claude_5() -> None:

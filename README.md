@@ -138,7 +138,7 @@ async def main() -> None:
 
         async with ChatSession(
             registry=registry,
-            model="openai:gpt-5.6-luna",
+            model="openai:gpt-5.6-sol",
             reasoning="low",
         ) as session:
             result = await session.run(

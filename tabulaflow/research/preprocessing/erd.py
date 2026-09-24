@@ -266,7 +266,7 @@ class ERDiagramSynthesizer:
 
     def __init__(
         self,
-        llm: str = "openai:gpt-5",
+        llm: str = "openai:gpt-5.6-sol",
         model_settings: ModelSettings | None = None,
     ):
         self.llm = llm

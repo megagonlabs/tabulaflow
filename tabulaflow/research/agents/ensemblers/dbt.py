@@ -76,7 +76,7 @@ Select the number of the best candidate.
 class DbtLLMEnsemblerConfig(BaseModel):
     result_dirs: list[str]
     llm: str = "openai:gpt-5.6-luna"
-    db_summarizer_llm: str = "openai:gpt-5.4"
+    db_summarizer_llm: str = "openai:gpt-5.6-sol"
     skip_failed_runs: bool = True
     deduplicate_results: bool = True
     temperature: float | None = None

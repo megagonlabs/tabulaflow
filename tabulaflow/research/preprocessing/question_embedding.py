@@ -70,7 +70,7 @@ class QuestionEmbedder:
     def __init__(
         self,
         embedding_llm: str = "openai:text-embedding-3-small",
-        preprocessing_llm: str = "openai:gpt-4.1-mini",
+        preprocessing_llm: str = "openai:gpt-5.6-luna",
         disable_preprocessing: bool = False,
     ):
         self.embedding_llm = embedding_llm
