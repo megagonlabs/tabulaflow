@@ -13,7 +13,7 @@ commands, and browse the web.
 See the [documentation](https://megagonlabs.github.io/tabulaflow/) for complete
 guides and API references.
 
-https://github.com/user-attachments/assets/7cf9a44f-6485-41d6-8788-7360109421d5
+https://github.com/user-attachments/assets/e13b4503-5d67-4f76-8539-5343b94f9a78
 
 ## Get started
 
