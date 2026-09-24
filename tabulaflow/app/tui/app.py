@@ -71,6 +71,7 @@ _LLM_SETTING_RE = re.compile(r"\b(?:[A-Z][A-Z0-9_]*_API_KEY|HF_TOKEN|HEROKU_INFE
 _MAX_ERROR_MESSAGE_LENGTH = 300
 LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. Data connections and browsing remain available."
 _DEFAULT_INPUT_PLACEHOLDER = "Ask anything or type /connect"
+_INTERRUPT_INPUT_PLACEHOLDER = "Ctrl+C to interrupt"
 _SAMPLE_DATA_PROMPT = "Show me a table and chart on sample data"
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
     "\x1b[?2004l"  # bracketed paste off
@@ -1007,6 +1008,8 @@ class TabulaflowApp(App[None]):
         visible_text = redact_command_credentials(display_text)[0] if is_command else display_text
         user_msg = UserMessage(visible_text)
         interrupted = False
+        if input_bar is not None:
+            input_bar.placeholder = _INTERRUPT_INPUT_PLACEHOLDER
         try:
             await chat_log.mount(user_msg)
             chat_log.follow_new_content(force=True)
@@ -1041,8 +1044,10 @@ class TabulaflowApp(App[None]):
             self._restore_input_text(display_text)
             raise
         finally:
-            if not interrupted and input_bar is not None:
-                input_bar.release_submission_images(display_text)
+            if input_bar is not None:
+                input_bar.placeholder = _DEFAULT_INPUT_PLACEHOLDER
+                if not interrupted:
+                    input_bar.release_submission_images(display_text)
             self._submission_worker = None
 
     @staticmethod

@@ -1127,6 +1127,7 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
         await asyncio.wait_for(preflight_started.wait(), timeout=2)
 
         assert app._submission_worker is not None
+        assert input_bar.placeholder == "Ctrl+C to interrupt"
         input_bar.value = "next question"
         await pilot.press("enter")
         await pilot.pause()
@@ -1140,6 +1141,7 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
 
         assert app._submission_worker is None
         assert input_bar.value == "show [Image #1]"
+        assert input_bar.placeholder == "Ask anything or type /connect"
         assert input_bar._active_images == {1: image}
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages[-1] == "Interrupted"
