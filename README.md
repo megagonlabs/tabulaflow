@@ -8,6 +8,9 @@ databases and files to Hugging Face datasets, Wikidata, and web pages. Like a
 general-purpose coding agent, it can also write code, work with files, run shell
 commands, and browse the web.
 
+See the [documentation](https://megagonlabs.github.io/tabulaflow/) for complete
+guides and API references.
+
 ## Get started
 
 Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
