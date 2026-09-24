@@ -79,11 +79,12 @@ ANTHROPIC_DEFAULT_LLM_CONFIG = LLMConfig(
 )
 
 RECOMMENDED_MAIN_MODELS: tuple[str, ...] = (
+    "openai:gpt-6-sol",
     "openai:gpt-5.6-sol",
-    "openai:gpt-5.6-terra",
 )
 RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
-    "openai:gpt-5.6-terra",
+    "openai:gpt-6-luna",
+    "openai:gpt-6-sol",
     "openai:gpt-5.6-luna",
 )
 _CURATED_MODELS_BY_PROVIDER = (
@@ -91,6 +92,8 @@ _CURATED_MODELS_BY_PROVIDER = (
         "openai",
         (
             "gpt-6-astra",
+            "gpt-6-sol",
+            "gpt-6-luna",
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",

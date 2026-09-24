@@ -139,6 +139,8 @@ def test_curated_openai_models_only_include_selected_gpt_families() -> None:
     openai_models = tuple(model for model in CURATED_MODEL_CATALOG if model.startswith("openai:"))
     assert openai_models == (
         "openai:gpt-6-astra",
+        "openai:gpt-6-sol",
+        "openai:gpt-6-luna",
         "openai:gpt-5.6-sol",
         "openai:gpt-5.6-terra",
         "openai:gpt-5.6-luna",

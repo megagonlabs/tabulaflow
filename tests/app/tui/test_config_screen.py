@@ -109,7 +109,7 @@ async def test_fields_are_edited_and_applied_atomically() -> None:
         await pilot.pause()
         result = app.results[0]
         assert result is not None and result.config is not None
-        assert result.config.main.model == "openai:gpt-5.6-terra"
+        assert result.config.main.model == "openai:gpt-6-astra"
         assert result.config.subagent == _CONFIG.subagent
 
 
@@ -293,8 +293,9 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
+        assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-sol  (recommended)" in options
-        assert "openai:gpt-5.6-terra  (recommended)" in options
+        assert "openai:gpt-5.6-terra  (recommended)" not in options
 
         await pilot.press("escape")
         await pilot.press("down", "down", "enter")
@@ -302,7 +303,8 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-5.6-terra  (recommended)" in options
+        assert "openai:gpt-6-luna  (recommended)" in options
+        assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-luna  (recommended)" in options
         assert "openai:gpt-5.4-mini  (recommended)" not in options
 
