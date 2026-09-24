@@ -177,10 +177,10 @@ async def connect_url(
 ) -> DataConnector:
     """Build the appropriate connector from an explicit connection URL.
 
-    Normalizes the URL, dispatches by explicit connector scheme, and verifies
-    connectivity during connector construction. SQLAlchemy consumes SQL URL
-    credentials inline; Neo4j and SPARQL credentials are extracted and passed
-    separately to their drivers. Raises when the connection cannot be established.
+    Normalizes the URL and dispatches by explicit connector scheme. SQLAlchemy
+    consumes SQL URL credentials inline; Neo4j and SPARQL credentials are
+    extracted and passed separately to their drivers. SPARQL endpoints are not
+    contacted until queried.
 
     Args:
         source: A SQL, Neo4j, or explicit ``sparql+http(s)`` connection URL.

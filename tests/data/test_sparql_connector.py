@@ -271,7 +271,7 @@ async def test_nonempty_parameters_are_rejected_without_http_request() -> None:
 
     assert result.error is not None
     assert result.error.exc_type == "ValueError"
-    assert calls == 1
+    assert calls == 0
 
 
 async def test_row_and_response_size_limits_are_enforced() -> None:
@@ -538,11 +538,16 @@ class _FailingTransport(httpx.AsyncBaseTransport):
         self.closed = True
 
 
-async def test_constructor_failure_closes_http_transport() -> None:
+async def test_connector_defers_network_failure_until_query() -> None:
     transport = _FailingTransport()
-
-    with pytest.raises(RuntimeError, match="verification failed"):
-        await SPARQLConnector.from_url_async(_URL, display_name="example", transport=transport)
+    connector = await SPARQLConnector.from_url_async(_URL, transport=transport)
+    try:
+        assert transport.closed is False
+        result = await connector.run_query_async("ASK {}")
+        assert result.error is not None
+        assert result.error.exc_type == "HTTPStatusError"
+    finally:
+        await connector.close_async()
 
     assert transport.closed is True
 

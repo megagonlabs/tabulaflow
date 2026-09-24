@@ -294,7 +294,7 @@ class SPARQLConnector:
         description: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> SPARQLConnector:
-        """Create and verify a connector for an HTTP SPARQL query endpoint.
+        """Create a connector for an HTTP SPARQL query endpoint.
 
         Args:
             url: Absolute HTTP or HTTPS query-endpoint URL.
@@ -310,11 +310,10 @@ class SPARQLConnector:
                 and deterministic tests.
 
         Returns:
-            A verified SPARQL connector.
+            A SPARQL connector without contacting the endpoint.
 
         Raises:
             ValueError: If the URL or requested access mode is unsupported.
-            RuntimeError: If endpoint verification fails.
         """
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
@@ -324,7 +323,7 @@ class SPARQLConnector:
         if not read_only:
             raise ValueError("SPARQLConnector currently supports read-only query endpoints only")
         resolved_config = SPARQLConnectorConfig() if config is None else config
-        connector = cls(
+        return cls(
             endpoint_url=url,
             global_id=validate_global_id(
                 global_id or _global_id_from_url(url, principal=auth[0] if auth is not None else None)
@@ -342,14 +341,6 @@ class SPARQLConnector:
             ),
             config=resolved_config,
         )
-        try:
-            result = await connector.run_query_async("ASK {}")
-            if result.error is not None:
-                raise RuntimeError(f"SPARQL endpoint verification failed: {result.error.message}")
-            return connector
-        except BaseException:
-            await connector.close_async()
-            raise
 
     def _check_open(self) -> None:
         if self._closed:

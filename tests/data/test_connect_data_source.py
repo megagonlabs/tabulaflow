@@ -7,6 +7,7 @@ import pytest
 from tabulaflow.core import RDFSchema
 from tabulaflow.data.catalog import WIKIDATA_DESCRIPTION
 from tabulaflow.data.connect import connect_data_source
+from tabulaflow.data.sparql import SPARQLConnector
 
 
 async def test_catalog_source_uses_generic_connector_and_adds_description(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -42,6 +43,22 @@ async def test_direct_sparql_url_gets_no_catalog_description(monkeypatch: pytest
     await connect_data_source("sparql+https://example.test/query", display_name="example")
 
     assert connector.schema.description is None
+
+
+@pytest.mark.parametrize(
+    "source", ["wikidata", "sparql+https://query.wikidata.org/sparql", "sparql+https://example.test/query"]
+)
+async def test_sparql_connect_does_not_contact_endpoint(source: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def reject_network(self: SPARQLConnector, query: str) -> bytes:
+        raise AssertionError("endpoint contacted during connection")
+
+    monkeypatch.setattr(SPARQLConnector, "_read_response", reject_network)
+
+    connector = await connect_data_source(source, display_name="wikidata")
+    try:
+        assert connector.schema.display_name == "wikidata"
+    finally:
+        await connector.close_async()
 
 
 async def test_database_path_is_normalized_before_connecting(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
