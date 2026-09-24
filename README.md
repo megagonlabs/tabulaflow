@@ -15,7 +15,11 @@ run shell commands, and browse the web.
 
 Explore the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
-https://github.com/user-attachments/assets/e13b4503-5d67-4f76-8539-5343b94f9a78
+
+
+https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
+
+
 
 **More demos:**
 [Find Research Papers](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
