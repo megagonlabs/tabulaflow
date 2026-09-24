@@ -73,6 +73,7 @@ _MAX_ERROR_MESSAGE_LENGTH = 300
 LLM_UNAVAILABLE_MESSAGE = "Configure models in /config. Data connections and browsing remain available."
 _DEFAULT_INPUT_PLACEHOLDER = "Ask anything or type /connect"
 _INTERRUPT_INPUT_PLACEHOLDER = "Ctrl+C to interrupt"
+_COPY_HINT_DURATION = 1.5
 _SAMPLE_DATA_PROMPT = "Show me a table and chart on sample data"
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
     "\x1b[?2004l"  # bracketed paste off
@@ -313,6 +314,7 @@ class TabulaflowApp(App[None]):
         self._last_quit_request_ts: float | None = None
         self._saved_input_placeholder: str | None = None
         self._input_hint_timer: Timer | None = None
+        self._copy_hint_timer: Timer | None = None
         self._last_focused_result: AgentResultWidget | None = None
         # Session-scoped expansion + cursor state for the schema browser.
         # The same instance is passed to every SchemaBrowserScreen, which
@@ -330,6 +332,7 @@ class TabulaflowApp(App[None]):
             yield initialization_spinner
         with Vertical(id="bottom-bar"):
             yield InputSuggestionMenu(id="input-suggestions")
+            yield Static(Text("Copied to clipboard", style="dim"), id="copy-hint")
             yield BottomSeparator(classes="bottom-sep")
             with Horizontal(id="input-row"):
                 yield HistoryInput(
@@ -370,6 +373,7 @@ class TabulaflowApp(App[None]):
             text = self.screen.get_selected_text()
             if text:
                 self._copy_to_clipboard(text)
+                self._show_copy_hint()
         except Exception:
             logger.warning("copying selected text failed", exc_info=True)
             self.screen.clear_selection()
@@ -406,6 +410,16 @@ class TabulaflowApp(App[None]):
         else:
             if result.returncode:
                 logger.debug("native clipboard command exited with status %d", result.returncode)
+
+    def _show_copy_hint(self) -> None:
+        self.query_one("#copy-hint", Static).styles.visibility = "visible"
+        if self._copy_hint_timer is not None:
+            self._copy_hint_timer.stop()
+        self._copy_hint_timer = self.set_timer(_COPY_HINT_DURATION, self._hide_copy_hint)
+
+    def _hide_copy_hint(self) -> None:
+        self._copy_hint_timer = None
+        self.query_one("#copy-hint", Static).styles.visibility = "hidden"
 
     def action_scroll_log(self, direction: str) -> None:
         """Page-scroll the chat log even when the input bar has focus.

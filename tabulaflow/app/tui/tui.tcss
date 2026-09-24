@@ -7,7 +7,7 @@ TabulaflowApp {
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-size-vertical: 0;
-    padding: 0 0 2 1;
+    padding: 0 0 1 1;
 }
 
 #bottom-bar {
@@ -38,6 +38,15 @@ TabulaflowApp {
     background: transparent;
     text-wrap: nowrap;
     text-overflow: ellipsis;
+}
+
+#copy-hint {
+    height: 1;
+    padding: 0 2;
+    background: transparent;
+    color: $text;
+    text-align: right;
+    visibility: hidden;
 }
 
 #input-bar {

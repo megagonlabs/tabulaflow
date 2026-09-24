@@ -235,6 +235,27 @@ async def test_clear_resets_tui_and_browser_pane(
         assert len(app.query(BannerWidget)) == 1
 
 
+async def test_selected_text_shows_temporary_copy_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+    copied: list[str] = []
+    monkeypatch.setattr(app, "_copy_to_clipboard", copied.append)
+    monkeypatch.setattr(tui, "_COPY_HINT_DURATION", 0.01)
+
+    async with app.run_test() as pilot:
+        monkeypatch.setattr(app.screen, "get_selected_text", lambda: "selected text")
+        app.on_text_selected(events.TextSelected())
+
+        copy_hint = app.query_one("#copy-hint", Static)
+        assert copied == ["selected text"]
+        assert str(copy_hint.render()) == "Copied to clipboard"
+        assert copy_hint.styles.visibility == "visible"
+
+        await asyncio.sleep(0.02)
+        await pilot.pause()
+        assert copy_hint.styles.visibility == "hidden"
+
+
 def test_text_selection_failure_is_contained(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
