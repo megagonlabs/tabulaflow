@@ -63,6 +63,12 @@ tabulaflow
 TabulaFlow opens with bundled sample data, so you can start exploring
 immediately.
 
+We also recommend installing Chromium to enable agent-driven web browsing:
+
+```bash
+uv tool run --from playwright playwright install chromium
+```
+
 [Connect your data](data-agent/connecting-data.md){ .inline-cta }
 [Configuration](data-agent/configuration.md){ .inline-cta }
 
@@ -75,24 +81,27 @@ datasets.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-  Watch [Wikidata querying](#demo-wikidata).
+  [Map demo](#demo-travel){ .inline-cta } ·
+  [Graph demo](#demo-wikidata){ .inline-cta } ·
+  [Research papers demo](#demo-research){ .inline-cta } ·
+  [Database demo](#demo-database){ .inline-cta }
 - **Multimodal data browsing.** Browse databases or Hugging Face datasets
   directly (no LLM needed). View images, PDFs, and other media directly inside
   tables, or ask an agent to analyze them.
-  Watch [multimodal Hugging Face dataset exploration](#demo-hugging-face).
+  [Hugging Face demo](#demo-hugging-face){ .inline-cta }
 - **Cross-source analysis.** Combine files and databases in a local workspace
   without changing the original sources.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
-  Watch [research paper discovery](#demo-research).
+  [Find research papers demo](#demo-research){ .inline-cta }
 - **Agentic data enrichment.** Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
+  [Find research papers demo](#demo-research){ .inline-cta }
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
-  Watch [travel planning](#demo-travel).
 
 ## Why TabulaFlow?
 
