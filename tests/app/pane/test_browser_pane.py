@@ -431,6 +431,7 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
 def test_large_manual_table_scrolls_inside_viewport(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
 
     card = render_result_data(
@@ -449,13 +450,48 @@ def test_large_manual_table_scrolls_inside_viewport(tmp_path: Path) -> None:
                 pytest.skip(f"Playwright Chromium is unavailable: {exc}")
             try:
                 page = browser.new_page(viewport={"width": 1_280, "height": 720})
-                page.goto(pane.url, wait_until="domcontentloaded")
-                pane.push(turn_payload(title="manual", source="manual", cards=[card]))
-                page.wait_for_selector(".manual-preview .tabulator-tableholder")
-                page.wait_for_function(
-                    "document.querySelector('.manual-preview .tabulator-tableholder').scrollHeight > "
-                    "document.querySelector('.manual-preview .tabulator-tableholder').clientHeight"
+                browser_errors: list[str] = []
+                failed_requests: list[str] = []
+                http_errors: list[str] = []
+                page.on("pageerror", lambda error: browser_errors.append(str(error).replace(pane.token, "<token>")))
+                page.on(
+                    "requestfailed",
+                    lambda request: failed_requests.append(
+                        f"{request.resource_type}: {request.url.rsplit('/', 1)[-1].split('?', 1)[0]}"
+                    ),
                 )
+                page.on(
+                    "response",
+                    lambda response: http_errors.append(
+                        f"{response.status}: {response.url.rsplit('/', 1)[-1].split('?', 1)[0]}"
+                    )
+                    if response.status >= 400
+                    else None,
+                )
+                stage = "page initialization"
+                try:
+                    page.goto(pane.url, wait_until="domcontentloaded")
+                    pane.push(turn_payload(title="manual", source="manual", cards=[card]))
+                    stage = "manual turn delivery"
+                    page.wait_for_selector(".manual-preview")
+                    stage = "table data loading"
+                    page.wait_for_selector(".manual-preview .tf-table-view", state="attached")
+                    stage = "table rendering"
+                    page.wait_for_selector(".manual-preview .tabulator-tableholder")
+                    stage = "table overflow"
+                    page.wait_for_function(
+                        "document.querySelector('.manual-preview .tabulator-tableholder').scrollHeight > "
+                        "document.querySelector('.manual-preview .tabulator-tableholder').clientHeight"
+                    )
+                except PlaywrightTimeoutError as exc:
+                    view_status = page.locator(".view-shell").all_text_contents()
+                    pytest.fail(
+                        f"Timed out during {stage}: {str(exc).replace(pane.token, '<token>')}\n"
+                        f"View status: {view_status}\n"
+                        f"Browser errors: {browser_errors}\n"
+                        f"Failed requests: {failed_requests}\n"
+                        f"HTTP errors: {http_errors}"
+                    )
                 dimensions = page.evaluate(
                     """() => {
                       const content = document.querySelector('#content');
