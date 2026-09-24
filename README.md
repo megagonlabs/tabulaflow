@@ -9,7 +9,8 @@ general-purpose coding agent, it can also write code, work with files, run shell
 commands, and browse the web.
 
 [Documentation](https://megagonlabs.github.io/tabulaflow/) |
-[Python library](#python-library) | [Research toolkit](#research-toolkit)
+[Python library](#tabulaflow-as-a-python-library) |
+[Research toolkit](#tabulaflow-as-a-research-toolkit)
 
 Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
 key, and launch it:
@@ -29,11 +30,38 @@ uv tool run --from playwright playwright install chromium
 TabulaFlow opens with bundled sample data, so you can start exploring
 immediately.
 
-## Python library
+## TabulaFlow as a Python Library
 
-Build data agents with reusable connectors, tools, and structured outputs.
-Use the components independently or combine them in a `ChatSession` to work
-across multiple data sources. Connectors and outputs also work without an LLM.
+At the core of TabulaFlow is a minimalist, async-native Python library for building
+and researching data agents. It was the first thing we built when we started this project because existing libraries
+lacked the abstractions we needed. Its building blocks allow you to write agent
+logic that runs across different database backends and research benchmarks. The same library
+powers the [TabulaFlow data agent](https://megagonlabs.github.io/tabulaflow/).
+
+You can use any of these building blocks to create
+data applications with (e.g. data agents) or without an LLM (e.g., interactive dashboards). Choose the
+building blocks you need:
+
+- [Data connectors](https://megagonlabs.github.io/tabulaflow/python-library/data-connectors/): inspect schemas and query SQL
+  databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
+  async interface.
+- [Extraction and enrichment](https://megagonlabs.github.io/tabulaflow/python-library/extraction-and-enrichment/): turn documents
+  into structured records and enrich DataFrames with new fields.
+- [Chat sessions](https://megagonlabs.github.io/tabulaflow/python-library/chat-sessions/): use `ChatSession` to converse
+  across multiple data sources, run tools, and stream answers and progress,
+  with automatic context compaction for long conversations.
+- [Structured outputs](https://megagonlabs.github.io/tabulaflow/python-library/structured-outputs/): let agents produce tables, charts, maps,
+  and graphs as structured artifacts by defining declarative specifications, with optional lazy data resolution for
+  parameter-driven interaction.
+- [Custom agents](https://megagonlabs.github.io/tabulaflow/python-library/custom-agents/): combine reusable query, visualization, and
+  document tools with your own functions and actions, without adopting `ChatSession`.
+- [Schema and result formatting](https://megagonlabs.github.io/tabulaflow/python-library/api/output/#formatting): turn structured
+  schemas and query results into readable text for LLM prompts or human
+  inspection.
+
+These building blocks are fully typed and organized into four layers:
+`core <- data <- output <- agents`. See the
+[API reference](https://megagonlabs.github.io/tabulaflow/python-library/api-reference/) for how they fit together.
 
 Add TabulaFlow to your Python project:
 
@@ -134,16 +162,29 @@ asyncio.run(main())
 
 [Python library guide](https://megagonlabs.github.io/tabulaflow/python-library/quick-start/)
 
-## Research toolkit
+## TabulaFlow as a Research Toolkit
 
 TabulaFlow Research extends the main Python library for AI researchers working
-on text-to-SQL and data agents. Its benchmark loaders, agents, evaluation
-metrics, and experiment pipelines support flexible, rapid, and transparent
-experiments.
+on text-to-SQL and data agents. Its main building blocks include benchmark
+loaders, agents, evaluation metrics, and experiment pipelines. It is
+designed around principles that enable flexible, rapid, and transparent
+experiments:
 
-Reuse agent logic across BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA, and
-CypherBench, with managed benchmark setup and metrics adapted from official
-evaluation implementations.
+- **Benchmark-ready.** Run BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA-S, and
+  CypherBench with managed setup and official leaderboard metrics.
+- **Reusable agent logic.** One agent implementation runs on all benchmarks.
+- **Transparent and fully typed.** Work with typed tasks, schemas, and
+  predictions rather than black-box dictionaries or schema strings. Write
+  Python instead of YAML.
+- **Async-native for large-scale concurrency.** Task inference, LLM calls, and
+  database queries are async and parallelizable, with configurable concurrency
+  controls that can make full use of provider limits.
+- **Modular and extensible.** Use any building blocks you need, or extend them by
+  implementing their public protocols.
+- **Built-in tracking.** Record trajectories, token usage, and latency for
+  analysis, with optional Langfuse and Phoenix tracing.
+- **Simple and performant agents.** Simple yet state-of-the-art agent
+  implementations provide a performant starting point.
 
 With the TabulaFlow tool installed and `OPENAI_API_KEY` set, download BIRD-SQL
 and run the bundled research example:
