@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import pytest
+from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
 from tabulaflow.research.benchmarks import beaver, cypherbench
@@ -200,7 +201,7 @@ async def test_graph_ready_requires_imported_data_and_live_bolt(monkeypatch: pyt
         return log_tail
 
     monkeypatch.setattr(cypherbench, "run_command", run_command)
-    monkeypatch.setattr(cypherbench.AsyncGraphDatabase, "driver", driver)
+    monkeypatch.setattr(AsyncGraphDatabase, "driver", driver)
 
     # Import finished but Bolt is down.
     assert await cypherbench._graph_ready("art") is False
