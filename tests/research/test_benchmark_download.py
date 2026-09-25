@@ -133,19 +133,14 @@ async def test_manual_setup_error_shows_destination_and_missing_files(
 async def test_cypherbench_uses_a_flat_installation_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def snapshot_download(**kwargs: object) -> None:
         assert kwargs["local_dir"] == tmp_path
+        assert kwargs["revision"] == cypherbench.CYPHERBENCH_DATA_REVISION
         (tmp_path / "test.json").write_text("[]")
 
-    async def download_file(url: str, destination: Path) -> None:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text("../benchmark/graphs/simplekg/example.json")
-
     monkeypatch.setattr(cypherbench, "snapshot_download", snapshot_download)
-    monkeypatch.setattr(cypherbench, "download_file", download_file)
 
     await cypherbench._fetch_cypherbench(tmp_path, lambda _: None)
 
-    compose = (tmp_path / "docker" / "docker-compose-test.yml").read_text()
-    assert compose == "../graphs/simplekg/example.json"
+    assert (tmp_path / "test.json").exists()
 
 
 def test_every_public_benchmark_has_an_automatic_installer() -> None:

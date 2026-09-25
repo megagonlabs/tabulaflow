@@ -1,8 +1,8 @@
 """CypherBench text-to-Cypher benchmark (Neo4j property graphs).
 
-Install it with ``tabulaflow benchmark download cypherbench``. Deploy graphs with
-the installed official Docker Compose files; default Bolt host ports and
-``neo4j`` / ``cypherbench`` credentials match those files.
+Install it with ``tabulaflow benchmark download cypherbench``. Graphs run as
+local Docker containers; default Bolt host ports and ``neo4j`` /
+``cypherbench`` credentials match the official CypherBench deployment.
 """
 
 import asyncio
@@ -16,9 +16,10 @@ from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import Neo4jError
 
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback, download_file
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback
 from tabulaflow.research.benchmarks.runtime import (
     BenchmarkRuntime,
+    container_exists,
     ensure_docker,
     run_command,
     wait_until_ready,
@@ -27,7 +28,7 @@ from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
 
-# Host Bolt port per graph (container listens on 7687). Matches official compose.
+# Host Bolt port per graph (container listens on 7687). Matches the official deployment.
 CYPHERBENCH_DEFAULT_GRAPH_PORTS: dict[str, int] = {
     "art": 15060,
     "biology": 15061,
@@ -55,7 +56,10 @@ CYPHERBENCH_SPLIT_GRAPHS: dict[str, list[str]] = {
     "train": ["art", "biology", "soccer", "terrorist_attack"],
 }
 CYPHERBENCH_DATA_REVISION = "efdfde14c04fe174b4960544c1b1001530e2a178"
-CYPHERBENCH_RUNTIME_REVISION = "94605181d12d9bc837f737a37b9d46471c2f3eff"
+
+# Container spec mirrors the official CypherBench compose files
+# (github.com/megagonlabs/cypherbench/docker @ 94605181d12d9bc837f737a37b9d46471c2f3eff).
+CYPHERBENCH_NEO4J_IMAGE = "megagonlabs/neo4j-with-loader:2.4"
 
 
 async def _fetch_cypherbench(destination: Path, progress: ProgressCallback) -> None:
@@ -67,21 +71,6 @@ async def _fetch_cypherbench(destination: Path, progress: ProgressCallback) -> N
         revision=CYPHERBENCH_DATA_REVISION,
         local_dir=destination,
     )
-    runtime_files = (".env", "docker-compose-test.yml", "docker-compose-train.yml")
-    progress("Downloading database runtime")
-    await asyncio.gather(
-        *[
-            download_file(
-                "https://raw.githubusercontent.com/megagonlabs/cypherbench/"
-                f"{CYPHERBENCH_RUNTIME_REVISION}/docker/{filename}",
-                destination / "docker" / filename,
-            )
-            for filename in runtime_files
-        ]
-    )
-    for filename in runtime_files[1:]:
-        path = destination / "docker" / filename
-        path.write_text(path.read_text().replace("../benchmark/graphs/", "../graphs/"))
 
 
 CYPHERBENCH_INSTALLATION = BenchmarkInstallation(
@@ -90,9 +79,6 @@ CYPHERBENCH_INSTALLATION = BenchmarkInstallation(
         "test.json",
         "train.json",
         *(f"graphs/simplekg/{graph}_simplekg.json" for graph in CYPHERBENCH_DEFAULT_GRAPH_PORTS),
-        "docker/.env",
-        "docker/docker-compose-test.yml",
-        "docker/docker-compose-train.yml",
     ),
     fetch=_fetch_cypherbench,
 )
@@ -118,25 +104,43 @@ async def _cypherbench_ready(split: str | None) -> bool:
     return all(await asyncio.gather(*(graph_ready(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split])))
 
 
+def _container_name(graph: str) -> str:
+    # Matches the container_name pinned by the official compose files, so
+    # containers created by earlier compose-based installs are reused.
+    return f"cypherbench-{graph}"
+
+
 async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> None:
     assert split is not None
     await ensure_docker()
-    await run_command("docker", "compose", "version")
     progress(f"Starting CypherBench {split} databases")
-    docker_dir = CYPHERBENCH_INSTALLATION.directory / "docker"
-    await run_command(
-        "docker",
-        "compose",
-        "--project-name",
-        f"tabulaflow-cypherbench-{split}",
-        "--env-file",
-        ".env",
-        "-f",
-        f"docker-compose-{split}.yml",
-        "up",
-        "-d",
-        cwd=docker_dir,
-    )
+    existing = []
+    for graph in CYPHERBENCH_SPLIT_GRAPHS[split]:
+        container = _container_name(graph)
+        if await container_exists(container):
+            existing.append(container)
+            continue
+        graph_file = CYPHERBENCH_INSTALLATION.directory / "graphs" / "simplekg" / f"{graph}_simplekg.json"
+        await run_command(
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            container,
+            "-p",
+            f"{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}:7687",
+            "-e",
+            "NEO4J_AUTH=neo4j/cypherbench",
+            "-e",
+            "NEO4J_server_http__enabled__modules=TRANSACTIONAL_ENDPOINTS,UNMANAGED_EXTENSIONS,ENTERPRISE_MANAGEMENT_ENDPOINTS",
+            "-e",
+            'NEO4J_PLUGINS=["apoc", "graph-data-science"]',
+            "-v",
+            f"{graph_file}:/init/graph.json:ro",
+            CYPHERBENCH_NEO4J_IMAGE,
+        )
+    if existing:
+        await run_command("docker", "start", *existing)
     progress("Waiting for Neo4j")
     await wait_until_ready(lambda: _cypherbench_ready(split), f"CypherBench {split} databases")
 
@@ -144,20 +148,11 @@ async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> N
 async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> None:
     assert split is not None
     await ensure_docker()
-    await run_command("docker", "compose", "version")
     progress(f"Stopping CypherBench {split} databases")
-    await run_command(
-        "docker",
-        "compose",
-        "--project-name",
-        f"tabulaflow-cypherbench-{split}",
-        "--env-file",
-        ".env",
-        "-f",
-        f"docker-compose-{split}.yml",
-        "stop",
-        cwd=CYPHERBENCH_INSTALLATION.directory / "docker",
-    )
+    containers = [_container_name(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split]]
+    existing = [container for container in containers if await container_exists(container)]
+    if existing:
+        await run_command("docker", "stop", *existing)
 
 
 CYPHERBENCH_RUNTIME = BenchmarkRuntime(

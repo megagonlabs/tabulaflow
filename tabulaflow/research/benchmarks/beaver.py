@@ -18,6 +18,7 @@ from tabulaflow.research.benchmarks.installation import (
 from tabulaflow.research.benchmarks.runtime import (
     BenchmarkRuntime,
     BenchmarkRuntimeError,
+    container_exists,
     ensure_docker,
     run_command,
     wait_until_ready,
@@ -67,11 +68,6 @@ BEAVER_CONTAINERS = {
 }
 
 
-async def _container_exists(name: str) -> bool:
-    output = await run_command("docker", "ps", "-a", "--format", "{{.Names}}")
-    return name in output.splitlines()
-
-
 async def _beaver_ready(split: str | None) -> bool:
     async def database_ready(container: str) -> bool:
         try:
@@ -88,7 +84,7 @@ async def _start_beaver(split: str | None, progress: ProgressCallback) -> None:
     progress("Starting Beaver databases")
     existing = []
     for name, (container, port) in BEAVER_CONTAINERS.items():
-        if await _container_exists(container):
+        if await container_exists(container):
             existing.append(container)
             continue
         await run_command(
@@ -117,7 +113,7 @@ async def _start_beaver(split: str | None, progress: ProgressCallback) -> None:
 async def _stop_beaver(split: str | None, progress: ProgressCallback) -> None:
     await ensure_docker()
     progress("Stopping Beaver databases")
-    existing = [container for container, _ in BEAVER_CONTAINERS.values() if await _container_exists(container)]
+    existing = [container for container, _ in BEAVER_CONTAINERS.values() if await container_exists(container)]
     if existing:
         await run_command("docker", "stop", *existing)
 

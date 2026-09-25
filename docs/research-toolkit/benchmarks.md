@@ -125,8 +125,8 @@ tabulaflow benchmark download ambrosia-s
 
 ## CypherBench
 
-Text-to-Cypher tasks over Neo4j property graphs. With Docker running and
-Docker Compose available, download the data and start the test databases:
+Text-to-Cypher tasks over Neo4j property graphs. With Docker running,
+download the data and start the test databases:
 
 ```bash
 tabulaflow benchmark start cypherbench

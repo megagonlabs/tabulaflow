@@ -74,16 +74,19 @@ async def test_benchmark_preflight_checks_managed_runtime(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
-async def test_cypherbench_runtime_uses_split_compose_file(
+async def test_cypherbench_runtime_runs_a_container_per_graph(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    commands: list[tuple[tuple[str, ...], Path | None]] = []
+    commands: list[tuple[str, ...]] = []
 
     async def ensure_docker() -> None:
         return None
 
+    async def container_exists(name: str) -> bool:
+        return False
+
     async def run_command(*command: str, cwd: Path | None = None) -> str:
-        commands.append((command, cwd))
+        commands.append(command)
         return ""
 
     async def wait_until_ready(check: Callable[[], Awaitable[bool]], description: str, **kwargs: object) -> None:
@@ -93,15 +96,19 @@ async def test_cypherbench_runtime_uses_split_compose_file(
         return split == "train"
 
     monkeypatch.setattr(cypherbench, "ensure_docker", ensure_docker)
+    monkeypatch.setattr(cypherbench, "container_exists", container_exists)
     monkeypatch.setattr(cypherbench, "run_command", run_command)
     monkeypatch.setattr(cypherbench, "wait_until_ready", wait_until_ready)
     monkeypatch.setattr(cypherbench, "_cypherbench_ready", ready)
 
     await cypherbench.CYPHERBENCH_RUNTIME.start("train", lambda _: None)
 
-    command, cwd = next(item for item in commands if "up" in item[0])
-    assert "docker-compose-train.yml" in command
-    assert cwd == cypherbench.CYPHERBENCH_INSTALLATION.directory / "docker"
+    run_commands = [command for command in commands if command[:2] == ("docker", "run")]
+    assert len(run_commands) == len(cypherbench.CYPHERBENCH_SPLIT_GRAPHS["train"])
+    assert all(command[-1] == cypherbench.CYPHERBENCH_NEO4J_IMAGE for command in run_commands)
+    art = next(command for command in run_commands if "cypherbench-art" in command)
+    assert "15060:7687" in art
+    assert any(item.endswith("graphs/simplekg/art_simplekg.json:/init/graph.json:ro") for item in art)
 
 
 @pytest.mark.asyncio
@@ -122,7 +129,7 @@ async def test_beaver_runtime_creates_persistent_mysql_containers(monkeypatch: p
         return None
 
     monkeypatch.setattr(beaver, "ensure_docker", ensure_docker)
-    monkeypatch.setattr(beaver, "_container_exists", container_exists)
+    monkeypatch.setattr(beaver, "container_exists", container_exists)
     monkeypatch.setattr(beaver, "run_command", run_command)
     monkeypatch.setattr(beaver, "wait_until_ready", wait_until_ready)
 
