@@ -87,6 +87,7 @@ tabulaflow = [
     "agents/chat/*.md",
     "examples/support/*",
     "app/tui/*.tcss",
+    "app/assets/model_catalog.json",
     "app/assets/samples/sample.sqlite",
     "app/pane/assets/fonts/figtree/*",
     "app/pane/assets/ui/*",

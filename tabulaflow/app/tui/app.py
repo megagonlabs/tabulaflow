@@ -35,6 +35,7 @@ from tabulaflow.app.config import (
     ResolvedLLMConfig,
     update_app_config,
 )
+from tabulaflow.app.model_catalog import ModelCatalog
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane.cards import render_resolved_output
 from tabulaflow.app.pane.contract import (
@@ -303,6 +304,7 @@ class TabulaflowApp(App[None]):
         self._browser_pane_public_url = browser_pane_public_url
         self._runtime_paths = runtime_paths
         self._project_dir = project_dir
+        self._model_catalog = ModelCatalog()
         self._session: AppSession | None = None
         self._browser_pane: BrowserPane | None = None
         self._session_lock = asyncio.Lock()
@@ -359,6 +361,7 @@ class TabulaflowApp(App[None]):
         self.query_one("#input-bar", HistoryInput).focus()
         chat_log.follow_new_content(force=True)
         self._ensure_browser_pane()
+        self.run_worker(self._model_catalog.warm(), exclusive=True, group="model-catalog")
         self.call_after_refresh(self._start_llm_activation, self._llm_config)
 
     def on_text_selected(self, event: events.TextSelected) -> None:
@@ -1136,7 +1139,7 @@ class TabulaflowApp(App[None]):
             from tabulaflow.app.tui.screens.config import ConfigScreen
 
             self.push_screen(
-                ConfigScreen(self._llm_config),
+                ConfigScreen(self._llm_config, catalog_loader=self._model_catalog.get),
                 self._on_config_closed,
             )
             return

@@ -27,7 +27,7 @@ from tabulaflow.app.config import (
     LLMRoleConfig,
     ResolvedLLMConfig,
 )
-from tabulaflow.app.model_catalog import llm_model_catalog, load_model_catalog
+from tabulaflow.app.model_catalog import llm_model_catalog, load_local_model_catalog
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
@@ -64,7 +64,7 @@ class ModelPickerScreen(Screen[str | None]):
         super().__init__()
         self._role = role
         self._current = current
-        self._catalog_loader = catalog_loader or load_model_catalog
+        self._catalog_loader = catalog_loader or load_local_model_catalog
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
         self._recommendations = recommended
         self._recommended = frozenset(recommended)
@@ -235,9 +235,15 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         Binding("enter", "edit", "Select", show=False),
     ]
 
-    def __init__(self, current: ResolvedLLMConfig) -> None:
+    def __init__(
+        self,
+        current: ResolvedLLMConfig,
+        *,
+        catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+    ) -> None:
         super().__init__()
         self._current = current
+        self._catalog_loader = catalog_loader or load_local_model_catalog
         self._enabled = current.config is not None
         default = (
             ANTHROPIC_DEFAULT_LLM_CONFIG
@@ -314,7 +320,8 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         role = cast(LLMRoleConfig, getattr(self._config, role_name))
         if setting == "model":
             self.app.push_screen(
-                ModelPickerScreen(role_name, role.model), lambda value: self._set_model(role_name, value)
+                ModelPickerScreen(role_name, role.model, catalog_loader=self._catalog_loader),
+                lambda value: self._set_model(role_name, value),
             )
         else:
             self.action_change(1)

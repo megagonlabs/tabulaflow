@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 from functools import cache
@@ -16,10 +17,11 @@ from tabulaflow.core._cache import DEFAULT_CACHE_DIR, cache_lock, read_cached_mo
 
 MODEL_CATALOG_URL = "https://models.dev/api.json"
 MODEL_CATALOG_CACHE_PATH = DEFAULT_CACHE_DIR / "model_catalog" / "models.dev.json"
+MODEL_CATALOG_BUNDLED_PATH = Path(__file__).parent / "assets" / "model_catalog.json"
 MODEL_CATALOG_MAX_AGE = timedelta(days=1)
 MIN_MODEL_CONTEXT_TOKENS = 128_000
 MODEL_RELEASE_MAX_AGE_YEARS = 1
-_CACHE_SCHEMA_VERSION = 3
+_CACHE_SCHEMA_VERSION = 5
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
     "openai": "openai",
@@ -58,13 +60,21 @@ class _CatalogEntry(BaseModel):
     release_date: date
 
 
-class _CatalogCache(BaseModel):
+class _CatalogData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: int = _CACHE_SCHEMA_VERSION
+    models: tuple[_CatalogEntry, ...]
+
+
+class _BundledCatalog(_CatalogData):
+    snapshot_date: date
+    release_cutoff: date
+
+
+class _CatalogCache(_CatalogData):
     checked_at: datetime
     etag: str | None = None
-    models: tuple[_CatalogEntry, ...]
 
 
 class _ModelLimit(BaseModel):
@@ -98,11 +108,11 @@ def _installed_provider_prefixes() -> frozenset[str]:
     return frozenset(prefixes)
 
 
-def _release_cutoff(today: date) -> date:
+def _release_cutoff(snapshot_date: date) -> date:
     try:
-        return today.replace(year=today.year - MODEL_RELEASE_MAX_AGE_YEARS)
+        return snapshot_date.replace(year=snapshot_date.year - MODEL_RELEASE_MAX_AGE_YEARS)
     except ValueError:
-        return today.replace(year=today.year - MODEL_RELEASE_MAX_AGE_YEARS, day=28)
+        return snapshot_date.replace(year=snapshot_date.year - MODEL_RELEASE_MAX_AGE_YEARS, day=28)
 
 
 def _parse_catalog(
@@ -139,22 +149,29 @@ def _parse_catalog(
                 existing = models.get(model_id)
                 if existing is None or model.release_date > existing.release_date:
                     models[model_id] = _CatalogEntry(id=model_id, release_date=model.release_date)
-    return tuple(models.values())
+    return tuple(sorted(models.values(), key=lambda model: model.id))
 
 
 def _available_models(
     models: tuple[_CatalogEntry, ...],
     *,
-    today: date,
+    release_cutoff: date,
     provider_prefixes: frozenset[str] | None = None,
 ) -> tuple[str, ...]:
     installed = provider_prefixes if provider_prefixes is not None else _installed_provider_prefixes()
-    cutoff = _release_cutoff(today)
     return tuple(
         model.id
         for model in models
-        if model.id.partition(":")[0] in installed and model.release_date >= cutoff
+        if model.id.partition(":")[0] in installed and model.release_date >= release_cutoff
     )
+
+
+async def _available_models_async(
+    models: tuple[_CatalogEntry, ...],
+    *,
+    release_cutoff: date,
+) -> tuple[str, ...]:
+    return await asyncio.to_thread(_available_models, models, release_cutoff=release_cutoff)
 
 
 def llm_model_catalog(
@@ -177,18 +194,47 @@ async def _read_cache(path: Path) -> _CatalogCache | None:
     return cache_entry if cache_entry.schema_version == _CACHE_SCHEMA_VERSION else None
 
 
+async def _read_bundled_catalog(path: Path) -> _BundledCatalog | None:
+    try:
+        catalog = await read_cached_model(path, _BundledCatalog)
+    except (OSError, ValidationError):
+        return None
+    return catalog if catalog.schema_version == _CACHE_SCHEMA_VERSION else None
+
+
+async def load_local_model_catalog(
+    *,
+    path: Path = MODEL_CATALOG_CACHE_PATH,
+    bundled_path: Path = MODEL_CATALOG_BUNDLED_PATH,
+) -> tuple[str, ...]:
+    """Return the user cache or bundled catalog without accessing the network."""
+    bundled = await _read_bundled_catalog(bundled_path)
+    if bundled is None:
+        return ()
+    catalog: _CatalogData = await _read_cache(path) or bundled
+    return await _available_models_async(catalog.models, release_cutoff=bundled.release_cutoff)
+
+
 async def load_model_catalog(
     *,
     path: Path = MODEL_CATALOG_CACHE_PATH,
+    bundled_path: Path = MODEL_CATALOG_BUNDLED_PATH,
     now: datetime | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> tuple[str, ...]:
-    """Return the cached catalog, conditionally refreshing it once per day."""
+    """Conditionally refresh the catalog, retaining local data on failure."""
     checked_at = now or datetime.now(timezone.utc)
     async with cache_lock(path):
+        bundled = await _read_bundled_catalog(bundled_path)
+        if bundled is None:
+            return ()
         cached = await _read_cache(path)
+        local: _CatalogData = cached or bundled
         if cached is not None and checked_at - cached.checked_at.astimezone(timezone.utc) < MODEL_CATALOG_MAX_AGE:
-            return _available_models(cached.models, today=checked_at.date())
+            return await _available_models_async(
+                cached.models,
+                release_cutoff=bundled.release_cutoff,
+            )
 
         headers = {"Accept": "application/json", "User-Agent": f"tabulaflow/{__version__}"}
         if cached is not None and cached.etag is not None:
@@ -202,16 +248,62 @@ async def load_model_catalog(
                 refreshed = cached.model_copy(update={"checked_at": checked_at})
             else:
                 response.raise_for_status()
-                models = _parse_catalog(response.json())
+                models = await asyncio.to_thread(lambda: _parse_catalog(response.json()))
                 refreshed = _CatalogCache(
                     checked_at=checked_at,
                     etag=response.headers.get("etag"),
                     models=models,
                 )
             await write_cached_model(path, refreshed)
-            return _available_models(refreshed.models, today=checked_at.date())
+            return await _available_models_async(
+                refreshed.models,
+                release_cutoff=bundled.release_cutoff,
+            )
         except (httpx.HTTPError, ValueError, ValidationError):
-            return _available_models(cached.models, today=checked_at.date()) if cached is not None else ()
+            return await _available_models_async(
+                local.models,
+                release_cutoff=bundled.release_cutoff,
+            )
         finally:
             if owns_client:
                 await http_client.aclose()
+
+
+class ModelCatalog:
+    """Process-local model catalog with local-first background refresh."""
+
+    def __init__(
+        self,
+        *,
+        path: Path = MODEL_CATALOG_CACHE_PATH,
+        bundled_path: Path = MODEL_CATALOG_BUNDLED_PATH,
+    ) -> None:
+        self._path = path
+        self._bundled_path = bundled_path
+        self._models: tuple[str, ...] | None = None
+        self._load_lock = asyncio.Lock()
+        self._warm_lock = asyncio.Lock()
+        self._refresh_attempted = False
+
+    async def get(self) -> tuple[str, ...]:
+        """Return local models without waiting for a network refresh."""
+        async with self._load_lock:
+            if self._models is None:
+                self._models = await load_local_model_catalog(
+                    path=self._path,
+                    bundled_path=self._bundled_path,
+                )
+            return self._models
+
+    async def warm(self) -> tuple[str, ...]:
+        """Load local models, then refresh them at most once for this process."""
+        await self.get()
+        async with self._warm_lock:
+            if not self._refresh_attempted:
+                self._refresh_attempted = True
+                self._models = await load_model_catalog(
+                    path=self._path,
+                    bundled_path=self._bundled_path,
+                )
+            assert self._models is not None
+            return self._models

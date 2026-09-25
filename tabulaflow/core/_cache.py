@@ -52,11 +52,13 @@ async def remove_cached_file(path: Path) -> None:
 
 
 async def read_cached_model(path: Path, model_type: type[_ModelT]) -> _ModelT:
-    return model_type.model_validate_json(await read_bytes(path))
+    content = await read_bytes(path)
+    return await asyncio.to_thread(model_type.model_validate_json, content)
 
 
 async def write_cached_model(path: Path, model: BaseModel) -> None:
-    await atomic_write_bytes(path, model.model_dump_json(indent=2).encode())
+    content = await asyncio.to_thread(lambda: model.model_dump_json(indent=2).encode())
+    await atomic_write_bytes(path, content)
 
 
 def stable_cache_key(payload: object) -> str:

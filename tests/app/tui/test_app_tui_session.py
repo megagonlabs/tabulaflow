@@ -108,8 +108,12 @@ def _app(
 
 
 def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def warm_model_catalog() -> tuple[str, ...]:
+        return ()
+
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
     monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
+    monkeypatch.setattr(app._model_catalog, "warm", warm_model_catalog)  # noqa: SLF001
 
 
 def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:

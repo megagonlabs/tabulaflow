@@ -16,11 +16,11 @@ _TEST_MODEL_CATALOG = (
 
 
 @pytest.fixture(autouse=True)
-def _stub_remote_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_local_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
     async def test_catalog() -> tuple[str, ...]:
         return _TEST_MODEL_CATALOG
 
-    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_model_catalog", test_catalog)
+    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_local_model_catalog", test_catalog)
 
 
 _CONFIG = LLMConfig(
