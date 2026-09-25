@@ -21,10 +21,11 @@ def main() -> None:
     )
     response.raise_for_status()
     snapshot_date = datetime.now(timezone.utc).date()
+    release_cutoff = _release_cutoff(snapshot_date)
     catalog = _BundledCatalog(
         snapshot_date=snapshot_date,
-        release_cutoff=_release_cutoff(snapshot_date),
-        models=_parse_catalog(response.json()),
+        release_cutoff=release_cutoff,
+        models=_parse_catalog(response.json(), release_cutoff=release_cutoff),
     )
     MODEL_CATALOG_BUNDLED_PATH.write_text(catalog.model_dump_json() + "\n")
 

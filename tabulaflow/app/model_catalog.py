@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from calendar import monthrange
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 from functools import cache
@@ -20,7 +21,7 @@ MODEL_CATALOG_CACHE_PATH = DEFAULT_CACHE_DIR / "model_catalog" / "models.dev.jso
 MODEL_CATALOG_BUNDLED_PATH = Path(__file__).parent / "assets" / "model_catalog.json"
 MODEL_CATALOG_MAX_AGE = timedelta(days=1)
 MIN_MODEL_CONTEXT_TOKENS = 128_000
-MODEL_RELEASE_MAX_AGE_YEARS = 1
+MODEL_RELEASE_MAX_AGE_MONTHS = 6
 _CACHE_SCHEMA_VERSION = 5
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
@@ -109,15 +110,16 @@ def _installed_provider_prefixes() -> frozenset[str]:
 
 
 def _release_cutoff(snapshot_date: date) -> date:
-    try:
-        return snapshot_date.replace(year=snapshot_date.year - MODEL_RELEASE_MAX_AGE_YEARS)
-    except ValueError:
-        return snapshot_date.replace(year=snapshot_date.year - MODEL_RELEASE_MAX_AGE_YEARS, day=28)
+    month_index = snapshot_date.year * 12 + snapshot_date.month - 1 - MODEL_RELEASE_MAX_AGE_MONTHS
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    return date(year, month, min(snapshot_date.day, monthrange(year, month)[1]))
 
 
 def _parse_catalog(
     payload: object,
     *,
+    release_cutoff: date,
     provider_prefixes: frozenset[str] | None = None,
 ) -> tuple[_CatalogEntry, ...]:
     if not isinstance(payload, dict):
@@ -144,6 +146,7 @@ def _parse_catalog(
                 and model.limit.context >= MIN_MODEL_CONTEXT_TOKENS
                 and outputs is not None
                 and set(outputs) == {"text"}
+                and model.release_date >= release_cutoff
             ):
                 model_id = f"{provider_prefix}:{model.id}"
                 existing = models.get(model_id)
@@ -248,7 +251,12 @@ async def load_model_catalog(
                 refreshed = cached.model_copy(update={"checked_at": checked_at})
             else:
                 response.raise_for_status()
-                models = await asyncio.to_thread(lambda: _parse_catalog(response.json()))
+                models = await asyncio.to_thread(
+                    lambda: _parse_catalog(
+                        response.json(),
+                        release_cutoff=bundled.release_cutoff,
+                    )
+                )
                 refreshed = _CatalogCache(
                     checked_at=checked_at,
                     etag=response.headers.get("etag"),
