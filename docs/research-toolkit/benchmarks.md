@@ -126,13 +126,15 @@ tabulaflow benchmark download ambrosia-s
 ## CypherBench
 
 Text-to-Cypher tasks over Neo4j property graphs. With Docker running,
-download the data and start the test databases:
+download the data and start the test databases (starting imports each
+graph into Neo4j, which can take a while):
 
 ```bash
 tabulaflow benchmark start cypherbench
 ```
 
-Stop the databases when finished:
+Stop the databases when finished (this removes the containers, so the
+next start imports again):
 
 ```bash
 tabulaflow benchmark stop cypherbench
