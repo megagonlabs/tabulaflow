@@ -21,10 +21,10 @@ def _model(
     model_id: str,
     *,
     context: int = 128_000,
-    release_date: str = "2025-01-01",
+    release_date: str = "2026-01-01",
     tool_call: bool = True,
     status: str | None = None,
-    output: list[str] | None = None,
+    output: tuple[str, ...] | None = ("text",),
 ) -> dict[str, object]:
     return {
         "id": model_id,
@@ -32,7 +32,7 @@ def _model(
         "tool_call": tool_call,
         "status": status,
         "limit": {"context": context},
-        "modalities": {} if output is None else {"output": output},
+        "modalities": {} if output is None else {"output": list(output)},
     }
 
 
@@ -40,10 +40,13 @@ def test_catalog_filter_is_shared_and_capability_based() -> None:
     payload = _catalog(
         _model("kept"),
         _model("short", context=127_999),
-        _model("old", release_date="2024-09-23"),
+        _model("old", release_date="2025-09-23"),
         _model("no-tools", tool_call=False),
         _model("deprecated", status="deprecated"),
-        _model("image-output", output=["image"]),
+        _model("missing-output", output=None),
+        _model("image-output", output=("image",)),
+        _model("audio-output", output=("text", "audio")),
+        _model("multimodal-output", output=("text", "image")),
     )
 
     parsed = _parse_catalog(payload, provider_prefixes=frozenset({"fireworks"}))
@@ -84,7 +87,7 @@ async def test_catalog_cache_reapplies_rolling_release_cutoff(tmp_path: Path) ->
     first_now = datetime(2026, 9, 24, tzinfo=timezone.utc)
     responses = iter(
         (
-            httpx.Response(200, json=_catalog(_model("aging", release_date="2024-09-24")), headers={"ETag": '"v1"'}),
+            httpx.Response(200, json=_catalog(_model("aging", release_date="2025-09-24")), headers={"ETag": '"v1"'}),
             httpx.Response(304),
         )
     )

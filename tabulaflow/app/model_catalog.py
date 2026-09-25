@@ -18,8 +18,8 @@ MODEL_CATALOG_URL = "https://models.dev/api.json"
 MODEL_CATALOG_CACHE_PATH = DEFAULT_CACHE_DIR / "model_catalog" / "models.dev.json"
 MODEL_CATALOG_MAX_AGE = timedelta(days=1)
 MIN_MODEL_CONTEXT_TOKENS = 128_000
-MODEL_RELEASE_MAX_AGE_YEARS = 2
-_CACHE_SCHEMA_VERSION = 2
+MODEL_RELEASE_MAX_AGE_YEARS = 1
+_CACHE_SCHEMA_VERSION = 3
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
     "openai": "openai",
@@ -132,7 +132,8 @@ def _parse_catalog(
                 and model.status not in {"deprecated", "alpha"}
                 and model.limit.context is not None
                 and model.limit.context >= MIN_MODEL_CONTEXT_TOKENS
-                and (outputs is None or "text" in outputs)
+                and outputs is not None
+                and set(outputs) == {"text"}
             ):
                 model_id = f"{provider_prefix}:{model.id}"
                 existing = models.get(model_id)
