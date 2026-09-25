@@ -6,7 +6,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from tabulaflow.app.model_catalog import _available_models, _parse_catalog, load_model_catalog
+from tabulaflow.app.model_catalog import (
+    _available_models,
+    _parse_catalog,
+    llm_model_catalog,
+    load_model_catalog,
+)
 
 
 def _catalog(*models: dict[str, object]) -> dict[str, object]:
@@ -53,6 +58,29 @@ def test_catalog_filter_is_shared_and_capability_based() -> None:
 
     assert _available_models(parsed, today=date(2026, 9, 24), provider_prefixes=frozenset({"fireworks"})) == (
         "fireworks:kept",
+    )
+
+
+def test_model_catalog_orders_explicit_models_without_an_implicit_fallback() -> None:
+    catalog = llm_model_catalog(
+        current="anthropic:claude-sonnet-5",
+        recommended=("openai:gpt-5.6-sol",),
+        available=(
+            "xai:grok-4.6",
+            "anthropic:claude-haiku-4-5",
+            "openai:gpt-5.6-sol",
+            "anthropic:claude-sonnet-5",
+        ),
+    )
+
+    assert catalog == (
+        "openai:gpt-5.6-sol",
+        "anthropic:claude-sonnet-5",
+        "anthropic:claude-haiku-4-5",
+        "xai:grok-4.6",
+    )
+    assert llm_model_catalog(current="gateway/openai:custom", recommended=()) == (
+        "gateway/openai:custom",
     )
 
 

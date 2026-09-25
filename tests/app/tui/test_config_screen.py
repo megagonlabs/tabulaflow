@@ -8,13 +8,19 @@ from textual.widgets import Static
 from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
 
+_TEST_MODEL_CATALOG = (
+    "openai:gpt-6-astra",
+    "anthropic:claude-sonnet-5",
+    *(f"test:model-{index}" for index in range(40)),
+)
+
 
 @pytest.fixture(autouse=True)
-def _disable_remote_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def empty_catalog() -> tuple[str, ...]:
-        return ()
+def _stub_remote_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_catalog() -> tuple[str, ...]:
+        return _TEST_MODEL_CATALOG
 
-    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_model_catalog", empty_catalog)
+    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_model_catalog", test_catalog)
 
 
 _CONFIG = LLMConfig(
@@ -198,14 +204,14 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "openai:" not in options
 
 
-async def test_model_picker_loads_discovered_models() -> None:
-    async def discovered_catalog() -> tuple[str, ...]:
+async def test_model_picker_loads_available_models() -> None:
+    async def available_catalog() -> tuple[str, ...]:
         return ("fireworks:accounts/fireworks/models/kimi-k3",)
 
     picker = ModelPickerScreen(
         "main",
         "openai:gpt-5.6-sol",
-        catalog_loader=discovered_catalog,
+        catalog_loader=available_catalog,
     )
 
     class PickerApp(App[None]):

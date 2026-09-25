@@ -4,23 +4,17 @@ import json
 from pathlib import Path
 
 import pytest
-from google.auth.exceptions import DefaultCredentialsError
-from pydantic_ai.exceptions import UserError
-from pydantic_ai.models import infer_model, known_model_names
 
 from tabulaflow.app.config import (
     ANTHROPIC_DEFAULT_LLM_CONFIG,
-    CURATED_MODEL_CATALOG,
     LLM_OFF,
     OPENAI_DEFAULT_LLM_CONFIG,
     AppConfig,
     InvalidAppConfigError,
     LLMConfig,
     LLMRoleConfig,
-    RECOMMENDED_MAIN_MODELS,
     ResolvedLLMConfig,
     fanout_concurrency_for_rpm,
-    llm_model_catalog,
     load_app_config,
     model_supports_apply_patch,
     resolve_llm_config,
@@ -62,121 +56,6 @@ def test_resolved_config_exposes_effective_request_rate() -> None:
 )
 def test_fanout_concurrency_tracks_ten_seconds_of_requests(rpm: int, expected: int) -> None:
     assert fanout_concurrency_for_rpm(rpm) == expected
-
-
-def test_model_catalog_contains_recommendations_current_and_curated_models() -> None:
-    catalog = llm_model_catalog(current="vendor:new-model", recommended=RECOMMENDED_MAIN_MODELS)
-    assert catalog[: len(RECOMMENDED_MAIN_MODELS) + 1] == (*RECOMMENDED_MAIN_MODELS, "vendor:new-model")
-    assert "anthropic:claude-opus-5-5" in catalog
-    assert "test" not in catalog
-    assert not any(model.startswith("openai-chat:") for model in catalog)
-    assert len(catalog) == len(set(catalog))
-    assert set(CURATED_MODEL_CATALOG) <= set(known_model_names())
-
-
-@pytest.mark.parametrize("model", CURATED_MODEL_CATALOG)
-def test_curated_model_resolves_to_a_provider_or_missing_credentials(
-    model: str,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    for name in (
-        "ANTHROPIC_API_KEY",
-        "AWS_ACCESS_KEY_ID",
-        "AWS_DEFAULT_REGION",
-        "AWS_REGION",
-        "CEREBRAS_API_KEY",
-        "CRUSOE_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "GOOGLE_API_KEY",
-        "GOOGLE_APPLICATION_CREDENTIALS",
-        "HEROKU_INFERENCE_KEY",
-        "HF_TOKEN",
-        "MOONSHOTAI_API_KEY",
-        "OPENAI_API_KEY",
-        "SNOWFLAKE_ACCOUNT",
-        "XAI_API_KEY",
-        "ZAI_API_KEY",
-    ):
-        monkeypatch.delenv(name, raising=False)
-
-    try:
-        infer_model(model)
-    except (DefaultCredentialsError, UserError) as error:
-        message = str(error).casefold()
-        assert "unknown model" not in message
-        assert "unknown provider" not in message
-        assert any(
-            term in message
-            for term in ("credential", "api_key", "hf_token", "inference_key", "region", "snowflake_account")
-        )
-
-
-def test_model_catalog_keeps_a_current_openai_chat_model() -> None:
-    current = "openai-chat:gpt-5-mini"
-
-    catalog = llm_model_catalog(current=current, recommended=RECOMMENDED_MAIN_MODELS)
-
-    assert catalog[: len(RECOMMENDED_MAIN_MODELS) + 1] == (*RECOMMENDED_MAIN_MODELS, current)
-    assert sum(model.startswith("openai-chat:") for model in catalog) == 1
-
-
-def test_model_catalog_prioritizes_current_provider() -> None:
-    catalog = llm_model_catalog(
-        current="anthropic:claude-sonnet-5",
-        recommended=("openai:gpt-5.6-sol",),
-    )
-
-    assert catalog[:4] == (
-        "openai:gpt-5.6-sol",
-        "anthropic:claude-sonnet-5",
-        "anthropic:claude-opus-5-5",
-        "anthropic:claude-haiku-4-5",
-    )
-    assert catalog.index("xai:grok-4.6") < catalog.index("moonshotai:kimi-k3")
-    assert catalog.index("moonshotai:kimi-k3") < catalog.index("deepseek:deepseek-v4-pro")
-
-
-def test_model_catalog_includes_discovered_models_for_both_roles() -> None:
-    discovered = ("fireworks:accounts/fireworks/models/kimi-k3", "together:moonshotai/Kimi-K3")
-
-    main = llm_model_catalog(
-        current="openai:gpt-5.6-sol",
-        recommended=RECOMMENDED_MAIN_MODELS,
-        discovered=discovered,
-    )
-    subagent = llm_model_catalog(
-        current="openai:gpt-5.4-mini",
-        recommended=(),
-        discovered=discovered,
-    )
-
-    assert all(model in main for model in discovered)
-    assert all(model in subagent for model in discovered)
-
-
-def test_model_catalog_only_includes_current_gateway_model() -> None:
-    current = "gateway/openai:gpt-5.6-sol"
-
-    catalog = llm_model_catalog(current=current, recommended=())
-
-    assert current in catalog
-    assert sum(model.startswith("gateway/") for model in catalog) == 1
-
-
-def test_curated_openai_models_only_include_selected_gpt_families() -> None:
-    openai_models = tuple(model for model in CURATED_MODEL_CATALOG if model.startswith("openai:"))
-    assert openai_models == (
-        "openai:gpt-6-astra",
-        "openai:gpt-6-sol",
-        "openai:gpt-6-luna",
-        "openai:gpt-5.6-sol",
-        "openai:gpt-5.6-terra",
-        "openai:gpt-5.6-luna",
-        "openai:gpt-5.5",
-        "openai:gpt-5",
-        "openai:gpt-5.4-mini",
-        "openai:gpt-5-mini",
-    )
 
 
 def test_model_identifier_must_be_provider_qualified() -> None:

@@ -157,6 +157,18 @@ def _available_models(
     )
 
 
+def llm_model_catalog(
+    *, current: str, recommended: tuple[str, ...], available: tuple[str, ...] = ()
+) -> tuple[str, ...]:
+    """Order available models after recommendations and the current selection."""
+    current_provider = current.partition(":")[0]
+    current_provider_models = tuple(
+        model for model in available if model.partition(":")[0] == current_provider
+    )
+    other_models = tuple(model for model in available if model.partition(":")[0] != current_provider)
+    return tuple(dict.fromkeys((*recommended, current, *current_provider_models, *other_models)))
+
+
 async def _read_cache(path: Path) -> _CatalogCache | None:
     try:
         cache_entry = await read_cached_model(path, _CatalogCache)

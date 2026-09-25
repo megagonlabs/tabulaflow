@@ -26,9 +26,8 @@ from tabulaflow.app.config import (
     RECOMMENDED_SUBAGENT_MODELS,
     LLMRoleConfig,
     ResolvedLLMConfig,
-    llm_model_catalog,
 )
-from tabulaflow.app.model_catalog import load_model_catalog
+from tabulaflow.app.model_catalog import llm_model_catalog, load_model_catalog
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
@@ -87,14 +86,14 @@ class ModelPickerScreen(Screen[str | None]):
         self.run_worker(self._load_catalog(), exclusive=True)
 
     async def _load_catalog(self) -> None:
-        discovered = await self._catalog_loader()
-        if not discovered:
+        available = await self._catalog_loader()
+        if not available:
             return
         selected = self._visible[self._cursor] if self._cursor < len(self._visible) else self._current
         self._models = llm_model_catalog(
             current=self._current,
             recommended=self._recommendations,
-            discovered=discovered,
+            available=available,
         )
         self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
         if self._filter:
