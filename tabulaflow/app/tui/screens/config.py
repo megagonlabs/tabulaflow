@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import os
 from pathlib import Path
 from typing import cast
 
+from rich.cells import cell_len, split_graphemes
 from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
@@ -25,11 +27,47 @@ from tabulaflow.app.config import (
     RECOMMENDED_SUBAGENT_MODELS,
     LLMRoleConfig,
     ResolvedLLMConfig,
-    llm_model_catalog,
 )
+from tabulaflow.app.model_catalog import llm_model_catalog, load_local_model_catalog
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
+
+
+def _fit_model_id(model: str, width: int) -> str:
+    if width <= 0:
+        return ""
+    if cell_len(model) <= width:
+        return model
+    if width == 1:
+        return "…"
+
+    provider, separator, name = model.partition(":")
+    prefix = f"{provider}{separator}…" if separator else "…"
+    prefix_width = cell_len(prefix)
+    if prefix_width >= width:
+        source = provider if separator else model
+        graphemes, _ = split_graphemes(source)
+        fitted: list[str] = []
+        used = 0
+        for start, end, size in graphemes:
+            if used + size > width - 1:
+                break
+            fitted.append(source[start:end])
+            used += size
+        return f"{''.join(fitted)}…"
+
+    graphemes, _ = split_graphemes(name)
+    used = 0
+    suffix: list[str] = []
+    suffix_width = width - prefix_width
+    for start, end, size in reversed(graphemes):
+        if used + size > suffix_width:
+            break
+        suffix.append(name[start:end])
+        used += size
+
+    return f"{prefix}{''.join(reversed(suffix))}"
 
 
 class ModelPickerScreen(Screen[str | None]):
@@ -53,10 +91,19 @@ class ModelPickerScreen(Screen[str | None]):
         Binding("backspace", "erase_filter", "Edit filter", show=False, priority=True),
     ]
 
-    def __init__(self, role: str, current: str) -> None:
+    def __init__(
+        self,
+        role: str,
+        current: str,
+        *,
+        catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+    ) -> None:
         super().__init__()
         self._role = role
+        self._current = current
+        self._catalog_loader = catalog_loader or load_local_model_catalog
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
+        self._recommendations = recommended
         self._recommended = frozenset(recommended)
         self._models = llm_model_catalog(current=current, recommended=recommended)
         self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
@@ -73,6 +120,25 @@ class ModelPickerScreen(Screen[str | None]):
     def on_mount(self) -> None:
         self.focus()
         self._refresh()
+        self.run_worker(self._load_catalog(), exclusive=True)
+
+    async def _load_catalog(self) -> None:
+        available = await self._catalog_loader()
+        if not available:
+            return
+        selected = self._visible[self._cursor] if self._cursor < len(self._visible) else self._current
+        self._models = llm_model_catalog(
+            current=self._current,
+            recommended=self._recommendations,
+            available=available,
+        )
+        self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
+        if self._filter:
+            self._apply_filter()
+        else:
+            self._visible = self._models
+            self._cursor = self._visible.index(selected if selected in self._visible else self._current)
+            self._refresh()
 
     def on_resize(self) -> None:
         self._refresh()
@@ -140,7 +206,7 @@ class ModelPickerScreen(Screen[str | None]):
             rows.insert(0, (custom_model, True))
 
         options_widget = self.query_one("#model-options", Static)
-        options = Text()
+        options = Text(overflow="ellipsis", no_wrap=True)
         if rows:
             start, end, show_above, show_below = self._model_window(len(rows), options_widget.content_size.height)
             if show_above:
@@ -148,8 +214,18 @@ class ModelPickerScreen(Screen[str | None]):
             for index in range(start, end):
                 model, is_custom = rows[index]
                 selected = index == self._cursor
+                current = model == self._current
                 options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
-                options.append(f"Use {model}" if is_custom else model, style="bold" if selected else "")
+                options.append("● " if current else "  ", style=ACCENT_BOLD if current else "")
+                leading = "Use " if is_custom else ""
+                annotation = "  (custom)" if is_custom else "  (recommended)" if model in self._recommended else ""
+                model_width = max(
+                    1,
+                    options_widget.content_size.width - 4 - cell_len(leading) - cell_len(annotation),
+                )
+                model_style = ACCENT_BOLD if current else "bold" if selected else ""
+                options.append(leading, style=model_style)
+                options.append(_fit_model_id(model, model_width), style=model_style)
                 if is_custom:
                     options.append("  (custom)", style="dim")
                 elif model in self._recommended:
@@ -193,7 +269,7 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
     DEFAULT_CSS = """
     ConfigScreen { background: $background; }
     ConfigScreen #config-body { padding: 1 3; }
-    ConfigScreen .config-field { height: auto; padding: 0 1; }
+    ConfigScreen .config-field { height: 1; padding: 0 1; }
     ConfigScreen #config-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
 
@@ -206,9 +282,15 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         Binding("enter", "edit", "Select", show=False),
     ]
 
-    def __init__(self, current: ResolvedLLMConfig) -> None:
+    def __init__(
+        self,
+        current: ResolvedLLMConfig,
+        *,
+        catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+    ) -> None:
         super().__init__()
         self._current = current
+        self._catalog_loader = catalog_loader or load_local_model_catalog
         self._enabled = current.config is not None
         default = (
             ANTHROPIC_DEFAULT_LLM_CONFIG
@@ -250,6 +332,9 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
     def on_mount(self) -> None:
         self._refresh()
 
+    def on_resize(self) -> None:
+        self._refresh()
+
     def action_move(self, delta: int) -> None:
         if not self._enabled:
             return
@@ -285,7 +370,8 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         role = cast(LLMRoleConfig, getattr(self._config, role_name))
         if setting == "model":
             self.app.push_screen(
-                ModelPickerScreen(role_name, role.model), lambda value: self._set_model(role_name, value)
+                ModelPickerScreen(role_name, role.model, catalog_loader=self._catalog_loader),
+                lambda value: self._set_model(role_name, value),
             )
         else:
             self.action_change(1)
@@ -322,16 +408,26 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
             "requests-per-minute": "Max model requests/min",
         }
         for index, field in enumerate(self._fields):
+            widget = self.query_one(f"#field-{field}", Static)
             cursor = index == self._cursor
             enabled = self._enabled or field == "enabled"
-            text = Text("❯ " if cursor else "  ", style=ACCENT_BOLD if cursor else "")
+            prefix = "❯ " if cursor else "  "
+            text = Text(
+                prefix,
+                style=ACCENT_BOLD if cursor else "",
+                overflow="ellipsis",
+                no_wrap=True,
+            )
             text.append(f"{labels[field]:<26}", style="bold" if cursor else ("" if enabled else "dim"))
             if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
                 text.append("‹ ", style="dim")
-            text.append(values[field], style="bold" if cursor else ("" if enabled else "dim"))
+            value = values[field]
+            if field.endswith("-model") and widget.content_size.width > 28:
+                value = _fit_model_id(value, widget.content_size.width - 28)
+            text.append(value, style="bold" if cursor else ("" if enabled else "dim"))
             if field == "enabled" or field.endswith("-effort") or field == "requests-per-minute":
                 text.append(" ›", style="dim")
-            self.query_one(f"#field-{field}", Static).update(text)
+            widget.update(text)
 
         field = self._fields[self._cursor]
         hint = Text()

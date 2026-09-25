@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import pytest
 from textual.app import App
 from textual.content import Content
 from textual.widgets import Static
 
 from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
+
+_TEST_MODEL_CATALOG = (
+    "openai:gpt-6-astra",
+    "anthropic:claude-sonnet-5",
+    *(f"test:model-{index}" for index in range(40)),
+)
+
+
+@pytest.fixture(autouse=True)
+def _stub_local_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_catalog() -> tuple[str, ...]:
+        return _TEST_MODEL_CATALOG
+
+    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_local_model_catalog", test_catalog)
 
 
 _CONFIG = LLMConfig(
@@ -189,6 +204,76 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "openai:" not in options
 
 
+async def test_model_picker_loads_available_models() -> None:
+    async def available_catalog() -> tuple[str, ...]:
+        return ("fireworks:accounts/fireworks/models/kimi-k3",)
+
+    picker = ModelPickerScreen(
+        "main",
+        "openai:gpt-5.6-sol",
+        catalog_loader=available_catalog,
+    )
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        await pilot.press(*"fireworks")
+        assert "fireworks:accounts/fireworks/models/kimi-k3" in _option_text(picker)
+
+
+async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection() -> None:
+    model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
+
+    async def available_catalog() -> tuple[str, ...]:
+        return (model, *(f"test:model-{index}" for index in range(30)))
+
+    picker = ModelPickerScreen("main", model, catalog_loader=available_catalog)
+    selected: list[str | None] = []
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker, selected.append)
+
+    async with PickerApp().run_test(size=(60, 18)) as pilot:
+        await pilot.pause()
+        options = _option_text(picker)
+        assert model not in options
+        assert "❯ ● fireworks:…" in options
+        assert "nemotron-lightning-3p5-30b-a3b" in options
+        assert "↓" in options
+        assert all(len(line) <= 54 for line in options.splitlines())
+
+        await pilot.press("enter")
+        await pilot.pause()
+
+    assert selected == [model]
+
+
+async def test_model_picker_marks_the_current_model_independently_of_the_cursor() -> None:
+    current = "fireworks:accounts/fireworks/models/kimi-k3"
+    alternative = "fireworks:accounts/fireworks/models/glm-5p3"
+
+    async def available_catalog() -> tuple[str, ...]:
+        return (current, alternative)
+
+    picker = ModelPickerScreen("main", current, catalog_loader=available_catalog)
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("down")
+        options = _option_text(picker)
+
+    assert "  ● fireworks:accounts/fireworks/models/kimi-k3" in options
+    assert "❯   fireworks:accounts/fireworks/models/glm-5p3" in options
+
+
 async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
@@ -244,7 +329,7 @@ async def test_openai_chat_models_are_custom_only() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        assert _option_text(picker).splitlines() == [f"❯ Use {model}  (custom)"]
+        assert _option_text(picker).splitlines() == [f"❯   Use {model}  (custom)"]
 
         await pilot.press("enter")
         await pilot.pause()
@@ -263,7 +348,7 @@ async def test_model_matches_are_selected_before_custom_identifier() -> None:
         options = _option_text(picker)
         assert "Use openai:gpt-5.6  (custom)" in options
         assert "openai:gpt-5.6-sol  (recommended)" in options
-        assert "❯ openai:gpt-5.6-sol  (recommended)" in options
+        assert "❯ ● openai:gpt-5.6-sol  (recommended)" in options
 
         await pilot.press("up", "enter")
         await pilot.pause()
@@ -293,8 +378,8 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-6-sol  (recommended)" not in options
         assert "openai:gpt-5.6-terra  (recommended)" not in options
 
         await pilot.press("escape")
@@ -303,9 +388,9 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-6-luna  (recommended)" in options
         assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-luna  (recommended)" in options
+        assert "openai:gpt-6-luna  (recommended)" not in options
         assert "openai:gpt-5.4-mini  (recommended)" not in options
 
 
@@ -323,3 +408,22 @@ async def test_model_list_resizes_with_terminal() -> None:
         await pilot.resize_terminal(80, 40)
 
         assert len(str(options.render()).splitlines()) > short_line_count
+
+
+async def test_long_configured_model_fits_the_config_field_and_expands_on_resize() -> None:
+    model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
+    config = _CONFIG.model_copy(deep=True)
+    config.main.model = model
+    screen = ConfigScreen(ResolvedLLMConfig(config, config))
+
+    async with _App(screen).run_test(size=(60, 18)) as pilot:
+        await pilot.pause()
+        compact = _text(screen, "#field-main-model")
+        assert model not in compact
+        assert "fireworks:…" in compact
+        assert compact.endswith("3p5-30b-a3b")
+        assert len(compact.splitlines()) == 1
+
+        await pilot.resize_terminal(120, 18)
+
+        assert model in _text(screen, "#field-main-model")

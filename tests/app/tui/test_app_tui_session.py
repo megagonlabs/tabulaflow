@@ -108,8 +108,12 @@ def _app(
 
 
 def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def warm_model_catalog() -> tuple[str, ...]:
+        return ()
+
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
     monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
+    monkeypatch.setattr(app._model_catalog, "warm", warm_model_catalog)  # noqa: SLF001
 
 
 def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:
@@ -899,7 +903,7 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
             await pilot.pause()
 
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM off · no supported API key detected. Configure models in /config."]
+        assert messages == ["✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."]
 
 
 async def test_inferred_startup_reports_masked_api_key_in_chat_log(
