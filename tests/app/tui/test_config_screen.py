@@ -224,6 +224,34 @@ async def test_model_picker_loads_available_models() -> None:
         assert "fireworks:accounts/fireworks/models/kimi-k3" in _option_text(picker)
 
 
+async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection() -> None:
+    model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
+
+    async def available_catalog() -> tuple[str, ...]:
+        return (model, *(f"test:model-{index}" for index in range(30)))
+
+    picker = ModelPickerScreen("main", model, catalog_loader=available_catalog)
+    selected: list[str | None] = []
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker, selected.append)
+
+    async with PickerApp().run_test(size=(60, 18)) as pilot:
+        await pilot.pause()
+        options = _option_text(picker)
+        assert model not in options
+        assert "fireworks:…" in options
+        assert "nemotron-lightning-3p5-30b-a3b" in options
+        assert "↓" in options
+        assert all(len(line) <= 54 for line in options.splitlines())
+
+        await pilot.press("enter")
+        await pilot.pause()
+
+    assert selected == [model]
+
+
 async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
@@ -358,3 +386,22 @@ async def test_model_list_resizes_with_terminal() -> None:
         await pilot.resize_terminal(80, 40)
 
         assert len(str(options.render()).splitlines()) > short_line_count
+
+
+async def test_long_configured_model_fits_the_config_field_and_expands_on_resize() -> None:
+    model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
+    config = _CONFIG.model_copy(deep=True)
+    config.main.model = model
+    screen = ConfigScreen(ResolvedLLMConfig(config, config))
+
+    async with _App(screen).run_test(size=(60, 18)) as pilot:
+        await pilot.pause()
+        compact = _text(screen, "#field-main-model")
+        assert model not in compact
+        assert "fireworks:…" in compact
+        assert compact.endswith("3p5-30b-a3b")
+        assert len(compact.splitlines()) == 1
+
+        await pilot.resize_terminal(120, 18)
+
+        assert model in _text(screen, "#field-main-model")
