@@ -752,7 +752,7 @@ class TabulaflowApp(App[None]):
         if config is None:
             session.activate_llm_config(None)
             if selection.selection is None:
-                status = "✓ LLM off · no supported API key detected. Configure models in /config."
+                status = "✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."
             else:
                 status = "✓ LLM off · /connect and the data explorer remain available."
             await self._publish_initialization_status(
