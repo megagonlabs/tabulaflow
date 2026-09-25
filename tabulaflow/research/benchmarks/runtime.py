@@ -84,6 +84,12 @@ async def ensure_docker() -> None:
     await run_command("docker", "info")
 
 
+async def container_exists(name: str) -> bool:
+    """Return whether a Docker container with the given name exists."""
+    output = await run_command("docker", "ps", "-a", "--format", "{{.Names}}")
+    return name in output.splitlines()
+
+
 async def wait_until_ready(
     check: ReadinessCheck,
     description: str,
@@ -104,6 +110,7 @@ async def wait_until_ready(
 __all__ = [
     "BenchmarkRuntime",
     "BenchmarkRuntimeError",
+    "container_exists",
     "ensure_docker",
     "run_command",
     "wait_until_ready",
