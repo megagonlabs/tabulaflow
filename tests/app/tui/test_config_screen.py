@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import pytest
 from textual.app import App
 from textual.content import Content
 from textual.widgets import Static
 
 from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
+
+
+@pytest.fixture(autouse=True)
+def _disable_remote_model_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def empty_catalog() -> tuple[str, ...]:
+        return ()
+
+    monkeypatch.setattr("tabulaflow.app.tui.screens.config.load_model_catalog", empty_catalog)
 
 
 _CONFIG = LLMConfig(
@@ -189,6 +198,26 @@ async def test_model_picker_filters_without_search_input() -> None:
         assert "openai:" not in options
 
 
+async def test_model_picker_loads_discovered_models() -> None:
+    async def discovered_catalog() -> tuple[str, ...]:
+        return ("fireworks:accounts/fireworks/models/kimi-k3",)
+
+    picker = ModelPickerScreen(
+        "main",
+        "openai:gpt-5.6-sol",
+        catalog_loader=discovered_catalog,
+    )
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        await pilot.press(*"fireworks")
+        assert "fireworks:accounts/fireworks/models/kimi-k3" in _option_text(picker)
+
+
 async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
@@ -293,8 +322,8 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-sol  (recommended)" in options
+        assert "openai:gpt-6-sol  (recommended)" not in options
         assert "openai:gpt-5.6-terra  (recommended)" not in options
 
         await pilot.press("escape")
@@ -303,9 +332,9 @@ async def test_role_specific_recommendations() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         options = _option_text(picker)
-        assert "openai:gpt-6-luna  (recommended)" in options
         assert "openai:gpt-6-sol  (recommended)" in options
         assert "openai:gpt-5.6-luna  (recommended)" in options
+        assert "openai:gpt-6-luna  (recommended)" not in options
         assert "openai:gpt-5.4-mini  (recommended)" not in options
 
 

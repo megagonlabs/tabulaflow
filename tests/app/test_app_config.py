@@ -136,6 +136,24 @@ def test_model_catalog_prioritizes_current_provider() -> None:
     assert catalog.index("moonshotai:kimi-k3") < catalog.index("deepseek:deepseek-v4-pro")
 
 
+def test_model_catalog_includes_discovered_models_for_both_roles() -> None:
+    discovered = ("fireworks:accounts/fireworks/models/kimi-k3", "together:moonshotai/Kimi-K3")
+
+    main = llm_model_catalog(
+        current="openai:gpt-5.6-sol",
+        recommended=RECOMMENDED_MAIN_MODELS,
+        discovered=discovered,
+    )
+    subagent = llm_model_catalog(
+        current="openai:gpt-5.4-mini",
+        recommended=(),
+        discovered=discovered,
+    )
+
+    assert all(model in main for model in discovered)
+    assert all(model in subagent for model in discovered)
+
+
 def test_model_catalog_only_includes_current_gateway_model() -> None:
     current = "gateway/openai:gpt-5.6-sol"
 

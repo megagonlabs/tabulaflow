@@ -227,13 +227,16 @@ CURATED_MODEL_CATALOG = tuple(
 )
 
 
-def llm_model_catalog(*, current: str, recommended: tuple[str, ...]) -> tuple[str, ...]:
-    """Return recommendations, the current model, and the curated model catalog."""
+def llm_model_catalog(
+    *, current: str, recommended: tuple[str, ...], discovered: tuple[str, ...] = ()
+) -> tuple[str, ...]:
+    """Return recommendations, the current model, and available model catalogs."""
     current_provider = current.partition(":")[0]
+    available = (*CURATED_MODEL_CATALOG, *discovered)
     current_provider_models = tuple(
-        model for model in CURATED_MODEL_CATALOG if model.partition(":")[0] == current_provider
+        model for model in available if model.partition(":")[0] == current_provider
     )
-    other_models = tuple(model for model in CURATED_MODEL_CATALOG if model.partition(":")[0] != current_provider)
+    other_models = tuple(model for model in available if model.partition(":")[0] != current_provider)
     models = (*recommended, current, *current_provider_models, *other_models)
     return tuple(dict.fromkeys(models))
 

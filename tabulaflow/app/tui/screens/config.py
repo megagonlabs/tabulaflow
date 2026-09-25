@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import os
 from pathlib import Path
 from typing import cast
@@ -27,6 +28,7 @@ from tabulaflow.app.config import (
     ResolvedLLMConfig,
     llm_model_catalog,
 )
+from tabulaflow.app.model_catalog import load_model_catalog
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
@@ -53,10 +55,19 @@ class ModelPickerScreen(Screen[str | None]):
         Binding("backspace", "erase_filter", "Edit filter", show=False, priority=True),
     ]
 
-    def __init__(self, role: str, current: str) -> None:
+    def __init__(
+        self,
+        role: str,
+        current: str,
+        *,
+        catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+    ) -> None:
         super().__init__()
         self._role = role
+        self._current = current
+        self._catalog_loader = catalog_loader or load_model_catalog
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
+        self._recommendations = recommended
         self._recommended = frozenset(recommended)
         self._models = llm_model_catalog(current=current, recommended=recommended)
         self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
@@ -73,6 +84,25 @@ class ModelPickerScreen(Screen[str | None]):
     def on_mount(self) -> None:
         self.focus()
         self._refresh()
+        self.run_worker(self._load_catalog(), exclusive=True)
+
+    async def _load_catalog(self) -> None:
+        discovered = await self._catalog_loader()
+        if not discovered:
+            return
+        selected = self._visible[self._cursor] if self._cursor < len(self._visible) else self._current
+        self._models = llm_model_catalog(
+            current=self._current,
+            recommended=self._recommendations,
+            discovered=discovered,
+        )
+        self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
+        if self._filter:
+            self._apply_filter()
+        else:
+            self._visible = self._models
+            self._cursor = self._visible.index(selected if selected in self._visible else self._current)
+            self._refresh()
 
     def on_resize(self) -> None:
         self._refresh()
