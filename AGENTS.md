@@ -20,6 +20,7 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
   don't lecture the agent on how or when to use it or mention verbosely commonsense knowledge.
 - For UI changes, ask me to verify it visually for you (without taking screenshot yourself) to save time.
 - Do not commit code unless I explicitly ask you to.
+- When squash-merging a GitHub pull request, let GitHub generate the commit title or preserve the `(#<PR number>)` suffix so the merged commit links back to the pull request.
 - If there are unrelated changes in the repo that do not affect your work, just continue your work and preserve other changes.
 - When writing docs, be very careful when editting the opening content in each page as those
   content has usually gone through extensive human polishing. Dont edit them unless explictly
