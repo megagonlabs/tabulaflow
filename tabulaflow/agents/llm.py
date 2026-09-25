@@ -53,16 +53,18 @@ _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 
 
 def model_label(model: str) -> str:
-    """Remove a provider prefix and trailing release date from a model identifier.
+    """Remove provider namespaces and a trailing release date from a model identifier.
 
     Examples:
         ``openai:gpt-5.6-sol`` becomes ``gpt-5.6-sol``.
         ``openai:gpt-5-2025-08-07`` becomes ``gpt-5``.
         ``anthropic:claude-sonnet-4-5-20250929`` becomes
         ``claude-sonnet-4-5``.
+        ``fireworks:accounts/fireworks/models/kimi-k3`` becomes ``kimi-k3``.
     """
     _, separator, name = model.partition(":")
-    return re.sub(r"-(?:\d{4}-\d{2}-\d{2}|\d{8})$", "", name if separator else model)
+    label = (name if separator else model).rsplit("/", 1)[-1]
+    return re.sub(r"-(?:\d{4}-\d{2}-\d{2}|\d{8})$", "", label)
 
 
 def uses_openai_responses(model: str) -> bool:
