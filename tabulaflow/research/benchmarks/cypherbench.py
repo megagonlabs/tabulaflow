@@ -13,12 +13,13 @@ from typing import Any, ClassVar, Mapping
 
 from huggingface_hub import snapshot_download
 from neo4j import AsyncGraphDatabase
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import GqlError
 
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback
 from tabulaflow.research.benchmarks.runtime import (
     BenchmarkRuntime,
+    BenchmarkRuntimeError,
     container_exists,
     ensure_docker,
     run_command,
@@ -84,42 +85,56 @@ CYPHERBENCH_INSTALLATION = BenchmarkInstallation(
 )
 
 
+async def _graph_ready(graph: str) -> bool:
+    # The container's Bolt port accepts connections during the loader's temporary
+    # boot, long before the graph is imported; the loader logs a completion line
+    # ("Loaded N entities and M relations"), so gate on that first. bolt:// targets
+    # the single-node container directly; with neo4j:// the driver fetches a
+    # routing table and raises ExceptionGroup instead of GqlError.
+    try:
+        logs = await run_command("docker", "logs", "--tail", "100", _container_name(graph))
+    except BenchmarkRuntimeError:
+        return False
+    if not any(line.startswith("Loaded ") and " entities and " in line for line in logs.splitlines()):
+        return False
+    driver = AsyncGraphDatabase.driver(
+        f"bolt://localhost:{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}",
+        auth=("neo4j", "cypherbench"),
+        connection_timeout=2,
+    )
+    try:
+        await driver.verify_connectivity()
+        return True
+    except (GqlError, OSError, asyncio.TimeoutError):
+        return False
+    finally:
+        await driver.close()
+
+
 async def _cypherbench_ready(split: str | None) -> bool:
     assert split is not None
-
-    async def graph_ready(graph: str) -> bool:
-        driver = AsyncGraphDatabase.driver(
-            f"neo4j://localhost:{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}",
-            auth=("neo4j", "cypherbench"),
-            connection_timeout=2,
-        )
-        try:
-            await driver.verify_connectivity()
-            return True
-        except (Neo4jError, OSError, asyncio.TimeoutError):
-            return False
-        finally:
-            await driver.close()
-
-    return all(await asyncio.gather(*(graph_ready(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split])))
+    return all(await asyncio.gather(*(_graph_ready(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split])))
 
 
 def _container_name(graph: str) -> str:
-    # Matches the container_name pinned by the official compose files, so
-    # containers created by earlier compose-based installs are reused.
-    return f"cypherbench-{graph}"
+    # Matches the container names pinned by the official compose files (which
+    # use hyphens), so containers created by compose-based installs are found.
+    return f"cypherbench-{graph.replace('_', '-')}"
 
 
 async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> None:
     assert split is not None
     await ensure_docker()
     progress(f"Starting CypherBench {split} databases")
-    existing = []
     for graph in CYPHERBENCH_SPLIT_GRAPHS[split]:
         container = _container_name(graph)
         if await container_exists(container):
-            existing.append(container)
-            continue
+            if await _graph_ready(graph):
+                continue
+            # The loader image imports at container creation and exits when
+            # restarted with a non-empty database, so an unready container can
+            # never recover; recreate it.
+            await run_command("docker", "rm", "-fv", container)
         graph_file = CYPHERBENCH_INSTALLATION.directory / "graphs" / "simplekg" / f"{graph}_simplekg.json"
         await run_command(
             "docker",
@@ -139,10 +154,8 @@ async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> N
             f"{graph_file}:/init/graph.json:ro",
             CYPHERBENCH_NEO4J_IMAGE,
         )
-    if existing:
-        await run_command("docker", "start", *existing)
-    progress("Waiting for Neo4j")
-    await wait_until_ready(lambda: _cypherbench_ready(split), f"CypherBench {split} databases")
+    progress("Waiting for Neo4j (importing graphs; can take 10+ minutes)")
+    await wait_until_ready(lambda: _cypherbench_ready(split), f"CypherBench {split} databases", timeout=1800)
 
 
 async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> None:
@@ -152,7 +165,9 @@ async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> No
     containers = [_container_name(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split]]
     existing = [container for container in containers if await container_exists(container)]
     if existing:
-        await run_command("docker", "stop", *existing)
+        # Mirrors the official stop script (docker compose down): containers
+        # cannot be restarted after import, so they are removed.
+        await run_command("docker", "rm", "-fv", *existing)
 
 
 CYPHERBENCH_RUNTIME = BenchmarkRuntime(
