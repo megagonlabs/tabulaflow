@@ -214,15 +214,18 @@ class ModelPickerScreen(Screen[str | None]):
             for index in range(start, end):
                 model, is_custom = rows[index]
                 selected = index == self._cursor
+                current = model == self._current
                 options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
+                options.append("● " if current else "  ", style=ACCENT_BOLD if current else "")
                 leading = "Use " if is_custom else ""
                 annotation = "  (custom)" if is_custom else "  (recommended)" if model in self._recommended else ""
                 model_width = max(
                     1,
-                    options_widget.content_size.width - 2 - cell_len(leading) - cell_len(annotation),
+                    options_widget.content_size.width - 4 - cell_len(leading) - cell_len(annotation),
                 )
-                options.append(leading, style="bold" if selected else "")
-                options.append(_fit_model_id(model, model_width), style="bold" if selected else "")
+                model_style = ACCENT_BOLD if current else "bold" if selected else ""
+                options.append(leading, style=model_style)
+                options.append(_fit_model_id(model, model_width), style=model_style)
                 if is_custom:
                     options.append("  (custom)", style="dim")
                 elif model in self._recommended:

@@ -241,7 +241,7 @@ async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection()
         await pilot.pause()
         options = _option_text(picker)
         assert model not in options
-        assert "fireworks:…" in options
+        assert "❯ ● fireworks:…" in options
         assert "nemotron-lightning-3p5-30b-a3b" in options
         assert "↓" in options
         assert all(len(line) <= 54 for line in options.splitlines())
@@ -250,6 +250,28 @@ async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection()
         await pilot.pause()
 
     assert selected == [model]
+
+
+async def test_model_picker_marks_the_current_model_independently_of_the_cursor() -> None:
+    current = "fireworks:accounts/fireworks/models/kimi-k3"
+    alternative = "fireworks:accounts/fireworks/models/glm-5p3"
+
+    async def available_catalog() -> tuple[str, ...]:
+        return (current, alternative)
+
+    picker = ModelPickerScreen("main", current, catalog_loader=available_catalog)
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("down")
+        options = _option_text(picker)
+
+    assert "  ● fireworks:accounts/fireworks/models/kimi-k3" in options
+    assert "❯   fireworks:accounts/fireworks/models/glm-5p3" in options
 
 
 async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> None:
@@ -307,7 +329,7 @@ async def test_openai_chat_models_are_custom_only() -> None:
         await pilot.pause()
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
-        assert _option_text(picker).splitlines() == [f"❯ Use {model}  (custom)"]
+        assert _option_text(picker).splitlines() == [f"❯   Use {model}  (custom)"]
 
         await pilot.press("enter")
         await pilot.pause()
@@ -326,7 +348,7 @@ async def test_model_matches_are_selected_before_custom_identifier() -> None:
         options = _option_text(picker)
         assert "Use openai:gpt-5.6  (custom)" in options
         assert "openai:gpt-5.6-sol  (recommended)" in options
-        assert "❯ openai:gpt-5.6-sol  (recommended)" in options
+        assert "❯ ● openai:gpt-5.6-sol  (recommended)" in options
 
         await pilot.press("up", "enter")
         await pilot.pause()
