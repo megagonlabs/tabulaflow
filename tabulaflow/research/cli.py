@@ -97,6 +97,7 @@ async def _run_benchmark_async(
         console.print(f"Agent: {agent_name}")
         console.print(f"Model: {getattr(agent_config, 'llm', 'N/A')}")
         console.print(f"Metrics: {', '.join(metric.name for metric in metrics)}")
+        console.print(f"Results: {destination}")
         console.print()
 
         result = await run_experiment_async(
@@ -113,7 +114,7 @@ async def _run_benchmark_async(
         for metric in metrics:
             score = result.aggregated_eval_metrics.get(metric.name, {}).get("avg")
             console.print(f"{metric.name}: {score if score is not None else 'N/A'}")
-        console.print(f"Results: {destination}")
+        console.print(f"Saved: {destination}")
         return destination
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
