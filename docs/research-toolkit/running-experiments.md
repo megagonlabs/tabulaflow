@@ -1,11 +1,16 @@
 # Run experiments
 
-Before scaling an experiment, complete the [quick start](quick-start.md) or use
-the five-task `tabulaflow benchmark run` command for your chosen
-[benchmark](benchmarks.md). The command runs the same prediction, execution, and
-evaluation pipeline described in the Python quick start and saves its result
-under `runs/`. Omit `--sample-size` to run the full selected split; use
-repeatable `--qid`, `--database`, or `--metric` options for targeted runs.
+Use `tabulaflow benchmark run` for convenient end-to-end runs with registered
+benchmarks, agents, and metrics. Use the Python API when you need flexibility
+beyond the CLI. Both interfaces use the same experiment pipeline and result
+format.
+
+```bash
+tabulaflow benchmark run bird-sql --split dev --sample-size 5
+```
+
+See [benchmarks](benchmarks.md) for setup and commands for each dataset, or
+complete the [Python quick start](quick-start.md) before building a custom run.
 
 ## Save and restore a run
 

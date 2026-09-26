@@ -37,12 +37,13 @@ queries, and measure execution accuracy:
     --8<-- "examples/results/research-quick-start.txt"
     ```
 
-See [saving a run](running-experiments.md#save-and-restore-a-run) to export the result.
+See [saving a run](running-experiments.md#save-and-restore-a-run) to persist
+results from the Python API.
 
 ## Try it yourself
 
-Install TabulaFlow once with [`uv`](https://docs.astral.sh/uv/), download
-BIRD-SQL, and set an OpenAI API key:
+Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), download BIRD-SQL,
+and set an OpenAI API key:
 
 ```bash
 uv tool install tabulaflow
@@ -50,15 +51,21 @@ tabulaflow benchmark download bird-sql
 export OPENAI_API_KEY="your-api-key"
 ```
 
-Run the example directly:
+### Run with the CLI
+
+Run a standard end-to-end experiment:
+
+```bash
+tabulaflow benchmark run bird-sql --split dev --sample-size 3
+```
+
+### Run the Python example
+
+Run the Python API example shown above:
 
 ```bash
 tabulaflow examples run research-quick-start
 ```
-
-The benchmark and bundled example use the same project-independent TabulaFlow
-installation. No manual file creation is needed.
-The example makes paid model calls; predictions and scores vary between runs.
 
 ## Build in your project
 
