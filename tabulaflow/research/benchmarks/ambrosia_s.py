@@ -9,6 +9,7 @@ from typing import ClassVar
 import httpx
 import pandas as pd
 
+from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
@@ -138,6 +139,10 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 """.strip()
 
 
+def _ambrosia_global_id(database: str) -> str:
+    return f"ambrosia-s+{stable_cache_key({'database': database})}"
+
+
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
     name: ClassVar[str] = "ambrosia-s"
@@ -251,7 +256,7 @@ class AmbrosiaSDatasetLoader:
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    global_id=f"ambrosia-s+{name.replace('/', '___')}",
+                    global_id=_ambrosia_global_id(name),
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'ambrosia', f'{name}.sqlite')}",
                     display_name=name,
                     dbms_semaphore=self._dbms_semaphore,
