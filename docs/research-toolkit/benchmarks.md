@@ -121,8 +121,13 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
     # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
     ```
 
+Run five tasks against a local SQLite database:
+
 ```bash
-tabulaflow benchmark run spider2-lite --split test --sample-size 5
+tabulaflow benchmark run spider2-lite \
+  --split test \
+  --database bank_sales_trading \
+  --sample-size 5
 ```
 
 <div class="benchmark-heading" markdown="1">

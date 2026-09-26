@@ -2,8 +2,7 @@
 
 Use `tabulaflow benchmark run` for convenient end-to-end runs with registered
 benchmarks, agents, and metrics. Use the Python API when you need flexibility
-beyond the CLI. Both interfaces use the same experiment pipeline and result
-format.
+beyond the CLI.
 
 ```bash
 tabulaflow benchmark run bird-sql --split dev --sample-size 5
