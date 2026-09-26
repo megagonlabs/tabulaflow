@@ -85,7 +85,21 @@ from uuid import uuid4
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
 from types import TracebackType
-from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, Self, TypeAlias, TypeVar
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Iterator,
+    Literal,
+    Mapping,
+    Protocol,
+    Self,
+    Sequence,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -214,7 +228,12 @@ _DDL_KEYWORDS = frozenset(
 # Dialects that need DDL serialization.
 _DDL_SERIAL_DIALECTS = frozenset({"duckdb", "sqlite"})
 
-_LEXER = SQLLexer.get_default_instance()
+
+class _SQLLexer(Protocol):
+    def get_tokens(self, text: str, encoding: str | None = None) -> Iterator[tuple[Any, str]]: ...
+
+
+_LEXER = cast(Callable[[], _SQLLexer], SQLLexer.get_default_instance)()
 
 
 def _first_keyword(statement: str) -> str | None:
