@@ -531,7 +531,7 @@ class DbtTask(BaseModel):
     project_dir: str
     """Relative path to the original dbt project directory (e.g. ``"data/Spider2/spider2-dbt/examples/zuora001"``)."""
     working_dir: str | None = None
-    """Relative path to the working copy of the project, set by the pipeline before the agent runs (e.g. ``"output/exp123/working/zuora001"``)."""
+    """Path to the loader-created working copy of the project (e.g. ``"runs/exp123/work/zuora001"``)."""
     gold_db_path: str | None = None
     """Relative path to the gold ``.duckdb`` file for evaluation."""
     gold_tables: list[DbtGoldTable]
@@ -554,7 +554,7 @@ class DbtTaskOutput(DbtTask):
 
     output_type: Literal["dbt"] = "dbt"
     pred_db_path: str | None = None
-    """Relative path to the predicted DuckDB file produced by the agent (e.g. ``"output/exp123/working/zuora001/zuora.duckdb"``)."""
+    """Path to the predicted DuckDB file produced by the agent (e.g. ``"runs/exp123/work/zuora001/zuora.duckdb"``)."""
     pred_db_schema: SQLSchema | None = None
     """Schema of the predicted database after ``dbt run``, including any tables/views created by the agent."""
     pred_model_files: dict[str, str] = Field(default_factory=dict)

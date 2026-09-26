@@ -71,9 +71,9 @@ Compare built-in methods in [Agents](../agents.md).
 ## dbt strategy
 
 `DbtAgent` works on Spider 2.0 dbt projects and produces transformed tables.
-Give `predict_async(...)` a distinct `output_dir` for each run: this is the
-agent's working directory for dbt tasks. Evaluate with `Spider2DuckdbMatch`;
-the query execution stage does not execute dbt projects.
+Give `Spider2DbtDatasetLoader` a distinct `workspace_dir` for each run so it can
+create isolated project copies and connectors before prediction. Evaluate with
+`Spider2DuckdbMatch`; the query execution stage does not execute dbt projects.
 
 ::: tabulaflow.research.agents.dbt.DbtAgent
 

@@ -58,8 +58,12 @@ async def _run_benchmark_async(
     from tabulaflow.research.pipelines import run_experiment_async
 
     benchmark = _get_benchmark(name)
+    destination = output_dir or Path("runs") / name / datetime.now().strftime("%Y%m%d-%H%M%S")
+    if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
+        raise ValueError(f"output path already exists and is not an empty directory: {destination}")
     await preflight_benchmark(name, split)
-    loader = benchmark()
+    loader_kwargs = {"workspace_dir": destination / "work"} if name == "spider2-dbt" else {}
+    loader = benchmark(**loader_kwargs)
     dataset = await loader.get_split_async(split, subsample_size=sample_size)
     try:
         agent_cls = agent_registry.get_class(agent_name)
@@ -67,9 +71,6 @@ async def _run_benchmark_async(
         agent_config = agent_cls.config_cls(**config_kwargs)
         metric_cls = metric_registry.get_class(benchmark.default_metrics[0])
         metric = metric_cls()
-        destination = output_dir or Path("runs") / name / datetime.now().strftime("%Y%m%d-%H%M%S")
-        if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
-            raise ValueError(f"output path already exists and is not an empty directory: {destination}")
 
         console.print(f"Benchmark: {name} / {split}")
         console.print(f"Tasks: {len(dataset.tasks)}")
@@ -84,7 +85,6 @@ async def _run_benchmark_async(
             dataset,
             [metric],
             batch_size=batch_size,
-            working_dir=destination / "work",
         )
         result.to_directory(str(destination))
 

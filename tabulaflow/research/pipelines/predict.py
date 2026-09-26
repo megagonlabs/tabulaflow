@@ -16,7 +16,6 @@ from tabulaflow.research.pipelines.utils import pprint_dict, validate_run_schema
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agents.user_simulator import UserSimulator
-from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 from tabulaflow.research.types import (
@@ -59,7 +58,6 @@ async def predict_async(
     dataset: NL2QDataset,
     batch_size: int,
     few_shot_dataset: NL2QDataset | None = None,
-    output_dir: str = "output/test/",
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -74,7 +72,6 @@ async def predict_async(
         dataset: Tasks and their database connectors.
         batch_size: Maximum tasks processed concurrently.
         few_shot_dataset: Optional examples supplied to compatible agents.
-        output_dir: Working directory used by DBT tasks.
         metric_aggregators: Inference-metric aggregators, or the default.
         verbose: Whether to display progress.
 
@@ -86,9 +83,6 @@ async def predict_async(
         metric_aggregators = [SimpleInferenceMetricsAggregator()]
     if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
         logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
-
-    if dataset.name == "spider2-dbt":
-        await prepare_working_env_async(dataset, output_dir)
 
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -297,7 +291,9 @@ async def main_async() -> None:
         args.few_shot_dataset = args.few_shot_dataset or "bird-sql"
         args.few_shot_split = args.few_shot_split or "train"
 
-    loader_kwargs = {"include_taxonomy": True} if args.include_taxonomy else {}
+    loader_kwargs: dict[str, Any] = {"include_taxonomy": True} if args.include_taxonomy else {}
+    if args.dataset == "spider2-dbt":
+        loader_kwargs["workspace_dir"] = os.path.join(args.output_dir, "work")
     dataset_loader = dataset_registry.get_class(args.dataset)(**loader_kwargs)
     if args.split is None:
         args.split = dataset_loader.splits[0]
@@ -359,7 +355,6 @@ async def main_async() -> None:
         dataset=dataset,
         few_shot_dataset=few_shot_dataset,
         batch_size=args.batch_size,
-        output_dir=args.output_dir,
         verbose=True,
     )
     print()

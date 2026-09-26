@@ -35,7 +35,6 @@ async def test_run_experiment_composes_pipeline_stages(monkeypatch: pytest.Monke
         dataset,
         metrics,
         batch_size=3,
-        working_dir="work",
     )
 
     assert returned is result
@@ -44,7 +43,6 @@ async def test_run_experiment_composes_pipeline_stages(monkeypatch: pytest.Monke
         agent_config,
         dataset,
         batch_size=3,
-        output_dir="work",
     )
     execute.assert_awaited_once_with(result, dataset, batch_size=3)
     evaluate.assert_awaited_once_with(result, dataset, metrics=metrics, batch_size=3)

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -17,7 +16,6 @@ async def run_experiment_async(
     metrics: list[MetricProtocol],
     *,
     batch_size: int,
-    working_dir: str | Path = "output/test/",
 ) -> NL2QRunResult:
     """Predict, execute, and evaluate one experiment.
 
@@ -30,7 +28,6 @@ async def run_experiment_async(
         dataset: Loaded tasks and their database connectors.
         metrics: Task-level metrics to compute after query execution.
         batch_size: Maximum tasks processed concurrently.
-        working_dir: Working directory used by project-based tasks.
 
     Returns:
         The predicted, executed, and evaluated run result.
@@ -40,7 +37,6 @@ async def run_experiment_async(
         agent_config,
         dataset,
         batch_size=batch_size,
-        output_dir=str(working_dir),
     )
     await execute_async(result, dataset, batch_size=batch_size)
     await evaluate_async(result, dataset, metrics=metrics, batch_size=batch_size)
