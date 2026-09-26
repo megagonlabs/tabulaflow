@@ -2,6 +2,7 @@ import importlib
 from pathlib import Path
 from types import SimpleNamespace
 
+import pydantic_ai
 from pytest import MonkeyPatch
 from rich.highlighter import NullHighlighter
 from rich.text import Text
@@ -19,6 +20,10 @@ from tabulaflow.research.cli import console
 
 def _plain(output: str) -> str:
     return Text.from_ansi(output).plain
+
+
+def test_cli_disables_pydantic_ai_banner() -> None:
+    assert not pydantic_ai.BANNER_ENABLED
 
 
 def test_root_cli_exposes_chat_options_and_research_commands() -> None:

@@ -1,5 +1,6 @@
 """Top-level command-line composition root."""
 
+import pydantic_ai
 import typer
 from typer import rich_utils
 
@@ -8,6 +9,8 @@ from tabulaflow.app.config import InvalidAppConfigError
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.examples.cli import examples_app
 from tabulaflow.research.cli import benchmark_app
+
+pydantic_ai.BANNER_ENABLED = False
 
 
 def _configure_help_theme() -> None:
