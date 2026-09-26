@@ -61,7 +61,8 @@ async def _run_benchmark_async(
     from tabulaflow.research.pipelines import run_experiment_async
 
     benchmark = _get_benchmark(name)
-    destination = output_dir or Path("runs") / name / datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    destination = output_dir or Path("runs") / f"{name}-{timestamp}"
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         raise ValueError(f"output path already exists and is not an empty directory: {destination}")
     agent_cls = agent_registry.get_class(agent_name)
