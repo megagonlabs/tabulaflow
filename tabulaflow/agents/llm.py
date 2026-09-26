@@ -95,6 +95,7 @@ def make_model_settings(
         {
             **_reasoning_model_settings(reasoning, model=model),
             **_anthropic_token_settings(reasoning, model=model),
+            **_anthropic_cache_settings(model),
             **({} if service_tier is None else {"service_tier": service_tier}),
             **({} if timeout is None else {"timeout": timeout}),
         },
@@ -132,6 +133,19 @@ def _anthropic_token_settings(reasoning: ReasoningLevel | None, *, model: str) -
     if budget is None:
         return ModelSettings()
     return ModelSettings(max_tokens=budget + _ANTHROPIC_ANSWER_TOKEN_HEADROOM)
+
+
+def _anthropic_cache_settings(model: str) -> ModelSettings:
+    if not (model.startswith("anthropic:") or model.startswith("google-cloud:claude")):
+        return ModelSettings()
+    return cast(
+        ModelSettings,
+        {
+            "anthropic_cache": True,
+            "anthropic_cache_instructions": True,
+            "anthropic_cache_tool_definitions": True,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

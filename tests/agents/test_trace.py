@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import genai_prices
 import pytest
 from pydantic_ai.messages import BinaryContent, ModelRequest, UserPromptPart
+from pydantic_ai.usage import RequestUsage
 
 from tabulaflow.agents.trace import Trajectory, Usage, compute_api_cost
 
@@ -13,12 +14,20 @@ def test_compute_api_cost_uses_genai_prices(monkeypatch: pytest.MonkeyPatch) -> 
     calc_price = Mock(return_value=SimpleNamespace(total_price=Decimal("1.23")))
     monkeypatch.setattr(genai_prices, "calc_price", calc_price)
 
-    cost = compute_api_cost("google-cloud:gemini-test", input_tokens=10, output_tokens=20)
+    cost = compute_api_cost(
+        "google-cloud:gemini-test",
+        input_tokens=10,
+        output_tokens=20,
+        cache_read_tokens=7,
+        cache_write_tokens=2,
+    )
 
     assert cost == Decimal("1.23")
     usage = calc_price.call_args.args[0]
     assert usage.input_tokens == 10
     assert usage.output_tokens == 20
+    assert usage.cache_read_tokens == 7
+    assert usage.cache_write_tokens == 2
     assert calc_price.call_args.kwargs == {"model_ref": "gemini-test", "provider_id": "google"}
 
 
@@ -37,6 +46,16 @@ def test_usage_create_preserves_decimal_value_of_float() -> None:
 def test_usage_create_requires_model_for_requests() -> None:
     with pytest.raises(ValueError, match="llm is required"):
         Usage.create(api_requests=1)
+
+
+def test_usage_preserves_cached_input_tokens() -> None:
+    usage = Usage.from_pydantic_ai_usage(
+        RequestUsage(input_tokens=100, cache_read_tokens=70, cache_write_tokens=20, output_tokens=10),
+        "anthropic:claude-sonnet-5",
+    )
+
+    assert usage.cache_read_tokens == 70
+    assert usage.cache_write_tokens == 20
 
 
 def test_trajectory_describes_media_without_serializing_bytes() -> None:

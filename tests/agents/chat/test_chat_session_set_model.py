@@ -12,6 +12,13 @@ from tabulaflow.agents.chat.session import MAIN_REQUEST_TIMEOUT, SUBAGENT_REQUES
 from tabulaflow.data.registry import DataConnectorRegistry
 
 
+ANTHROPIC_CACHE_SETTINGS = {
+    "anthropic_cache": True,
+    "anthropic_cache_instructions": True,
+    "anthropic_cache_tool_definitions": True,
+}
+
+
 def test_chat_session_constructor_is_keyword_only_and_state_is_read_only() -> None:
     signature = inspect.signature(ChatSession)
     assert signature.parameters["model"].kind is inspect.Parameter.KEYWORD_ONLY
@@ -453,13 +460,21 @@ def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.Mon
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
     agent = ChatSession(registry=DataConnectorRegistry(), model="anthropic:claude-opus-4-8", reasoning="high")
     # Adaptive-thinking models never use budgets — no max_tokens override.
-    assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
+    assert agent._thinking_settings() == {
+        "thinking": "high",
+        **ANTHROPIC_CACHE_SETTINGS,
+        "timeout": MAIN_REQUEST_TIMEOUT,
+    }
 
 
 def test_thinking_settings_opus_5_uses_upstream_adaptive_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
     agent = ChatSession(registry=DataConnectorRegistry(), model="anthropic:claude-opus-5", reasoning="high")
-    assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
+    assert agent._thinking_settings() == {
+        "thinking": "high",
+        **ANTHROPIC_CACHE_SETTINGS,
+        "timeout": MAIN_REQUEST_TIMEOUT,
+    }
 
 
 def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
@@ -473,6 +488,7 @@ def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
     assert agent._subagent_model_settings() == {
         "thinking": "high",
         "max_tokens": 24576,
+        **ANTHROPIC_CACHE_SETTINGS,
         "timeout": SUBAGENT_REQUEST_TIMEOUT,
     }
 
@@ -496,7 +512,11 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.extract_rows_from_documents.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.add_canonical_name.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.get_data_source_document.summarizer_llm == "anthropic:claude-opus-4-8"
-        subagent_settings = {"thinking": "low", "timeout": SUBAGENT_REQUEST_TIMEOUT}
+        subagent_settings = {
+            "thinking": "low",
+            **ANTHROPIC_CACHE_SETTINGS,
+            "timeout": SUBAGENT_REQUEST_TIMEOUT,
+        }
         assert agent._tools.run_subagent_for_each_row.model_settings == subagent_settings
         assert agent._tools.get_data_source_document.model_settings == subagent_settings
         assert agent._tools.run_subagent_for_each_row.max_concurrency == 50

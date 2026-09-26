@@ -8,10 +8,18 @@ from tabulaflow.research.agents.ensemblers.llm import LLMEnsemblerConfig
 from tabulaflow.research.agents.utils import BasicAgentConfig
 
 
+ANTHROPIC_CACHE_SETTINGS = {
+    "anthropic_cache": True,
+    "anthropic_cache_instructions": True,
+    "anthropic_cache_tool_definitions": True,
+}
+
+
 def test_make_model_settings_accepts_shared_reasoning_values() -> None:
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", reasoning="high") == {
         "thinking": "high",
         "max_tokens": 24576,
+        **ANTHROPIC_CACHE_SETTINGS,
     }
     assert make_model_settings(model="openai:gpt-5") == {}
 
@@ -38,6 +46,7 @@ def test_make_model_settings_skips_summary_for_other_providers() -> None:
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", reasoning="high") == {
         "thinking": "high",
         "max_tokens": 24576,
+        **ANTHROPIC_CACHE_SETTINGS,
     }
 
 
@@ -50,7 +59,7 @@ def test_budget_thinking_claude_reserves_answer_tokens(effort: ReasoningEffort, 
         model="anthropic:claude-sonnet-4-5-20250929",
         reasoning=effort,
     )
-    assert settings == {"thinking": effort, "max_tokens": budget + 8192}
+    assert settings == {"thinking": effort, "max_tokens": budget + 8192, **ANTHROPIC_CACHE_SETTINGS}
 
 
 def test_budget_thinking_claude_on_vertex_reserves_answer_tokens() -> None:
@@ -58,24 +67,30 @@ def test_budget_thinking_claude_on_vertex_reserves_answer_tokens() -> None:
         model="google-cloud:claude-sonnet-4-5@20250929",
         reasoning="medium",
     )
-    assert settings == {"thinking": "medium", "max_tokens": 18192}
+    assert settings == {"thinking": "medium", "max_tokens": 18192, **ANTHROPIC_CACHE_SETTINGS}
 
 
 def test_adaptive_thinking_claude_does_not_set_max_tokens() -> None:
     settings = make_model_settings(model="anthropic:claude-opus-4-8", reasoning="high")
-    assert settings == {"thinking": "high"}
+    assert settings == {"thinking": "high", **ANTHROPIC_CACHE_SETTINGS}
 
 
 def test_opus_5_uses_upstream_adaptive_profile() -> None:
     settings = make_model_settings(model="anthropic:claude-opus-5", reasoning="high")
-    assert settings == {"thinking": "high"}
+    assert settings == {"thinking": "high", **ANTHROPIC_CACHE_SETTINGS}
 
 
 def test_make_model_settings_uses_cross_provider_service_tier() -> None:
     assert make_model_settings(model="openai:gpt-5", service_tier="priority") == {"service_tier": "priority"}
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", service_tier="priority") == {
-        "service_tier": "priority"
+        **ANTHROPIC_CACHE_SETTINGS,
+        "service_tier": "priority",
     }
+
+
+def test_make_model_settings_enables_anthropic_prompt_caching() -> None:
+    assert make_model_settings(model="anthropic:claude-sonnet-5") == ANTHROPIC_CACHE_SETTINGS
+    assert make_model_settings(model="google-cloud:claude-sonnet-5") == ANTHROPIC_CACHE_SETTINGS
 
 
 def test_make_model_settings_combines_reasoning_and_service_tier() -> None:
