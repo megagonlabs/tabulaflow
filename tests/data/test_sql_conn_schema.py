@@ -1,8 +1,7 @@
 """Tests for schema introspection in :class:`SQLConnector`.
 
 Covers the dialect-gap fallback that kicks in when SQLAlchemy's inspector
-returns ``NullType`` for a column (e.g. duckdb_engine on ``LIST`` /
-``STRUCT`` / ``MAP`` — Mause/duckdb_engine#654).
+returns ``NullType`` for a native composite column.
 """
 
 from pathlib import Path
@@ -441,10 +440,7 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
 
 
 async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
-    """duckdb_engine returns NullType for LIST/STRUCT columns; the
-    information_schema fallback should recover a usable dtype, populate
-    ``native_dtype``, and let JSON schema inference run.
-    """
+    """Composite columns retain usable native types and JSON schemas."""
     db_path = str(tmp_path / "composite.duckdb")
     conn = duckdb.connect(db_path)
     conn.execute(

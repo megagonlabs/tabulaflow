@@ -1835,8 +1835,7 @@ async def _catalog_native_dtype_async(
     """Recover a column's native type by querying the dialect's catalog.
 
     Used when SQLAlchemy's ``TypeEngine.compile`` fails because the
-    inspector returned ``NullType`` (e.g. ``duckdb_engine`` on ``LIST`` /
-    ``STRUCT`` / ``MAP`` — Mause/duckdb_engine#654).
+    inspector returned ``NullType`` for a native composite type.
 
     Returns ``None`` if the dialect has no implemented fallback or the
     lookup fails.
@@ -1897,9 +1896,8 @@ async def _build_column_structure_async(
         dtype = type(column["type"]).__name__.upper()
     native_dtype = await _resolve_native_dtype_async(t_eng, schema_name, table_name, column)
     if dtype == "NULL" and native_dtype is not None:
-        # The inspector failed to translate the native type (e.g. duckdb_engine
-        # on LIST/STRUCT/MAP). Canonicalize from the native string so the
-        # categorical type-class checks below still work.
+        # The inspector failed to translate the native type. Canonicalize from
+        # the native string so the categorical type-class checks below still work.
         dtype = _canonicalize_dtype(native_dtype)
 
     return SQLColumnSchema(
@@ -2139,12 +2137,12 @@ async def _build_table_async(
 
 
 async def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: list[str | None]) -> list[str | None]:
-    """Strip the database prefix from duckdb-engine schema names.
+    """Strip the database prefix from DuckDB SQLAlchemy schema names.
 
-    ``duckdb-engine`` flattens DuckDB's 3-level hierarchy (database, schema,
-    table) into SQLAlchemy's 2-level model by returning ``"database.schema"``
-    from ``get_schema_names()``.  This function strips the database prefix and
-    filters to only schemas belonging to the current database.
+    The DuckDB SQLAlchemy dialect flattens DuckDB's 3-level hierarchy
+    (database, schema, table) into SQLAlchemy's 2-level model by returning
+    ``"database.schema"`` from ``get_schema_names()``. This function strips the
+    database prefix and filters to only schemas belonging to the current database.
     """
 
     def _get_current_db(conn: sqlalchemy.engine.Connection) -> str | None:
