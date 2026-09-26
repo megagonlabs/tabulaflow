@@ -86,8 +86,8 @@ def test_chat_session_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPat
     agent = ChatSession(registry=registry, model="test:model", reasoning="low")
 
     assert len(agent._context_messages) == 2
-    assert str(cast(Any, agent._context_messages[0].parts[0]).content) == (
-        "[system: you are powered by model.]"
+    assert str(cast(Any, agent._context_messages[0].parts[0]).content).startswith(
+        "[system: you are powered by model.\n"
     )
     message = agent._context_messages[1]
     event = str(cast(Any, message.parts[0]).content)

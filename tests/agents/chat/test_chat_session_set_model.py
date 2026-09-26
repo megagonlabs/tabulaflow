@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 import inspect
+import sys
 from typing import Any, cast
 
 import pytest
@@ -323,7 +325,33 @@ def _last_note(agent: ChatSession) -> str:
 def test_startup_note_states_model() -> None:
     agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     assert len(agent._context_messages) == 1
-    assert _last_note(agent) == "[system: you are powered by test.]"
+    assert _last_note(agent) == (
+        f"[system: you are powered by test.\nPlatform: {sys.platform}\nToday's date: {date.today().isoformat()}]"
+    )
+
+
+def test_session_facts_are_history_not_system_instructions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project_dir = tmp_path / "project"
+    scratch_dir = tmp_path / "scratch"
+    project_dir.mkdir()
+    scratch_dir.mkdir()
+    monkeypatch.chdir(project_dir)
+    agent = ChatSession(
+        registry=DataConnectorRegistry(),
+        model="test",
+        reasoning="medium",
+        project_dir=project_dir,
+        scratch_dir=scratch_dir,
+    )
+
+    assert "Project directory:" not in agent._system_prompt
+    assert "Scratch directory:" not in agent._system_prompt
+    assert "Today's date:" not in agent._system_prompt
+    startup_note = cast(str, cast(Any, agent._context_messages[0]).parts[0].content)
+    assert f"Project directory: {project_dir}" in startup_note
+    assert f"Scratch directory: {scratch_dir}" in startup_note
+    assert f"Platform: {sys.platform}" in startup_note
+    assert f"Today's date: {date.today().isoformat()}" in startup_note
 
 
 def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

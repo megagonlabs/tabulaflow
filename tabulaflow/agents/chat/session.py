@@ -243,20 +243,10 @@ class ChatSession:
         return self._last_usage
 
     def _compose_system_prompt(self) -> str:
-        """Assemble the agent's instructions: the baseline ``_SYSTEM_PROMPT``, then any
-        host ``extra_instructions``, then the ``## Session`` tail. The ordering keeps
-        the large static prefix first so it prompt-caches, and the session facts last."""
+        """Assemble the stable agent instructions and optional host instructions."""
         parts = [_SYSTEM_PROMPT]
         if self._extra_instructions:
             parts.append(self._extra_instructions.strip())
-        session_lines = []
-        if self._project_dir is not None:
-            session_lines.append(f"- Project directory: {self._project_dir}")
-        if self._scratch_dir is not None:
-            session_lines.append(f"- Scratch directory: {self._scratch_dir}")
-        session_lines.append(f"- Platform: {sys.platform}")
-        session_lines.append(f"- Today's date: {date.today().isoformat()}")
-        parts.append("## Session\n\n" + "\n".join(session_lines))
         return "\n\n".join(parts)
 
     def _build_tools(self, subagent_dir: Path | None) -> _ChatTools:
@@ -647,7 +637,14 @@ class ChatSession:
             self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")
 
     def _seed_conversation_context(self) -> None:
-        self.note_event(f"you are powered by {model_label(self.model)}.")
+        details = [f"you are powered by {model_label(self.model)}."]
+        if self._project_dir is not None:
+            details.append(f"Project directory: {self._project_dir}")
+        if self._scratch_dir is not None:
+            details.append(f"Scratch directory: {self._scratch_dir}")
+        details.append(f"Platform: {sys.platform}")
+        details.append(f"Today's date: {date.today().isoformat()}")
+        self.note_event("\n".join(details))
         self._note_initial_registry()
 
     def reset_conversation(self) -> None:
