@@ -16,8 +16,9 @@ Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
 with `tabulaflow benchmark list`.
 
 After setup, run five deterministic tasks to verify the benchmark, database,
-agent, and primary metric end to end. These commands use the default model and
-make paid calls; set its provider API key first. Results are saved under `runs/`.
+agent, and default metrics end to end. Omit `--sample-size` to run the full
+selected split. These commands use the default model and make paid calls; set
+its provider API key first. Results are saved under `runs/`.
 
 <div class="benchmark-heading" markdown="1">
 

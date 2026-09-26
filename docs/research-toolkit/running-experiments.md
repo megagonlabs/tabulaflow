@@ -4,7 +4,8 @@ Before scaling an experiment, complete the [quick start](quick-start.md) or use
 the five-task `tabulaflow benchmark run` command for your chosen
 [benchmark](benchmarks.md). The command runs the same prediction, execution, and
 evaluation pipeline described in the Python quick start and saves its result
-under `runs/`.
+under `runs/`. Omit `--sample-size` to run the full selected split; use
+repeatable `--qid`, `--database`, or `--metric` options for targeted runs.
 
 ## Save and restore a run
 

@@ -47,10 +47,13 @@ def _progress(message: str) -> None:
 async def _run_benchmark_async(
     name: str,
     split: str,
-    sample_size: int,
+    sample_size: int | None,
+    qids: list[str] | None,
+    databases: list[str] | None,
     batch_size: int,
     agent_name: str,
     llm: str | None,
+    metric_names: list[str] | None,
     output_dir: Path | None,
 ) -> Path:
     from tabulaflow.research.agents import agent_registry
@@ -61,37 +64,55 @@ async def _run_benchmark_async(
     destination = output_dir or Path("runs") / name / datetime.now().strftime("%Y%m%d-%H%M%S")
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         raise ValueError(f"output path already exists and is not an empty directory: {destination}")
+    agent_cls = agent_registry.get_class(agent_name)
+    config_kwargs = {"llm": llm} if llm is not None else {}
+    agent_config = agent_cls.config_cls(**config_kwargs)
+    selected_metric_names = metric_names or benchmark.default_metrics
+    metrics = []
+    for metric_name in selected_metric_names:
+        metric_cls = metric_registry.get_class(metric_name)
+        if agent_cls.output_type not in metric_cls.compatible_output_types:
+            if metric_names is not None:
+                raise ValueError(f"metric {metric_name!r} does not support {agent_cls.output_type!r} agent output")
+            continue
+        metrics.append(metric_cls())
+    if not metrics:
+        raise ValueError(f"no selected metrics support {agent_cls.output_type!r} agent output")
+
     await preflight_benchmark(name, split)
     loader_kwargs = {"workspace_dir": destination / "work"} if name == "spider2-dbt" else {}
     loader = benchmark(**loader_kwargs)
-    dataset = await loader.get_split_async(split, subsample_size=sample_size)
+    dataset = await loader.get_split_async(
+        split,
+        databases=databases,
+        subsample_size=sample_size,
+        qids=qids,
+    )
     try:
-        agent_cls = agent_registry.get_class(agent_name)
-        config_kwargs = {"llm": llm} if llm is not None else {}
-        agent_config = agent_cls.config_cls(**config_kwargs)
-        metric_cls = metric_registry.get_class(benchmark.default_metrics[0])
-        metric = metric_cls()
+        if not dataset.tasks:
+            raise ValueError("no tasks selected")
 
         console.print(f"Benchmark: {name} / {split}")
         console.print(f"Tasks: {len(dataset.tasks)}")
         console.print(f"Agent: {agent_name}")
         console.print(f"Model: {getattr(agent_config, 'llm', 'N/A')}")
-        console.print(f"Metric: {metric.name}")
+        console.print(f"Metrics: {', '.join(metric.name for metric in metrics)}")
         console.print()
 
         result = await run_experiment_async(
             agent_cls,
             agent_config,
             dataset,
-            [metric],
+            metrics,
             batch_size=batch_size,
         )
         result.to_directory(str(destination))
 
-        score = result.aggregated_eval_metrics.get(metric.name, {}).get("avg")
         console.print()
         console.print(f"[green]Evaluated:[/green] {len(result.tasks)} tasks")
-        console.print(f"{metric.name}: {score if score is not None else 'N/A'}")
+        for metric in metrics:
+            score = result.aggregated_eval_metrics.get(metric.name, {}).get("avg")
+            console.print(f"{metric.name}: {score if score is not None else 'N/A'}")
         console.print(f"Results: {destination}")
         return destination
     finally:
@@ -187,18 +208,29 @@ def stop(
 def run_benchmark(
     name: str = typer.Argument(help="Benchmark name."),
     split: str | None = typer.Option(None, "--split", help="Dataset split. Defaults to the benchmark's first split."),
-    sample_size: int = typer.Option(5, "--sample-size", min=1, help="Number of tasks sampled deterministically."),
+    sample_size: int | None = typer.Option(
+        None, "--sample-size", min=1, help="Number of tasks sampled deterministically. Omit to run all selected tasks."
+    ),
+    qids: list[str] | None = typer.Option(None, "--qid", help="Exact task QID. Repeat to select multiple tasks."),
+    databases: list[str] | None = typer.Option(
+        None, "--database", help="Database name. Repeat to select multiple databases."
+    ),
     batch_size: int = typer.Option(5, "--batch-size", min=1, help="Maximum tasks processed concurrently."),
     agent: str | None = typer.Option(None, "--agent", help="Registered agent override."),
     llm: str | None = typer.Option(None, "--llm", help="Model override for the selected agent."),
+    metrics: list[str] | None = typer.Option(
+        None, "--metric", help="Evaluation metric override. Repeat to select multiple metrics."
+    ),
     output_dir: Path | None = typer.Option(None, "--output-dir", help="Result directory."),
 ) -> None:
-    """Run a small end-to-end benchmark experiment."""
+    """Run an end-to-end benchmark experiment."""
     benchmark = _get_benchmark(name)
     resolved_split = split or benchmark.splits[0]
     if resolved_split not in benchmark.splits:
         choices = ", ".join(benchmark.splits)
         raise typer.BadParameter(f"unknown split {resolved_split!r}; choose from: {choices}", param_hint="split")
+    if qids and sample_size is not None:
+        raise typer.BadParameter("cannot be combined with --qid", param_hint="sample-size")
     agent_name = agent or _DEFAULT_AGENTS.get(name, _DEFAULT_AGENT)
     from tabulaflow.research.agents import agent_registry
 
@@ -212,9 +244,12 @@ def run_benchmark(
                 name,
                 resolved_split,
                 sample_size,
+                qids,
+                databases,
                 batch_size,
                 agent_name,
                 llm,
+                metrics,
                 output_dir,
             )
         )
