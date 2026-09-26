@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 from types import SimpleNamespace
 
 from pytest import MonkeyPatch
@@ -170,3 +171,96 @@ def test_benchmark_runtime_commands_support_split_selection() -> None:
     assert stop.exit_code == 0
     assert "--split" in _plain(start.stdout)
     assert "--split" in _plain(stop.stdout)
+
+
+def test_benchmark_start_requires_download(monkeypatch: MonkeyPatch) -> None:
+    def require() -> None:
+        raise BenchmarkInstallationError("example is not downloaded.\n\nRun:\n  tabulaflow benchmark download example")
+
+    benchmark = SimpleNamespace(installation=SimpleNamespace(require=require))
+    runtime = SimpleNamespace()
+    monkeypatch.setattr("tabulaflow.research.cli._get_benchmark", lambda _name: benchmark)
+    monkeypatch.setattr("tabulaflow.research.cli._get_runtime", lambda _name: runtime)
+
+    result = CliRunner().invoke(app, ["benchmark", "start", "example"])
+
+    assert result.exit_code == 1
+    assert "tabulaflow benchmark download example" in _plain(result.output)
+
+
+def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    received: dict[str, object] = {}
+
+    async def fake_run_benchmark_async(*args: object) -> None:
+        received["args"] = args
+
+    monkeypatch.setattr("tabulaflow.research.cli._run_benchmark_async", fake_run_benchmark_async)
+
+    result = CliRunner().invoke(
+        app,
+        ["benchmark", "run", "bird-sql", "--output-dir", str(tmp_path)],
+    )
+
+    assert result.exit_code == 0
+    assert received["args"] == ("bird-sql", "dev", None, None, None, 5, "full_schema", None, None, tmp_path)
+
+
+def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    received: dict[str, object] = {}
+
+    async def fake_run_benchmark_async(*args: object) -> None:
+        received["args"] = args
+
+    monkeypatch.setattr("tabulaflow.research.cli._run_benchmark_async", fake_run_benchmark_async)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "benchmark",
+            "run",
+            "bird-sql",
+            "--qid",
+            "dev_001",
+            "--qid",
+            "dev_002",
+            "--database",
+            "concert_singer",
+            "--metric",
+            "bird_sql_ex",
+            "--metric",
+            "executable",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert received["args"] == (
+        "bird-sql",
+        "dev",
+        None,
+        ["dev_001", "dev_002"],
+        ["concert_singer"],
+        5,
+        "full_schema",
+        None,
+        ["bird_sql_ex", "executable"],
+        tmp_path,
+    )
+
+
+def test_benchmark_run_rejects_qids_with_sample_size() -> None:
+    result = CliRunner().invoke(
+        app,
+        ["benchmark", "run", "bird-sql", "--qid", "dev_001", "--sample-size", "5"],
+    )
+
+    assert result.exit_code == 2
+    assert "cannot be combined with --qid" in _plain(result.output)
+
+
+def test_benchmark_run_rejects_unknown_split() -> None:
+    result = CliRunner().invoke(app, ["benchmark", "run", "bird-sql", "--split", "unknown"])
+
+    assert result.exit_code == 2
+    assert "unknown split 'unknown'" in _plain(result.output)

@@ -3,6 +3,13 @@
 See [Running experiments](../running-experiments.md) for saving and scaling runs
 and [Preprocessing](preprocessing.md) for preparing reusable inputs.
 
+## End-to-end run
+
+Predicts, executes, and evaluates a loaded dataset. The caller owns the dataset
+connectors and decides whether and where to save the returned result.
+
+::: tabulaflow.research.pipelines.run.run_experiment_async
+
 ## Prediction
 
 Creates one agent per task and returns an `NL2QRunResult` after all batches;

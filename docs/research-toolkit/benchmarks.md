@@ -34,6 +34,10 @@ SQLite databases. The download includes tasks and databases for all splits;
 tabulaflow benchmark download bird-sql
 ```
 
+```bash
+tabulaflow benchmark run bird-sql --split dev --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## Spider 2.0 Snow
@@ -60,6 +64,10 @@ to obtain database access and a programmatic access token, then set:
 export SF_USER="your-username"
 export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
+```
+
+```bash
+tabulaflow benchmark run spider2-snow --split test --sample-size 5
 ```
 
 <div class="benchmark-heading" markdown="1">
@@ -113,6 +121,15 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
     # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
     ```
 
+Run five tasks against a local SQLite database:
+
+```bash
+tabulaflow benchmark run spider2-lite \
+  --split test \
+  --database bank_sales_trading \
+  --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## Spider 2.0 dbt
@@ -134,6 +151,10 @@ tabulaflow benchmark download spider2-dbt
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
+```bash
+tabulaflow benchmark run spider2-dbt --split test --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## Beaver
@@ -146,11 +167,16 @@ Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
 </div>
 
-Beaver contains enterprise text-to-SQL tasks over MySQL databases. With Docker
-running, download the data and start the databases:
+Beaver contains enterprise text-to-SQL tasks over MySQL databases. Download the
+benchmark, then start its databases with Docker running:
 
 ```bash
+tabulaflow benchmark download beaver
 tabulaflow benchmark start beaver
+```
+
+```bash
+tabulaflow benchmark run beaver --split test --sample-size 5
 ```
 
 The databases use local ports `3311` and `3312`. Stop them when finished:
@@ -190,6 +216,10 @@ Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 tabulaflow benchmark download ambrosia-s
 ```
 
+```bash
+tabulaflow benchmark run ambrosia-s --split test --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## CypherBench
@@ -202,12 +232,17 @@ tabulaflow benchmark download ambrosia-s
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. With Docker running,
-download the data and start the test databases (starting imports each
-graph into Neo4j, which can take a while):
+Text-to-Cypher tasks over Neo4j property graphs. Download the benchmark, then
+start the test databases with Docker running. Starting imports each graph into
+Neo4j, which can take a while:
 
 ```bash
+tabulaflow benchmark download cypherbench
 tabulaflow benchmark start cypherbench
+```
+
+```bash
+tabulaflow benchmark run cypherbench --split test --sample-size 5
 ```
 
 Stop the databases when finished (this removes the containers, so the

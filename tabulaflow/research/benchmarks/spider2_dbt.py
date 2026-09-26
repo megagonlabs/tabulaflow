@@ -111,57 +111,6 @@ def _db_name_from_profiles(project_dir: str) -> str:
     raise FileNotFoundError(f"Cannot determine DuckDB filename from {profiles_path}")
 
 
-async def prepare_working_env_async(dataset: NL2QDataset, output_dir: str) -> None:
-    """Copy each dbt project to a working directory and rewire db_connectors.
-
-    For each ``DbtTask`` in *dataset*, this function:
-    1. Copies ``project_dir`` → ``<output_dir>/working/<qid>``
-    2. Sets ``task.working_dir`` to the copy
-    3. Creates an empty DuckDB if the project has none yet
-    4. Replaces ``dataset.db_connectors[task.db]`` with a read-only
-       ``SQLConnector`` pointing to the duckdb file inside the copy
-
-    Args:
-        dataset: The dataset returned by
-            :meth:`Spider2DbtDatasetLoader.get_split_async`.
-        output_dir: Root output directory for the experiment run.
-    """
-    for task in dataset.tasks:
-        if not isinstance(task, DbtTask):
-            continue
-        working_dir = os.path.join(output_dir, "working", task.qid)
-        if os.path.exists(working_dir):
-            shutil.rmtree(working_dir)
-        shutil.copytree(task.project_dir, working_dir)
-        task.working_dir = working_dir
-
-        duckdb_files = [f for f in os.listdir(working_dir) if f.endswith(".duckdb")]
-        if not duckdb_files:
-            db_name = _db_name_from_profiles(working_dir)
-            working_db_path = os.path.join(working_dir, db_name)
-            duckdb.connect(database=working_db_path).close()
-            logger.info("Created empty DuckDB at %s", working_db_path)
-        else:
-            working_db_path = os.path.join(working_dir, duckdb_files[0])
-
-        original_conn = dataset.db_connectors.get(task.db)
-        original_global_id = original_conn.global_id if original_conn is not None else f"spider2-dbt+{task.db}"
-        existing_schema = original_conn.schema if original_conn is not None else None
-        conn = await SQLConnector.from_url_async(
-            global_id=original_global_id,
-            url=f"duckdb:///{working_db_path}",
-            display_name=task.db,
-            schema=existing_schema,
-            read_only=True,
-            config=SQLConnectorConfig(
-                max_query_concurrency=4,
-                schema_cache_mode="off",
-                sql_query_cache_mode="off",
-            ),
-        )
-        dataset.db_connectors[task.db] = conn
-
-
 # The manifest and official evaluation contain 68 instances. These four lack
 # local gold DuckDBs, so the loader returns 64 and the official-split score,
 # whose denominator remains 68, currently has a maximum of 64/68.
@@ -190,17 +139,23 @@ class Spider2DbtDatasetLoader:
         directory: str | None = None,
         max_concurrency: int = 16,
         connector_config: SQLConnectorConfig | None = None,
+        workspace_dir: str | Path | None = None,
     ):
         """Initializes the Spider 2.0-DBT dataset loader.
 
         Args:
             directory: Path to the spider2-dbt data directory.
             max_concurrency: Maximum concurrent DuckDB connections.
+            connector_config: Configuration for source database connectors.
+            workspace_dir: Root for isolated project copies. When provided,
+                loaded splits are ready to run with ``DbtAgent``.
         """
         if directory is None:
             self.installation.require()
         self.directory = str(self.installation.directory if directory is None else directory)
         self.max_concurrency = max_concurrency
+        self.workspace_dir = None if workspace_dir is None else Path(workspace_dir)
+        self._prepared_projects: set[str] = set()
         self.connector_config = (
             SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
         )
@@ -211,6 +166,19 @@ class Spider2DbtDatasetLoader:
 
     def _eval_jsonl_path(self) -> str:
         return os.path.join(self.directory, "evaluation_suite", "gold", "spider2_eval.jsonl")
+
+    def _project_dir(self, instance_id: str) -> Path:
+        source = Path(self.directory) / "examples" / instance_id
+        if self.workspace_dir is None:
+            return source
+
+        working = self.workspace_dir / instance_id
+        if instance_id not in self._prepared_projects:
+            if working.exists():
+                raise FileExistsError(f"dbt working directory already exists: {working}")
+            shutil.copytree(source, working)
+            self._prepared_projects.add(instance_id)
+        return working
 
     def _resolve_gold_db_path(self, instance_id: str, spec_name: str | None) -> str | None:
         """Resolve the gold DuckDB path, falling back to the actual file on disk.
@@ -335,22 +303,32 @@ class Spider2DbtDatasetLoader:
         connectors: dict[str, SQLConnector] = {}
 
         for instance_id in databases:
-            project_dir = os.path.join(self.directory, "examples", instance_id)
+            project_dir = self._project_dir(instance_id)
             duckdb_files = [f for f in os.listdir(project_dir) if f.endswith(".duckdb")]
             if not duckdb_files:
-                logger.info("No .duckdb file found in %s, skipping", project_dir)
-                continue
+                if self.workspace_dir is None:
+                    logger.info("No .duckdb file found in %s, skipping", project_dir)
+                    continue
+                db_name = _db_name_from_profiles(str(project_dir))
+                duckdb.connect(database=project_dir / db_name).close()
+                duckdb_files = [db_name]
+                logger.info("Created empty DuckDB at %s", project_dir / db_name)
             if len(duckdb_files) > 1:
                 logger.warning("Multiple .duckdb files in %s, using %s", project_dir, duckdb_files[0])
-            db_path = os.path.join(project_dir, duckdb_files[0])
+            db_path = project_dir / duckdb_files[0]
             url = f"duckdb:///{db_path}"
+            connector_config = self.connector_config.model_copy(update={"max_query_concurrency": 4})
+            if self.workspace_dir is not None:
+                connector_config = connector_config.model_copy(
+                    update={"schema_cache_mode": "off", "sql_query_cache_mode": "off"}
+                )
             conn = await SQLConnector.from_url_async(
                 global_id=f"spider2-dbt+{instance_id}",
                 url=url,
                 display_name=instance_id,
                 dbms_semaphore=self._dbms_semaphore,
                 read_only=True,
-                config=self.connector_config.model_copy(update={"max_query_concurrency": 4}),
+                config=connector_config,
             )
             connectors[instance_id] = conn
 
@@ -366,7 +344,7 @@ class Spider2DbtDatasetLoader:
         tasks = select_tasks(await self.get_tasks_async(split, databases), qids, subsample_size)
         databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
-        return NL2QDataset(
+        dataset = NL2QDataset(
             name=self.name,
             split=split,
             databases=databases,
@@ -374,3 +352,8 @@ class Spider2DbtDatasetLoader:
             tasks=tasks,  # type: ignore
             db_connectors=db_connectors,
         )
+        if self.workspace_dir is not None:
+            for task in dataset.tasks:
+                if isinstance(task, DbtTask):
+                    task.working_dir = str(self.workspace_dir / task.qid)
+        return dataset

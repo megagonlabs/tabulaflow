@@ -1,5 +1,16 @@
 # Run experiments
 
+Use `tabulaflow benchmark run` for convenient end-to-end runs with registered
+benchmarks, agents, and metrics. Use the Python API when you need flexibility
+beyond the CLI.
+
+```bash
+tabulaflow benchmark run bird-sql --split dev --sample-size 5
+```
+
+See [benchmarks](benchmarks.md) for setup and commands for each dataset, or
+complete the [Python quick start](quick-start.md) before building a custom run.
+
 ## Save and restore a run
 
 Save predictions to inspect or evaluate them later without rerunning the agent.

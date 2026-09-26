@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from tabulaflow.research.pipelines.execute import execute_async
     from tabulaflow.research.pipelines.predict import predict_async
     from tabulaflow.research.pipelines.preprocess import preprocess_async
+    from tabulaflow.research.pipelines.run import run_experiment_async
 
 _LAZY_EXPORTS = {
     "ensemble_async": ("tabulaflow.research.pipelines.ensemble", "ensemble_async"),
@@ -17,6 +18,7 @@ _LAZY_EXPORTS = {
     "execute_async": ("tabulaflow.research.pipelines.execute", "execute_async"),
     "predict_async": ("tabulaflow.research.pipelines.predict", "predict_async"),
     "preprocess_async": ("tabulaflow.research.pipelines.preprocess", "preprocess_async"),
+    "run_experiment_async": ("tabulaflow.research.pipelines.run", "run_experiment_async"),
 }
 
 
@@ -39,4 +41,5 @@ __all__ = [
     "evaluate_async",
     "ensemble_async",
     "preprocess_async",
+    "run_experiment_async",
 ]
