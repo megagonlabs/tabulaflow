@@ -15,6 +15,10 @@ Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
 with `tabulaflow benchmark list`.
 
+After setup, run five deterministic tasks to verify the benchmark, database,
+agent, and primary metric end to end. These commands use the default model and
+make paid calls; set its provider API key first. Results are saved under `runs/`.
+
 <div class="benchmark-heading" markdown="1">
 
 ## BIRD-SQL
@@ -32,6 +36,10 @@ SQLite databases. The download includes tasks and databases for all splits;
 
 ```bash
 tabulaflow benchmark download bird-sql
+```
+
+```bash
+tabulaflow benchmark run bird-sql --split dev --sample-size 5
 ```
 
 <div class="benchmark-heading" markdown="1">
@@ -60,6 +68,10 @@ to obtain database access and a programmatic access token, then set:
 export SF_USER="your-username"
 export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
+```
+
+```bash
+tabulaflow benchmark run spider2-snow --split test --sample-size 5
 ```
 
 <div class="benchmark-heading" markdown="1">
@@ -113,6 +125,10 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
     # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
     ```
 
+```bash
+tabulaflow benchmark run spider2-lite --split test --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## Spider 2.0 dbt
@@ -134,6 +150,10 @@ tabulaflow benchmark download spider2-dbt
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
+```bash
+tabulaflow benchmark run spider2-dbt --split test --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## Beaver
@@ -151,6 +171,10 @@ running, download the data and start the databases:
 
 ```bash
 tabulaflow benchmark start beaver
+```
+
+```bash
+tabulaflow benchmark run beaver --split test --sample-size 5
 ```
 
 The databases use local ports `3311` and `3312`. Stop them when finished:
@@ -190,6 +214,10 @@ Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 tabulaflow benchmark download ambrosia-s
 ```
 
+```bash
+tabulaflow benchmark run ambrosia-s --split test --sample-size 5
+```
+
 <div class="benchmark-heading" markdown="1">
 
 ## CypherBench
@@ -208,6 +236,10 @@ graph into Neo4j, which can take a while):
 
 ```bash
 tabulaflow benchmark start cypherbench
+```
+
+```bash
+tabulaflow benchmark run cypherbench --split test --sample-size 5
 ```
 
 Stop the databases when finished (this removes the containers, so the

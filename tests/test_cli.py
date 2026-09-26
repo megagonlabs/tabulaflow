@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 from types import SimpleNamespace
 
 from pytest import MonkeyPatch
@@ -170,3 +171,27 @@ def test_benchmark_runtime_commands_support_split_selection() -> None:
     assert stop.exit_code == 0
     assert "--split" in _plain(start.stdout)
     assert "--split" in _plain(stop.stdout)
+
+
+def test_benchmark_run_defaults_to_five_tasks(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    received: dict[str, object] = {}
+
+    async def fake_run_benchmark_async(*args: object) -> None:
+        received["args"] = args
+
+    monkeypatch.setattr("tabulaflow.research.cli._run_benchmark_async", fake_run_benchmark_async)
+
+    result = CliRunner().invoke(
+        app,
+        ["benchmark", "run", "bird-sql", "--output-dir", str(tmp_path)],
+    )
+
+    assert result.exit_code == 0
+    assert received["args"] == ("bird-sql", "dev", 5, 5, "full_schema", None, tmp_path)
+
+
+def test_benchmark_run_rejects_unknown_split() -> None:
+    result = CliRunner().invoke(app, ["benchmark", "run", "bird-sql", "--split", "unknown"])
+
+    assert result.exit_code == 2
+    assert "unknown split 'unknown'" in _plain(result.output)
