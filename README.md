@@ -381,7 +381,7 @@ application are included alongside those files under
 | datasets | No | [huggingface/datasets](https://github.com/huggingface/datasets) | Apache-2.0 |
 | dbt-duckdb | No | [duckdb/dbt-duckdb](https://github.com/duckdb/dbt-duckdb) | Apache-2.0 |
 | duckdb | No | [duckdb/duckdb-python](https://github.com/duckdb/duckdb-python) | MIT |
-| duckdb-engine | No | [Mause/duckdb_engine](https://github.com/Mause/duckdb_engine) | MIT |
+| duckdb-sqlalchemy | No | [leonardovida/duckdb-sqlalchemy](https://github.com/leonardovida/duckdb-sqlalchemy) | MIT |
 | filelock | No | [tox-dev/filelock](https://github.com/tox-dev/filelock) | Unlicense |
 | gdown | No | [wkentaro/gdown](https://github.com/wkentaro/gdown) | MIT |
 | genai-prices | No | [pydantic/genai-prices](https://github.com/pydantic/genai-prices) | MIT |
