@@ -3911,15 +3911,15 @@ wheels = [
 
 [[package]]
 name = "snowflake-sqlalchemy"
-version = "1.7.7"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "snowflake-connector-python" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/35/99c9d8ae12fd3799a46f3ebf86d4a4d7e0816f8c738f4545f2909b6b8756/snowflake_sqlalchemy-1.7.7.tar.gz", hash = "sha256:4ae5e5b458596ab2f0380c79b049978681a0490791add478d3c953613417d086", size = 121207, upload-time = "2025-09-09T14:37:42.978Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/54/f9f7e3701e4b35bcb9fbdc14cdb347133bbe3c5a9e87071649f3934b283d/snowflake_sqlalchemy-1.11.0.tar.gz", hash = "sha256:95866fe499a8ba692f01eb107741050efc553361e1674e3e44ea4a890b4df00c", size = 248059, upload-time = "2026-07-08T08:53:39.248Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/86/18210ab4a07e1b22494cc6738a4606f66afe75567090006ecd372f631f00/snowflake_sqlalchemy-1.7.7-py3-none-any.whl", hash = "sha256:e6cf9f6309a9c3f4b3fd6e8808b2fb04886da123f4d58d96323a491732a5d496", size = 72399, upload-time = "2025-09-09T14:37:41.79Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/9a/f8d0165f5d2447a0d7e10dc309c7ea1af6782aa1b357164d25dcb567b196/snowflake_sqlalchemy-1.11.0-py3-none-any.whl", hash = "sha256:f5fad9e86441812ad1f23aef92a2e612d65408338221ae39b9becedb7329a6e2", size = 117058, upload-time = "2026-07-08T08:53:38.053Z" },
 ]
 
 [[package]]
