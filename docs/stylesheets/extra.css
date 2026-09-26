@@ -1440,6 +1440,62 @@ body {
   background: #c99568;
 }
 
+.md-typeset .benchmark-heading {
+  display: flex;
+  gap: 0.8rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.md-typeset .benchmark-heading > h2 {
+  flex: 1 1 auto;
+}
+
+.md-typeset .benchmark-resources {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.md-typeset .benchmark-resource {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.12rem 0.5rem;
+  color: var(--tf-text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--tf-border);
+  border-radius: 999px;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.md-typeset a.benchmark-resource:is(:hover, :focus-visible) {
+  color: var(--tf-accent);
+  text-decoration: none;
+  background: var(--tf-hover);
+  border-color: var(--tf-accent);
+}
+
+.md-typeset .benchmark-resource--unavailable {
+  color: var(--tf-text-dim);
+}
+
+@media screen and (max-width: 44.99em) {
+  .md-typeset .benchmark-heading {
+    display: block;
+  }
+
+  .md-typeset .benchmark-resources {
+    margin: -0.2rem 0 0.9rem;
+  }
+}
+
 .md-typeset table:not([class]) {
   background: var(--tf-card);
   border-color: var(--tf-border);

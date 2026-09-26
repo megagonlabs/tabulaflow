@@ -95,6 +95,7 @@ plugins:
 markdown_extensions:
   - admonition
   - attr_list
+  - md_in_html
   - toc:
       toc_depth: 3
   - pymdownx.highlight

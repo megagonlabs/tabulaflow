@@ -15,7 +15,16 @@ Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
 with `tabulaflow benchmark list`.
 
+<div class="benchmark-heading" markdown="1">
+
 ## BIRD-SQL
+
+<div class="benchmark-resources" aria-label="BIRD-SQL resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2305.03111">Paper</a>
+  <a class="benchmark-resource" href="https://bird-bench.github.io/">Website</a>
+</div>
+
+</div>
 
 Text-to-SQL questions with supporting evidence and column descriptions over
 SQLite databases. The download includes tasks and databases for all splits;
@@ -25,7 +34,17 @@ SQLite databases. The download includes tasks and databases for all splits;
 tabulaflow benchmark download bird-sql
 ```
 
+<div class="benchmark-heading" markdown="1">
+
 ## Spider 2.0 Snow
+
+<div class="benchmark-resources" aria-label="Spider 2.0 Snow resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2411.07763">Paper</a>
+  <a class="benchmark-resource" href="https://spider2-sql.github.io/">Website</a>
+  <a class="benchmark-resource" href="https://github.com/xlang-ai/Spider2/tree/main/spider2-snow">Dataset</a>
+</div>
+
+</div>
 
 Text-to-SQL tasks over Snowflake databases. Download the tasks, schema metadata,
 and reference results:
@@ -43,7 +62,17 @@ export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
 ```
 
+<div class="benchmark-heading" markdown="1">
+
 ## Spider 2.0 Lite
+
+<div class="benchmark-resources" aria-label="Spider 2.0 Lite resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2411.07763">Paper</a>
+  <a class="benchmark-resource" href="https://spider2-sql.github.io/">Website</a>
+  <a class="benchmark-resource" href="https://github.com/xlang-ai/Spider2/tree/main/spider2-lite">Dataset</a>
+</div>
+
+</div>
 
 Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The download includes
 task assets and the local SQLite databases:
@@ -84,7 +113,17 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
     # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
     ```
 
+<div class="benchmark-heading" markdown="1">
+
 ## Spider 2.0 dbt
+
+<div class="benchmark-resources" aria-label="Spider 2.0 dbt resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2411.07763">Paper</a>
+  <a class="benchmark-resource" href="https://spider2-sql.github.io/">Website</a>
+  <a class="benchmark-resource" href="https://github.com/xlang-ai/Spider2/tree/main/spider2-dbt">Dataset</a>
+</div>
+
+</div>
 
 Data transformation tasks in dbt projects backed by DuckDB. The download includes
 the projects and their starting and reference databases:
@@ -95,11 +134,20 @@ tabulaflow benchmark download spider2-dbt
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
+<div class="benchmark-heading" markdown="1">
+
 ## Beaver
 
-[Beaver](https://github.com/beaverbench/beaver) contains enterprise text-to-SQL
-tasks over MySQL databases. With Docker running, download the data and start
-the databases:
+<div class="benchmark-resources" aria-label="Beaver resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2409.02038">Paper</a>
+  <a class="benchmark-resource" href="https://beaverbench.github.io/">Website</a>
+  <a class="benchmark-resource" href="https://huggingface.co/collections/beaverbench/beaver-dataset">Dataset</a>
+</div>
+
+</div>
+
+Beaver contains enterprise text-to-SQL tasks over MySQL databases. With Docker
+running, download the data and start the databases:
 
 ```bash
 tabulaflow benchmark start beaver
@@ -111,11 +159,30 @@ The databases use local ports `3311` and `3312`. Stop them when finished:
 tabulaflow benchmark stop beaver
 ```
 
+<div class="benchmark-heading" markdown="1">
+
 ## ARCS
+
+<div class="benchmark-resources" aria-label="ARCS resources">
+  <span class="benchmark-resource benchmark-resource--unavailable">Paper forthcoming</span>
+  <span class="benchmark-resource benchmark-resource--unavailable">Website forthcoming</span>
+  <span class="benchmark-resource benchmark-resource--unavailable">Dataset forthcoming</span>
+</div>
+
+</div>
 
 Coming soon.
 
+<div class="benchmark-heading" markdown="1">
+
 ## AMBROSIA
+
+<div class="benchmark-resources" aria-label="AMBROSIA resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2406.19073">Paper</a>
+  <a class="benchmark-resource" href="https://ambrosia-benchmark.github.io/">Website</a>
+</div>
+
+</div>
 
 Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 
@@ -123,7 +190,17 @@ Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 tabulaflow benchmark download ambrosia-s
 ```
 
+<div class="benchmark-heading" markdown="1">
+
 ## CypherBench
+
+<div class="benchmark-resources" aria-label="CypherBench resources">
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2412.18702">Paper</a>
+  <a class="benchmark-resource" href="https://github.com/megagonlabs/cypherbench">Website</a>
+  <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/cypherbench">Dataset</a>
+</div>
+
+</div>
 
 Text-to-Cypher tasks over Neo4j property graphs. With Docker running,
 download the data and start the test databases (starting imports each
