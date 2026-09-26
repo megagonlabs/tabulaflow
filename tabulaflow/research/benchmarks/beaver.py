@@ -71,7 +71,17 @@ BEAVER_CONTAINERS = {
 async def _beaver_ready(split: str | None) -> bool:
     async def database_ready(container: str) -> bool:
         try:
-            await run_command("docker", "exec", container, "mysqladmin", "ping", "-uroot", "-proot", "--silent")
+            await run_command(
+                "docker",
+                "exec",
+                container,
+                "mysqladmin",
+                "ping",
+                "--protocol=tcp",
+                "-uroot",
+                "-proot",
+                "--silent",
+            )
             return True
         except BenchmarkRuntimeError:
             return False

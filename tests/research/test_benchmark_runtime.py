@@ -252,3 +252,18 @@ async def test_beaver_runtime_creates_persistent_mysql_containers(monkeypatch: p
     assert all(command[:2] != ("docker", "compose") for command in commands)
     assert any("tabulaflow-beaver-dw:/var/lib/mysql" in command for command in run_commands)
     assert any("tabulaflow-beaver-nw:/var/lib/mysql" in command for command in run_commands)
+
+
+@pytest.mark.asyncio
+async def test_beaver_readiness_requires_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[tuple[str, ...]] = []
+
+    async def run_command(*command: str, cwd: Path | None = None) -> str:
+        commands.append(command)
+        return ""
+
+    monkeypatch.setattr(beaver, "run_command", run_command)
+
+    assert await beaver._beaver_ready(None)
+    assert len(commands) == len(beaver.BEAVER_CONTAINERS)
+    assert all("--protocol=tcp" in command for command in commands)
