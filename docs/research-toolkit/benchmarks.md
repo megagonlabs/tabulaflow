@@ -167,10 +167,11 @@ tabulaflow benchmark run spider2-dbt --split test --sample-size 5
 
 </div>
 
-Beaver contains enterprise text-to-SQL tasks over MySQL databases. With Docker
-running, download the data and start the databases:
+Beaver contains enterprise text-to-SQL tasks over MySQL databases. Download the
+benchmark, then start its databases with Docker running:
 
 ```bash
+tabulaflow benchmark download beaver
 tabulaflow benchmark start beaver
 ```
 
@@ -231,11 +232,12 @@ tabulaflow benchmark run ambrosia-s --split test --sample-size 5
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. With Docker running,
-download the data and start the test databases (starting imports each
-graph into Neo4j, which can take a while):
+Text-to-Cypher tasks over Neo4j property graphs. Download the benchmark, then
+start the test databases with Docker running. Starting imports each graph into
+Neo4j, which can take a while:
 
 ```bash
+tabulaflow benchmark download cypherbench
 tabulaflow benchmark start cypherbench
 ```
 

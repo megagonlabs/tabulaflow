@@ -166,19 +166,14 @@ def start(
     name: str = typer.Argument(help="Benchmark name."),
     split: str | None = typer.Option(None, "--split", help="Database split to start."),
 ) -> None:
-    """Download a benchmark if needed and start its managed databases."""
+    """Start a downloaded benchmark's managed databases."""
     benchmark = _get_benchmark(name)
     runtime = _get_runtime(name)
-    if not benchmark.installation.is_installed:
-        console.print("Downloading", name, "to", benchmark.installation.directory)
-
-    async def start_runtime() -> None:
-        await benchmark.installation.install(progress=_progress)
-        await runtime.start(split, _progress)
 
     try:
-        asyncio.run(start_runtime())
-    except (BenchmarkInstallationError, BenchmarkRuntimeError, httpx.HTTPError) as error:
+        benchmark.installation.require()
+        asyncio.run(runtime.start(split, _progress))
+    except (BenchmarkInstallationError, BenchmarkRuntimeError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
     resolved_split = runtime.resolve_split(split)

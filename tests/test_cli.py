@@ -173,6 +173,21 @@ def test_benchmark_runtime_commands_support_split_selection() -> None:
     assert "--split" in _plain(stop.stdout)
 
 
+def test_benchmark_start_requires_download(monkeypatch: MonkeyPatch) -> None:
+    def require() -> None:
+        raise BenchmarkInstallationError("example is not downloaded.\n\nRun:\n  tabulaflow benchmark download example")
+
+    benchmark = SimpleNamespace(installation=SimpleNamespace(require=require))
+    runtime = SimpleNamespace()
+    monkeypatch.setattr("tabulaflow.research.cli._get_benchmark", lambda _name: benchmark)
+    monkeypatch.setattr("tabulaflow.research.cli._get_runtime", lambda _name: runtime)
+
+    result = CliRunner().invoke(app, ["benchmark", "start", "example"])
+
+    assert result.exit_code == 1
+    assert "tabulaflow benchmark download example" in _plain(result.output)
+
+
 def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     received: dict[str, object] = {}
 
