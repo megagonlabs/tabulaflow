@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -24,7 +25,7 @@ def test_global_id_is_stable_and_safe() -> None:
 async def test_connector_uses_stable_id_for_database_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     database = "attachment/Job Postings/example"
     (tmp_path / "db_list.txt").write_text(f"{database}\n")
-    connector = SimpleNamespace()
+    connector = cast(SQLConnector, SimpleNamespace())
     create_connector = AsyncMock(return_value=connector)
     monkeypatch.setattr(SQLConnector, "from_url_async", create_connector)
     loader = AmbrosiaSDatasetLoader(directory=str(tmp_path))
