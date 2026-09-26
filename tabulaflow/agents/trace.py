@@ -222,7 +222,14 @@ _GENAI_PRICES_PROVIDER_MAPPINGS = {
 }
 
 
-def compute_api_cost(llm: str, input_tokens: int, output_tokens: int) -> Decimal:
+def compute_api_cost(
+    llm: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> Decimal:
     """Estimate token cost, returning zero when the model has no known price."""
     from genai_prices import Usage as GenAIUsage
     from genai_prices import calc_price
@@ -232,7 +239,12 @@ def compute_api_cost(llm: str, input_tokens: int, output_tokens: int) -> Decimal
 
     try:
         return calc_price(
-            GenAIUsage(input_tokens=input_tokens, output_tokens=output_tokens),
+            GenAIUsage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+                cache_write_tokens=cache_write_tokens,
+            ),
             model_ref=model,
             provider_id=provider,
         ).total_price
@@ -251,6 +263,8 @@ class Usage(BaseModel):
     input_tokens: int
     output_tokens: int
     api_cost_usd: Decimal
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
     def __add__(self, other: "Usage") -> "Usage":
         if self.llm is None:
@@ -266,6 +280,8 @@ class Usage(BaseModel):
             llm=llm,
             api_requests=self.api_requests + other.api_requests,
             input_tokens=self.input_tokens + other.input_tokens,
+            cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
+            cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
             api_cost_usd=self.api_cost_usd + other.api_cost_usd,
         )
@@ -276,6 +292,8 @@ class Usage(BaseModel):
         llm: str | None = None,
         api_requests: int = 0,
         input_tokens: int = 0,
+        cache_read_tokens: int = 0,
+        cache_write_tokens: int = 0,
         output_tokens: int = 0,
         api_cost_usd: float | Decimal | None = None,
     ) -> "Usage":
@@ -286,13 +304,21 @@ class Usage(BaseModel):
             else:
                 if llm is None:
                     raise ValueError("llm is required when api_requests > 0")
-                api_cost_usd = compute_api_cost(llm, input_tokens, output_tokens)
+                api_cost_usd = compute_api_cost(
+                    llm,
+                    input_tokens,
+                    output_tokens,
+                    cache_read_tokens=cache_read_tokens,
+                    cache_write_tokens=cache_write_tokens,
+                )
 
         elif isinstance(api_cost_usd, float):
             api_cost_usd = Decimal(str(api_cost_usd))
         return cls(
             api_requests=api_requests,
             input_tokens=input_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
             output_tokens=output_tokens,
             api_cost_usd=api_cost_usd,
             llm=llm,
@@ -310,6 +336,8 @@ class Usage(BaseModel):
                 llm=llm,
                 api_requests=usage.requests,
                 input_tokens=usage.input_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
                 output_tokens=usage.output_tokens,
             )
         else:
@@ -317,5 +345,7 @@ class Usage(BaseModel):
                 llm=llm,
                 api_requests=1,
                 input_tokens=usage.input_tokens,
+                cache_read_tokens=usage.cache_read_tokens,
+                cache_write_tokens=usage.cache_write_tokens,
                 output_tokens=usage.output_tokens,
             )
