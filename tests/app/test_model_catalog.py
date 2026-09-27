@@ -11,6 +11,7 @@ import pytest
 import tabulaflow.app.model_catalog as model_catalog_module
 from tabulaflow.app.model_catalog import (
     ModelCatalog,
+    VLLMModelDiscovery,
     _BundledCatalog,
     _CatalogEntry,
     _available_models,
@@ -102,23 +103,64 @@ def test_model_catalog_orders_explicit_models_without_an_implicit_fallback() -> 
     catalog = llm_model_catalog(
         current="anthropic:claude-sonnet-5",
         recommended=("openai:gpt-5.6-sol",),
+        pinned=("vllm:Qwen/Qwen3-8B",),
         available=(
             "xai:grok-4.6",
             "anthropic:claude-haiku-4-5",
             "openai:gpt-5.6-sol",
             "anthropic:claude-sonnet-5",
+            "vllm:Qwen/Qwen3-8B",
         ),
     )
 
     assert catalog == (
-        "openai:gpt-5.6-sol",
         "anthropic:claude-sonnet-5",
+        "openai:gpt-5.6-sol",
+        "vllm:Qwen/Qwen3-8B",
         "anthropic:claude-haiku-4-5",
         "xai:grok-4.6",
     )
     assert llm_model_catalog(current="gateway/openai:custom", recommended=()) == (
         "gateway/openai:custom",
     )
+
+
+async def test_vllm_discovery_is_unset_without_an_endpoint() -> None:
+    discovery = VLLMModelDiscovery(base_url="")
+
+    assert await discovery.warm() is None
+
+
+async def test_vllm_discovery_returns_provider_qualified_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"data": [{"id": "Qwen/Qwen3-8B"}, {"id": "local-fast"}]})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(model_catalog_module.httpx, "AsyncClient", lambda **kwargs: client)
+    discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1", api_key="secret")
+
+    result = await discovery.warm()
+
+    assert result is not None
+    assert result.models == ("vllm:Qwen/Qwen3-8B", "vllm:local-fast")
+    assert result.error is None
+    assert discovery.endpoint_label == "localhost:8000"
+    assert requests[0].url == "http://localhost:8000/v1/models"
+    assert requests[0].headers["authorization"] == "Bearer secret"
+
+
+async def test_vllm_discovery_reports_authentication_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(401)))
+    monkeypatch.setattr(model_catalog_module.httpx, "AsyncClient", lambda **kwargs: client)
+    discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")
+
+    result = await discovery.warm()
+
+    assert result is not None
+    assert result.error == "authentication failed — check VLLM_API_KEY"
 
 
 @pytest.mark.asyncio

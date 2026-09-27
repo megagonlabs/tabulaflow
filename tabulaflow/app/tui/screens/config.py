@@ -28,7 +28,11 @@ from tabulaflow.app.config import (
     LLMRoleConfig,
     ResolvedLLMConfig,
 )
-from tabulaflow.app.model_catalog import llm_model_catalog, load_local_model_catalog
+from tabulaflow.app.model_catalog import (
+    VLLMModelDiscovery,
+    llm_model_catalog,
+    load_local_model_catalog,
+)
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
@@ -97,11 +101,13 @@ class ModelPickerScreen(Screen[str | None]):
         current: str,
         *,
         catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+        vllm_discovery: VLLMModelDiscovery | None = None,
     ) -> None:
         super().__init__()
         self._role = role
         self._current = current
         self._catalog_loader = catalog_loader or load_local_model_catalog
+        self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
         self._recommendations = recommended
         self._recommended = frozenset(recommended)
@@ -124,12 +130,17 @@ class ModelPickerScreen(Screen[str | None]):
 
     async def _load_catalog(self) -> None:
         available = await self._catalog_loader()
+        result = await self._vllm_discovery.warm()
+        vllm_models = result.models if result is not None else ()
+        available = tuple((*available, *vllm_models))
         if not available:
+            self._refresh()
             return
         selected = self._visible[self._cursor] if self._cursor < len(self._visible) else self._current
         self._models = llm_model_catalog(
             current=self._current,
             recommended=self._recommendations,
+            pinned=vllm_models,
             available=available,
         )
         self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
@@ -204,11 +215,15 @@ class ModelPickerScreen(Screen[str | None]):
         rows = [(model, False) for model in self._visible]
         if custom_model is not None:
             rows.insert(0, (custom_model, True))
+        show_vllm_status = self._show_vllm_status()
 
         options_widget = self.query_one("#model-options", Static)
         options = Text(overflow="ellipsis", no_wrap=True)
         if rows:
-            start, end, show_above, show_below = self._model_window(len(rows), options_widget.content_size.height)
+            status_height = 3 if show_vllm_status else 0
+            start, end, show_above, show_below = self._model_window(
+                len(rows), options_widget.content_size.height - status_height
+            )
             if show_above:
                 options.append(f"  ↑ {start} more\n", style="dim")
             for index in range(start, end):
@@ -236,6 +251,11 @@ class ModelPickerScreen(Screen[str | None]):
         else:
             options.append("  No matching models\n", style="dim")
             options.append("  To use a custom model, enter its full ID in provider:model format.", style="dim")
+        if show_vllm_status:
+            if options.plain and not options.plain.endswith("\n"):
+                options.append("\n")
+            options.append("\n\n")
+            options.append(f"  {self._vllm_status()}", style="dim")
         options_widget.update(options)
 
         hint = Text.assemble(
@@ -245,6 +265,24 @@ class ModelPickerScreen(Screen[str | None]):
             (" Select", "dim"),
         )
         self.query_one("#model-picker-hint", Static).update(hint)
+
+    def _show_vllm_status(self) -> bool:
+        result = self._vllm_discovery.result()
+        if result is not None and result.error is None:
+            return False
+        query = self._filter.casefold()
+        return not query or query in "vllm local"
+
+    def _vllm_status(self) -> str:
+        if not self._vllm_discovery.base_url:
+            return "vLLM · set VLLM_BASE_URL to discover models"
+        result = self._vllm_discovery.result()
+        if result is None:
+            return "vLLM · discovering models…"
+        assert result.error is not None
+        detail = result.error
+        endpoint = f" at {self._vllm_discovery.endpoint_label}" if self._vllm_discovery.endpoint_label else ""
+        return f"vLLM · {detail}{endpoint}"
 
     def _model_window(self, row_count: int, height: int) -> tuple[int, int, bool, bool]:
         available = max(1, height)
@@ -287,10 +325,12 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         current: ResolvedLLMConfig,
         *,
         catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
+        vllm_discovery: VLLMModelDiscovery | None = None,
     ) -> None:
         super().__init__()
         self._current = current
         self._catalog_loader = catalog_loader or load_local_model_catalog
+        self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
         self._enabled = current.config is not None
         default = (
             ANTHROPIC_DEFAULT_LLM_CONFIG
@@ -370,7 +410,12 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         role = cast(LLMRoleConfig, getattr(self._config, role_name))
         if setting == "model":
             self.app.push_screen(
-                ModelPickerScreen(role_name, role.model, catalog_loader=self._catalog_loader),
+                ModelPickerScreen(
+                    role_name,
+                    role.model,
+                    catalog_loader=self._catalog_loader,
+                    vllm_discovery=self._vllm_discovery,
+                ),
                 lambda value: self._set_model(role_name, value),
             )
         else:
