@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from calendar import monthrange
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from functools import cache
 from pathlib import Path
@@ -23,6 +25,7 @@ MODEL_CATALOG_MAX_AGE = timedelta(days=1)
 MIN_MODEL_CONTEXT_TOKENS = 128_000
 MODEL_RELEASE_MAX_AGE_MONTHS = 6
 _CACHE_SCHEMA_VERSION = 5
+VLLM_DISCOVERY_TIMEOUT_SECONDS = 5
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
     "openai": "openai",
@@ -76,6 +79,79 @@ class _BundledCatalog(_CatalogData):
 class _CatalogCache(_CatalogData):
     checked_at: datetime
     etag: str | None = None
+
+
+@dataclass(frozen=True)
+class VLLMDiscoveryResult:
+    """Models returned by a vLLM endpoint, or its discovery error."""
+
+    models: tuple[str, ...] = ()
+    error: str | None = None
+
+
+class VLLMModelDiscovery:
+    """One shared background model-discovery task for ``VLLM_BASE_URL``."""
+
+    def __init__(self, *, base_url: str | None = None, api_key: str | None = None) -> None:
+        self.base_url = (base_url if base_url is not None else os.getenv("VLLM_BASE_URL", "")).strip()
+        self._api_key = api_key if api_key is not None else os.getenv("VLLM_API_KEY", "").strip()
+        self.endpoint_label = _endpoint_label(self.base_url) if self.base_url else None
+        self._task: asyncio.Task[VLLMDiscoveryResult] | None = None
+
+    def start(self) -> None:
+        """Start discovery once when an endpoint is configured."""
+        if self.base_url and self._task is None:
+            self._task = asyncio.create_task(_discover_vllm_models(self.base_url, self._api_key))
+
+    async def warm(self) -> VLLMDiscoveryResult | None:
+        """Wait for the shared discovery task, starting it when needed."""
+        self.start()
+        return await asyncio.shield(self._task) if self._task is not None else None
+
+    def result(self) -> VLLMDiscoveryResult | None:
+        """Return the completed result without waiting."""
+        if self._task is None or not self._task.done():
+            return None
+        return self._task.result()
+
+
+async def _discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+    headers = {"Accept": "application/json", "User-Agent": f"tabulaflow/{__version__}"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        async with httpx.AsyncClient(timeout=VLLM_DISCOVERY_TIMEOUT_SECONDS) as client:
+            response = await client.get(f"{base_url.rstrip('/')}/models", headers=headers)
+        if response.status_code in {401, 403}:
+            return VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY")
+        response.raise_for_status()
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            raise ValueError("response does not contain a model list")
+        model_ids = sorted(
+            {
+                item["id"].strip()
+                for item in data
+                if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"].strip()
+            }
+        )
+        if not model_ids:
+            return VLLMDiscoveryResult(error="endpoint returned no models")
+        return VLLMDiscoveryResult(tuple(f"vllm:{model_id}" for model_id in model_ids))
+    except httpx.TimeoutException:
+        return VLLMDiscoveryResult(error="connection timed out")
+    except (httpx.HTTPError, ValueError):
+        return VLLMDiscoveryResult(error="model discovery failed")
+
+
+def _endpoint_label(base_url: str) -> str:
+    try:
+        url = httpx.URL(base_url)
+    except httpx.InvalidURL:
+        return "configured endpoint"
+    host = url.host or "configured endpoint"
+    return f"{host}:{url.port}" if url.port is not None else host
 
 
 class _ModelLimit(BaseModel):
@@ -178,15 +254,19 @@ async def _available_models_async(
 
 
 def llm_model_catalog(
-    *, current: str, recommended: tuple[str, ...], available: tuple[str, ...] = ()
+    *,
+    current: str,
+    recommended: tuple[str, ...],
+    pinned: tuple[str, ...] = (),
+    available: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
-    """Order available models after recommendations and the current selection."""
+    """Order the current, recommended, pinned, and remaining available models."""
     current_provider = current.partition(":")[0]
     current_provider_models = tuple(
         model for model in available if model.partition(":")[0] == current_provider
     )
     other_models = tuple(model for model in available if model.partition(":")[0] != current_provider)
-    return tuple(dict.fromkeys((*recommended, current, *current_provider_models, *other_models)))
+    return tuple(dict.fromkeys((current, *recommended, *pinned, *current_provider_models, *other_models)))
 
 
 async def _read_cache(path: Path) -> _CatalogCache | None:

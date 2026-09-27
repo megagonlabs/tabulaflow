@@ -111,9 +111,13 @@ def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> No
     async def warm_model_catalog() -> tuple[str, ...]:
         return ()
 
+    async def warm_vllm_discovery() -> None:
+        return None
+
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
     monkeypatch.setattr(app, "_ensure_browser_pane", lambda: None)
     monkeypatch.setattr(app._model_catalog, "warm", warm_model_catalog)  # noqa: SLF001
+    monkeypatch.setattr(app._vllm_discovery, "warm", warm_vllm_discovery)  # noqa: SLF001
 
 
 def _session(*, llm_config: LLMConfig | None, tmp_path: Path) -> AppSession:

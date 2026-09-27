@@ -6,6 +6,7 @@ from textual.content import Content
 from textual.widgets import Static
 
 from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
+from tabulaflow.app.model_catalog import VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
 
 _TEST_MODEL_CATALOG = (
@@ -27,6 +28,25 @@ _CONFIG = LLMConfig(
     main=LLMRoleConfig(model="openai:gpt-5.6-sol", effort="medium"),
     subagent=LLMRoleConfig(model="openai:gpt-5.4-mini", effort="low"),
 )
+
+
+class _VLLMDiscovery(VLLMModelDiscovery):
+    def __init__(
+        self,
+        *,
+        base_url: str = "",
+        result: VLLMDiscoveryResult | None = None,
+        endpoint_label: str | None = None,
+    ) -> None:
+        self.base_url = base_url
+        self.endpoint_label = endpoint_label
+        self._result = result
+
+    def result(self) -> VLLMDiscoveryResult | None:
+        return self._result
+
+    async def warm(self) -> VLLMDiscoveryResult | None:
+        return self._result
 
 
 class _App(App[None]):
@@ -267,7 +287,7 @@ async def test_model_picker_marks_the_current_model_independently_of_the_cursor(
 
     async with PickerApp().run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down")
+        await pilot.press("down", "down")
         options = _option_text(picker)
 
     assert "  ● fireworks:accounts/fireworks/models/kimi-k3" in options
@@ -318,6 +338,58 @@ async def test_filter_accepts_a_custom_model_identifier() -> None:
         await pilot.pause()
         assert app.screen is screen
         assert "test:model" in _text(screen, "#field-main-model")
+
+
+async def test_model_picker_explains_how_to_enable_vllm_discovery() -> None:
+    discovery = _VLLMDiscovery()
+    picker = ModelPickerScreen("main", _CONFIG.main.model, vllm_discovery=discovery)
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        options = _option_text(picker)
+        assert "\n\n\n  vLLM · set VLLM_BASE_URL to discover models" in options
+
+
+async def test_model_picker_lists_discovered_vllm_models() -> None:
+    discovery = _VLLMDiscovery(
+        base_url="http://localhost:8000/v1",
+        result=VLLMDiscoveryResult(models=("vllm:Qwen/Qwen3-8B",)),
+        endpoint_label="localhost:8000",
+    )
+    picker = ModelPickerScreen("main", _CONFIG.main.model, vllm_discovery=discovery)
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        options = _option_text(picker)
+        assert options.index("openai:gpt-5.6-sol") < options.index("vllm:Qwen/Qwen3-8B")
+        assert options.index("vllm:Qwen/Qwen3-8B") < options.index("openai:gpt-6-astra")
+        await pilot.press(*"vllm")
+        assert "vllm:Qwen/Qwen3-8B" in _option_text(picker)
+
+
+async def test_model_picker_surfaces_vllm_discovery_failure() -> None:
+    discovery = _VLLMDiscovery(
+        base_url="http://localhost:8000/v1",
+        result=VLLMDiscoveryResult(error="model discovery failed"),
+        endpoint_label="localhost:8000",
+    )
+    picker = ModelPickerScreen("main", _CONFIG.main.model, vllm_discovery=discovery)
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(picker)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        assert "vLLM · model discovery failed at localhost:8000" in _option_text(picker)
 
 
 async def test_openai_chat_models_are_custom_only() -> None:
