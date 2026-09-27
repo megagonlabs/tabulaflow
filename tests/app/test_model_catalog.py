@@ -139,7 +139,7 @@ async def test_vllm_discovery_returns_provider_qualified_models(monkeypatch: pyt
         return httpx.Response(200, json={"data": [{"id": "Qwen/Qwen3-8B"}, {"id": "local-fast"}]})
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    monkeypatch.setattr(model_catalog_module.httpx, "AsyncClient", lambda **kwargs: client)
+    monkeypatch.setattr("tabulaflow.app.model_catalog.httpx.AsyncClient", lambda **kwargs: client)
     discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1", api_key="secret")
 
     result = await discovery.warm()
@@ -154,7 +154,7 @@ async def test_vllm_discovery_returns_provider_qualified_models(monkeypatch: pyt
 
 async def test_vllm_discovery_reports_authentication_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(401)))
-    monkeypatch.setattr(model_catalog_module.httpx, "AsyncClient", lambda **kwargs: client)
+    monkeypatch.setattr("tabulaflow.app.model_catalog.httpx.AsyncClient", lambda **kwargs: client)
     discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")
 
     result = await discovery.warm()
