@@ -54,6 +54,16 @@ conversational analysis but keeps data connections and browsing available.
 TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
 keys from the environment and does not save them.
 
+To use a local or remote vLLM server, set the Pydantic AI provider's
+OpenAI-compatible API base URL. TabulaFlow discovers the models exposed by the
+endpoint and lists them in the model picker. Set the API key only when the
+server requires one:
+
+```bash
+export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+export VLLM_API_KEY="your-api-key"  # Optional
+```
+
 ## Web browsing
 
 We recommend installing Chromium to enable web browsing and get the full
