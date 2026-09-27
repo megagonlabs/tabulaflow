@@ -1,9 +1,8 @@
 # Configuration
 
-Most users only need to install TabulaFlow and set one model-provider API key.
-TabulaFlow then selects suitable main-agent and subagent models automatically;
-use `/config` to change them. The remaining settings control optional browser
-support, resource limits, schema caching, and browser-pane networking.
+This page covers installation, optional browser support, resource limits,
+schema caching, and browser-pane networking. See [Model setup](../models.md) to
+configure cloud or local models and change them with `/config`.
 
 ## Installation
 
@@ -32,37 +31,6 @@ Choose an installation method:
     # Upgrade an existing installation
     python -m pip install --upgrade tabulaflow
     ```
-
-## Model setup
-
-The Data Agent includes recommended OpenAI and Anthropic models. Set a key for
-the provider you use:
-
-```bash
-export OPENAI_API_KEY="your-api-key"
-export ANTHROPIC_API_KEY="your-api-key"
-```
-
-You need only one key. Without a saved configuration, TabulaFlow checks OpenAI
-first, then Anthropic, and selects recommended models for both agent roles.
-
-Run `/config` to configure the main agent, subagent, and model request rate. The
-model picker accepts any provider-qualified identifier supported by the
-installed model stack, such as `openai:gpt-5.6-sol`. Disabling the LLM turns off
-conversational analysis but keeps data connections and browsing available.
-
-TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
-keys from the environment and does not save them.
-
-To use a local or remote vLLM server, set the Pydantic AI provider's
-OpenAI-compatible API base URL. TabulaFlow discovers the models exposed by the
-endpoint and lists them in the model picker. Set the API key only when the
-server requires one:
-
-```bash
-export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
-export VLLM_API_KEY="your-api-key"  # Optional
-```
 
 ## Web browsing
 
