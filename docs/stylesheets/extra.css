@@ -676,7 +676,7 @@ body {
 
 .md-typeset .demo-gallery__tabs {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 0 4px;
   border-bottom: 1px solid rgba(154, 164, 178, 0.18);
 }
@@ -700,16 +700,24 @@ body {
   transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
 }
 
-.md-typeset .demo-gallery__tabs button:nth-child(-n+3) {
-  grid-column: span 2;
+.md-typeset .demo-gallery__tabs button:nth-child(1) {
+  grid-column: span 9;
+}
+
+.md-typeset .demo-gallery__tabs button:nth-child(2) {
+  grid-column: span 8;
+}
+
+.md-typeset .demo-gallery__tabs button:nth-child(3) {
+  grid-column: span 7;
 }
 
 .md-typeset .demo-gallery__tabs button:nth-child(4) {
-  grid-column: span 3;
+  grid-column: span 13;
 }
 
 .md-typeset .demo-gallery__tabs button:nth-child(5) {
-  grid-column: span 3;
+  grid-column: span 11;
 }
 
 .md-typeset .demo-gallery__tabs button:is(:hover, :focus-visible) {
