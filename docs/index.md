@@ -194,10 +194,10 @@ directory, so your source data and project directory remain unchanged by
 default. You can ask the agent at any time to export results to local files in
 any format you need for saving, sharing, or further use.
 
-Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
-single database. TabulaFlow supports broader, general-purpose workflows across
-SQL and graph databases, local files, public datasets, and the web.
-
+Tabulaflow also goes beyond exiting AI database assistants (e.g., Chat2DB), which
+typically focus on generating SQL for a single database. TabulaFlow supports
+broader, general-purpose workflows across SQL and graph databases, local files, public
+datasets, and the web.
 
 ## Build and research with TabulaFlow
 
