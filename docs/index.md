@@ -7,8 +7,7 @@ to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 
 Unlike existing coding-agent harnesses, which are built around files and the
-shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
-This data-first design brings several benefits:
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
 
 - **Agent ergonomics.** The agent writes only queries and
   visualization specifications. TabulaFlow handles data resolution and
