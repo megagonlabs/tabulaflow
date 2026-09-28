@@ -185,9 +185,6 @@ The databases use local ports `3311` and `3312`. Stop them when finished:
 tabulaflow benchmark stop beaver
 ```
 
-Beaver's logical databases share two MySQL containers, so its runtime is
-managed as a whole and does not support `start` or `stop` with `--database`.
-
 <div class="benchmark-heading" markdown="1">
 
 ## ARCS
