@@ -240,7 +240,7 @@ tabulaflow benchmark download cypherbench
 ```
 
 Start all test databases. The first start imports each graph into Neo4j and
-can take 10+ minutes:
+takes around 7 minutes:
 
 ```bash
 tabulaflow benchmark start cypherbench
