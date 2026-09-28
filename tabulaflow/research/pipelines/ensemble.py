@@ -16,7 +16,6 @@ from tabulaflow.research.agents.ensemblers.llm import LLMEnsembler, LLMEnsembler
 from tabulaflow.research.agents.ensemblers.agent import AgentEnsembler, AgentEnsemblerConfig
 from tabulaflow.research.agents.ensemblers.dbt import DbtLLMEnsembler, DbtLLMEnsemblerConfig
 from tabulaflow.research.metrics import SimpleInferenceMetricsAggregator
-from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.pipelines.utils import validate_run_schema_formatters, tqdm_gather_with_exceptions
@@ -115,7 +114,7 @@ async def ensemble_async(
     ensembler: Ensembler,
     results: list[NL2QRunResult],
     dataset: NL2QDataset,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int = 64,
     verbose: bool = True,
 ) -> NL2QRunResult:
     """Ensemble multiple run results into a single result.
@@ -219,7 +218,7 @@ async def main_async() -> None:
         help="Deduplicate candidates with identical results (LLM ensemblers, default true).",
     )
     parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()

@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics import MetricAggregatorProtocol, SimpleInferenceMetricsAggregator
-from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 from tabulaflow.research.pipelines.utils import pprint_dict, validate_run_schema_formatters, tqdm_gather_with_exceptions
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
@@ -57,7 +56,7 @@ async def predict_async(
     agent_cls: type[Any],
     agent_config: BaseModel,
     dataset: NL2QDataset,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int = 64,
     few_shot_dataset: NL2QDataset | None = None,
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
@@ -211,7 +210,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     general = parser.add_argument_group("general")
     general.add_argument("--agent", default="schema_linking")
-    general.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    general.add_argument("--batch-size", type=int, default=64)
     general.add_argument("--output-dir", default="output/test/")
     general.add_argument("--overwrite", action="store_true")
     general.add_argument(

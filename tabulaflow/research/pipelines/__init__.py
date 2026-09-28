@@ -3,9 +3,6 @@
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
-from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
-
-
 if TYPE_CHECKING:
     from tabulaflow.research.pipelines.ensemble import ensemble_async
     from tabulaflow.research.pipelines.evaluate import evaluate_async
@@ -38,7 +35,6 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
-    "DEFAULT_BATCH_SIZE",
     "predict_async",
     "execute_async",
     "evaluate_async",

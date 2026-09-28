@@ -3,7 +3,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from tabulaflow.research.metrics.registry import MetricProtocol
-from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 from tabulaflow.research.pipelines.evaluate import evaluate_async
 from tabulaflow.research.pipelines.execute import execute_async
 from tabulaflow.research.pipelines.predict import predict_async
@@ -16,7 +15,7 @@ async def run_experiment_async(
     dataset: NL2QDataset,
     metrics: list[MetricProtocol],
     *,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int = 64,
 ) -> NL2QRunResult:
     """Predict, execute, and evaluate one experiment.
 

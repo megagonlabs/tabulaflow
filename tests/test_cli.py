@@ -19,7 +19,6 @@ from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
 from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol
 from tabulaflow.research.cli import _selected_runtime_databases, console
-from tabulaflow.research.pipelines import DEFAULT_BATCH_SIZE
 
 
 def _plain(output: str) -> str:
@@ -240,7 +239,7 @@ def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path
         None,
         None,
         None,
-        DEFAULT_BATCH_SIZE,
+        64,
         "full_schema",
         None,
         None,
@@ -284,7 +283,7 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
         None,
         ["dev_001", "dev_002"],
         ["concert_singer"],
-        DEFAULT_BATCH_SIZE,
+        64,
         "full_schema",
         None,
         ["bird_sql_ex", "executable"],

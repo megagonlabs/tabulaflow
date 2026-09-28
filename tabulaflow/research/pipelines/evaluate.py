@@ -5,7 +5,6 @@ import os
 import time
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
-from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.data import DataConnector
@@ -38,7 +37,7 @@ async def evaluate_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
     metrics: list[MetricProtocol],
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int = 64,
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -77,7 +76,7 @@ async def evaluate_async(
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir", nargs="?", default="output/test/")
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--metrics", nargs="+", default=None)
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
