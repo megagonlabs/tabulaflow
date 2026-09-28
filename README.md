@@ -5,6 +5,7 @@
 </h1>
 
 TabulaFlow is an open-source data agent built on a modular Python library.
+See the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
@@ -27,8 +28,6 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
 Like a general-purpose coding agent, TabulaFlow can also write code, run shell
 commands, and browse the web.
 
-Explore the [documentation](https://megagonlabs.github.io/tabulaflow/).
-
 
 
 https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
@@ -36,7 +35,7 @@ https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
 
 
 **More demos:**
-[Find Research Papers](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
+[Build a Research Paper Database](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
 [Ask Your Database Anything](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
 [Explore a Multimodal Hugging Face Dataset](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face) ·
 [Query and Visualize Graphs](https://megagonlabs.github.io/tabulaflow/#demo-wikidata)
