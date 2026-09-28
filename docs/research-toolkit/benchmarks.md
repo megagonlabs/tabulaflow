@@ -175,11 +175,18 @@ tabulaflow benchmark download beaver
 tabulaflow benchmark start beaver
 ```
 
+The start command prints every database URL. Beaver uses these local endpoints:
+
+| Database | URL |
+| --- | --- |
+| `dw` | `mysql://root:root@localhost:3311/dw` |
+| `csail_stata_cinder`, `csail_stata_neutron`, `csail_stata_glance`, `csail_stata_nova`, `keystone` | `mysql://root:root@localhost:3312/<database>` |
+
 ```bash
 tabulaflow benchmark run beaver --split test --sample-size 5
 ```
 
-The databases use local ports `3311` and `3312`. Stop them when finished:
+Stop the databases when finished:
 
 ```bash
 tabulaflow benchmark stop beaver
@@ -239,26 +246,53 @@ Download the benchmark first:
 tabulaflow benchmark download cypherbench
 ```
 
-Start all test databases. The first start imports each graph into Neo4j and
-takes around 7 minutes:
-
-```bash
-tabulaflow benchmark start cypherbench
-```
-
-Alternatively, start only the databases you plan to use:
+Start the database you plan to use:
 
 ```bash
 tabulaflow benchmark start cypherbench \
-  --database movie \
-  --database geography
+  --split test \
+  --database nba
 ```
 
-Run five tasks against the movie database:
+To start all test databases instead, allow around 7 minutes for the first
+import:
+
+```bash
+tabulaflow benchmark start cypherbench --split test
+```
+
+The start command prints the selected database URLs:
+
+| Graph | Split | URL |
+| --- | --- | --- |
+| `art` | `train` | `bolt://localhost:15060` |
+| `biology` | `train` | `bolt://localhost:15061` |
+| `company` | `test` | `bolt://localhost:15062` |
+| `fictional_character` | `test` | `bolt://localhost:15063` |
+| `flight_accident` | `test` | `bolt://localhost:15064` |
+| `geography` | `test` | `bolt://localhost:15065` |
+| `movie` | `test` | `bolt://localhost:15066` |
+| `nba` | `test` | `bolt://localhost:15067` |
+| `politics` | `test` | `bolt://localhost:15068` |
+| `soccer` | `train` | `bolt://localhost:15069` |
+| `terrorist_attack` | `train` | `bolt://localhost:15070` |
+
+The username is `neo4j` and the password is `cypherbench`.
+
+!!! tip "Explore with the data agent"
+    If you want to explore a running graph, [connect it directly in the TabulaFlow
+    data agent](../data-agent/connecting-data.md#connect-directly):
+
+    ```text
+    /connect bolt://neo4j:cypherbench@localhost:15067 --alias nba
+    ```
+
+Run five tasks against the NBA database:
 
 ```bash
 tabulaflow benchmark run cypherbench \
-  --database movie \
+  --split test \
+  --database nba \
   --sample-size 5
 ```
 
@@ -269,13 +303,15 @@ Stop a selected database when finished. Stopping removes its container, so the
 next start imports it again:
 
 ```bash
-tabulaflow benchmark stop cypherbench --database movie
+tabulaflow benchmark stop cypherbench \
+  --split test \
+  --database nba
 ```
 
 To stop all test databases instead:
 
 ```bash
-tabulaflow benchmark stop cypherbench
+tabulaflow benchmark stop cypherbench --split test
 ```
 
 Use `--split train` with `start`, `run`, and `stop` when working with the

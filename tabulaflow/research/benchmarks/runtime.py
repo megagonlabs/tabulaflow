@@ -6,7 +6,7 @@ import asyncio
 import shlex
 import shutil
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +14,7 @@ from tabulaflow.research.benchmarks.installation import ProgressCallback
 
 RuntimeAction = Callable[[str | None, list[str] | None, ProgressCallback], Awaitable[None]]
 RuntimeCheck = Callable[[str | None, list[str] | None], Awaitable[bool]]
+RuntimeEndpointResolver = Callable[[str | None, list[str] | None], Mapping[str, str]]
 ReadinessCheck = Callable[[], Awaitable[bool]]
 
 
@@ -31,6 +32,8 @@ class BenchmarkRuntime:
     splits: tuple[str, ...] = ()
     default_split: str | None = None
     supports_database_selection: bool = False
+    endpoint_resolver: RuntimeEndpointResolver | None = None
+    authentication: str | None = None
 
     def resolve_split(self, split: str | None) -> str | None:
         """Validate and resolve an optional runtime split."""
@@ -47,6 +50,12 @@ class BenchmarkRuntime:
     def _validate_database_selection(self, databases: list[str] | None) -> None:
         if databases and not self.supports_database_selection:
             raise BenchmarkRuntimeError("this benchmark does not support per-database runtime management")
+
+    def endpoints(self, split: str | None, databases: list[str] | None = None) -> Mapping[str, str]:
+        """Return connection URLs for the selected managed databases."""
+        if self.endpoint_resolver is None:
+            return {}
+        return self.endpoint_resolver(self.resolve_split(split), databases)
 
     async def start(
         self,
