@@ -20,6 +20,7 @@ from tabulaflow.research.benchmarks.registry import (
     selected_databases,
 )
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
+from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 
 benchmark_app = typer.Typer(help="Download, run, and manage research benchmarks.", no_args_is_help=True)
 console = Console(highlighter=None)
@@ -240,7 +241,9 @@ def run_benchmark(
     databases: list[str] | None = typer.Option(
         None, "--database", help="Database name. Repeat to select multiple databases."
     ),
-    batch_size: int = typer.Option(5, "--batch-size", min=1, help="Maximum tasks processed concurrently."),
+    batch_size: int = typer.Option(
+        DEFAULT_BATCH_SIZE, "--batch-size", min=1, help="Maximum tasks processed concurrently."
+    ),
     agent: str | None = typer.Option(None, "--agent", help="Registered agent override."),
     llm: str | None = typer.Option(None, "--llm", help="Model override for the selected agent."),
     metrics: list[str] | None = typer.Option(

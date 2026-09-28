@@ -6,6 +6,7 @@ import os
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
+from tabulaflow.research.pipelines._defaults import DEFAULT_BATCH_SIZE
 from tabulaflow.research.query_execution import populate_task_exec_results
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
@@ -14,7 +15,7 @@ from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 async def execute_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
-    batch_size: int,
+    batch_size: int = DEFAULT_BATCH_SIZE,
     timeout: int | None = None,
     force: bool = False,
     verbose: bool = True,
@@ -24,7 +25,7 @@ async def execute_async(
     Args:
         result: Run result to update in place.
         dataset: Dataset providing database connectors.
-        batch_size: Maximum tasks processed concurrently.
+        batch_size: Maximum tasks processed concurrently. Defaults to 64.
         timeout: Optional timeout for each query.
         force: Whether to replace existing execution results.
         verbose: Whether to display progress.
@@ -47,7 +48,7 @@ async def execute_async(
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir", nargs="?", default="output/test/")
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")
