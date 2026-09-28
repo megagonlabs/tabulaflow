@@ -5,24 +5,23 @@ TabulaFlow is an open-source data agent built on a modular Python library.
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
-
-
-Unlike existing coding-agent harnesses which are built around files and the
+Unlike existing coding-agent harnesses, which are built around files and the
 shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
 This data-first design brings several benefits:
 
 - **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles the data resolution and rendering,
-  so the agent never wastes tokens to handcraft data values or HTML to create
-  visual artifacts.
-- **Human ergonomics.** Data provenance is automatically tracked: each visualization
-  exposes its underlying data table, and each table exposes the query that
-  produced it.
-- **Shell-independent.** The data agent remains fully functional for data work even when
-  the shell and filesystem is disabled (e.g. when building hosted applications).
+  visualization specifications. TabulaFlow handles data resolution and
+  rendering, so the agent never wastes tokens handcrafting data values or HTML
+  to create visual artifacts.
+- **Human ergonomics.** Data provenance is automatically tracked: each
+  visualization exposes its underlying data table, and each table exposes the
+  query that produced it.
+- **Shell-independent.** The data agent remains fully functional for data work
+  even when shell and filesystem access are disabled (e.g., when building
+  hosted applications).
 
-Such design do not limits its capabitliy - it can also write code, run shell commands,
-and browse the web, like a general-purpose coding agent.
+This design does not limit its capabilities: like a general-purpose coding
+agent, TabulaFlow can also write code, run shell commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
   <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
