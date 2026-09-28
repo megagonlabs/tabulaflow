@@ -15,14 +15,20 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.release.tag_name }}
           persist-credentials: false
+      - name: Resolve release commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: "3.13"
-          enable-cache: true
+          enable-cache: false
       - name: Verify release version
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -60,3 +66,14 @@ jobs:
           name: python-package-distributions
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  docs:
+    name: Deploy documentation
+    needs: [build, publish]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: $/.github/workflows/deploy-docs.yml
+    with:
+      source_sha: ${{ needs.build.outputs.source_sha }}

@@ -1,9 +1,12 @@
-name: Docs
+name: Deploy Docs
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Exact commit to build the documentation from
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,11 +26,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_sha }}
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: "3.13"
-          enable-cache: true
+          enable-cache: false
       - run: uv sync --group docs
       - run: uv run mkdocs build --strict
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
