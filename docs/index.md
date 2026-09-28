@@ -9,8 +9,9 @@ SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 Like a general-purpose coding agent, it can also write code, run shell commands,
 and browse the web.
 
-Unlike exiting coding-agent harness are built around files and shell,
-while TabulaFlow treats tables as first-class citizens, as its name suggests, that brings three benefits:
+Unlike existing coding-agent harnesses, which are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
+This brings three benefits:
 
 - **Agent ergonomics.** The agent writes only queries and
   visualization specifications. TabulaFlow handles the result data and rendering,
@@ -127,7 +128,7 @@ datasets.
 
 General-purpose coding agents (e.g., Claude Code) are powerful tools for
 programming and simple data analysis. TabulaFlow is built on a
-harness (see [How TabulaFlow is designed](#how-tabulaflow-is-designed)) that enables workflows such as
+harness (see [How TabulaFlow works](#how-does-tabulaflow-work)) that enables workflows such as
 ambitious deep research and large-scale data enrichment. It also
 provides a UI for browsing large tables and visualizing data.
 
@@ -135,7 +136,7 @@ Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
 single database. TabulaFlow supports broader, general-purpose workflows across
 relational and graph databases, local files, public datasets, and the web.
 
-## How does TabulaFlow works?
+## How does TabulaFlow work?
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
