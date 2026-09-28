@@ -41,7 +41,7 @@ tabulaflow benchmark download bird-sql
 
     tabulaflow benchmark run bird-sql \
       --split dev \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -113,7 +113,7 @@ export SF_ACCOUNT="your-account-identifier"
 
     tabulaflow benchmark run spider2-snow \
       --split test \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -211,7 +211,7 @@ Run five tasks against a local SQLite database:
     tabulaflow benchmark run spider2-lite \
       --split test \
       --database bank_sales_trading \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -279,7 +279,7 @@ Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
     tabulaflow benchmark run spider2-dbt \
       --split test \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -350,7 +350,7 @@ The start command prints every database URL. Beaver uses these local endpoints:
 
     tabulaflow benchmark run beaver \
       --split test \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -431,7 +431,7 @@ tabulaflow benchmark download ambrosia-s
 
     tabulaflow benchmark run ambrosia-s \
       --split test \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
@@ -540,7 +540,7 @@ Run five tasks against the NBA database with a
       --split test \
       --database nba \
       --agent direct_prompting \
-      --llm openai:gpt-5.6-sol \
+      --llm openai:gpt-6-luna \
       --sample-size 5
     ```
 
