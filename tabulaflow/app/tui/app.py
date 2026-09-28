@@ -765,7 +765,7 @@ class TabulaflowApp(App[None]):
             if vllm_status is not None:
                 status = vllm_status
             elif selection.selection is None:
-                status = "✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."
+                status = "✓ LLM off · Choose models in /config."
             else:
                 status = "✓ LLM off · /connect and the data explorer remain available."
             await self._publish_initialization_status(Text(status, style="dim"))
