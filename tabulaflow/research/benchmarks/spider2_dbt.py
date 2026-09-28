@@ -157,7 +157,9 @@ class Spider2DbtDatasetLoader:
         self.workspace_dir = None if workspace_dir is None else Path(workspace_dir)
         self._prepared_projects: set[str] = set()
         self.connector_config = (
-            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+            SQLConnectorConfig(schema_cache_mode="read_write", query_timeout_seconds=300)
+            if connector_config is None
+            else connector_config
         )
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 

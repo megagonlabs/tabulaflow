@@ -137,7 +137,9 @@ class Spider2SnowDatasetLoader:
         self.sf_password = sf_password
         self.sf_account = sf_account
         self.connector_config = (
-            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+            SQLConnectorConfig(schema_cache_mode="read_write", query_timeout_seconds=300)
+            if connector_config is None
+            else connector_config
         )
 
         # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
