@@ -188,7 +188,9 @@ class BeaverDatasetLoader:
         self.dw_dbms_port = dw_port
         self.nw_dbms_port = nw_port
         self.connector_config = (
-            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+            SQLConnectorConfig(schema_cache_mode="read_write", query_timeout_seconds=300)
+            if connector_config is None
+            else connector_config
         )
         self._data: dict[Any, NL2QDataset] = {}
 
