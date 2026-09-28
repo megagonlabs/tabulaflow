@@ -67,7 +67,7 @@ export OPENAI_API_KEY="your-api-key"
 tabulaflow
 ```
 
-See [Model setup](models.md) for Anthropic, vLLM, and other providers.
+See [Models and providers](models.md) for Anthropic, vLLM, and other providers.
 
 We also recommend installing Chromium to enable agent-driven web browsing:
 

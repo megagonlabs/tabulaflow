@@ -1,7 +1,7 @@
 # Configuration
 
 This page covers installation, optional browser support, resource limits,
-schema caching, and browser-pane networking. See [Model setup](../models.md) to
+schema caching, and browser-pane networking. See [Models and providers](../models.md) to
 configure cloud or local models and change them with `/config`.
 
 ## Installation

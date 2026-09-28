@@ -35,7 +35,7 @@ extra:
 
 nav:
   - Overview: index.md
-  - Model setup: models.md
+  - Models and providers: models.md
   - Connect data: data-agent/connecting-data.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
