@@ -50,6 +50,18 @@ def _progress(message: str) -> None:
     console.print(f"{message}...")
 
 
+def _print_runtime_endpoints(runtime: BenchmarkRuntime, split: str | None, databases: list[str] | None) -> None:
+    endpoints = runtime.endpoints(split, databases)
+    if not endpoints:
+        return
+    table = Table("Database", "URL", box=None)
+    for database, url in endpoints.items():
+        table.add_row(database, url)
+    console.print(table)
+    if runtime.authentication:
+        console.print(f"Authentication: {runtime.authentication}")
+
+
 async def _selected_runtime_databases(
     loader: DatasetLoaderProtocol,
     split: str,
@@ -204,6 +216,7 @@ def start(
     target = f"{name} {resolved_split}" if resolved_split else name
     selection = f": {', '.join(dict.fromkeys(databases))}" if databases else ""
     console.print("[green]Started:[/green]", f"{target} databases{selection}")
+    _print_runtime_endpoints(runtime, resolved_split, databases)
 
 
 @benchmark_app.command()

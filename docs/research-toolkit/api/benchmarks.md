@@ -84,4 +84,6 @@ stop, and readiness callbacks. Progress callbacks receive status messages.
 
 ::: tabulaflow.research.benchmarks.runtime.RuntimeCheck
 
+::: tabulaflow.research.benchmarks.runtime.RuntimeEndpointResolver
+
 ::: tabulaflow.research.benchmarks.runtime.ReadinessCheck

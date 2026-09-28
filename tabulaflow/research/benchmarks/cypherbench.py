@@ -132,6 +132,14 @@ def _resolve_graphs(split: str, databases: list[str] | None) -> list[str]:
     return graphs
 
 
+def _cypherbench_endpoints(split: str | None, databases: list[str] | None) -> dict[str, str]:
+    assert split is not None
+    return {
+        graph: f"bolt://localhost:{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}"
+        for graph in _resolve_graphs(split, databases)
+    }
+
+
 async def _cypherbench_ready(split: str | None, databases: list[str] | None) -> bool:
     assert split is not None
     graphs = _resolve_graphs(split, databases)
@@ -213,6 +221,8 @@ CYPHERBENCH_RUNTIME = BenchmarkRuntime(
     splits=("test", "train"),
     default_split="test",
     supports_database_selection=True,
+    endpoint_resolver=_cypherbench_endpoints,
+    authentication="username neo4j, password cypherbench",
 )
 
 
