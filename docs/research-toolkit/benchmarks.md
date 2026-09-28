@@ -257,9 +257,9 @@ tabulaflow benchmark start cypherbench \
 tabulaflow benchmark run cypherbench --split test --sample-size 5
 ```
 
-`benchmark run` derives runtime requirements from the tasks selected after
-`--qid`, `--database`, and `--sample-size` filtering. For example, a run
-selecting only movie QIDs requires only the movie database to be running.
+You only need to start the databases used by the tasks you run. This also
+works when selecting tasks with `--qid`, `--database`, or `--sample-size`. For
+example, a run containing only movie QIDs requires only the movie database.
 
 Stop the databases when finished (this removes the containers, so the
 next start imports again):
