@@ -15,6 +15,7 @@ from collections import defaultdict
 from itertools import product
 from typing import Any, ClassVar
 
+import numpy as np
 import pandas as pd
 
 from tabulaflow.data import DataConnector
@@ -35,6 +36,8 @@ def _to_hashable(obj: Any) -> Any:
     """
     if isinstance(obj, (tuple, int, float, str, bool, type(None))):
         return obj
+    if isinstance(obj, np.ndarray):
+        obj = obj.tolist()
     if isinstance(obj, (list, tuple)):
         return tuple(sorted(_to_hashable(item) for item in obj))
     if isinstance(obj, set):
@@ -50,7 +53,13 @@ def _normalize_cell(v: Any) -> Any:
     Handles JSON-stringified lists/dicts produced by ``ExecResult`` sanitisation,
     NaN/None, and standard scalars.
     """
-    if v is None or pd.isna(v):
+    if v is None:
+        return None
+    if isinstance(v, tuple):
+        return v
+    if isinstance(v, (list, set, dict, np.ndarray)):
+        return _to_hashable(v)
+    if pd.isna(v):
         return None
     if isinstance(v, str):
         try:

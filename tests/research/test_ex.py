@@ -131,3 +131,12 @@ async def test_simple_ex(examples: list[ExampleCase]) -> None:
     for example in examples:
         score = await simple_ex.compute_async(example.task, None)
         assert score == example.simple_ex_expected_score
+
+
+def test_simple_ex_digests_collection_values() -> None:
+    metric = SimpleEx()
+
+    assert metric._digest(["a", "b"]) == ("object", "['a', 'b']")
+    assert metric._digest({"a": 1}) == ("object", "{'a': 1}")
+    assert metric._digest({1, 2}) == ("object", "{1, 2}")
+    assert metric._digest(np.array([1, 2])) == ("object", "[1 2]")

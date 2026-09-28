@@ -5,6 +5,7 @@ import pytest
 from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
+from tabulaflow.data import Neo4jConnector
 from tabulaflow.research.benchmarks import beaver, cypherbench
 from tabulaflow.research.benchmarks import registry
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
@@ -260,6 +261,25 @@ async def test_graph_ready_requires_imported_data_and_live_bolt(monkeypatch: pyt
 
     monkeypatch.setattr(cypherbench, "run_command", failing_run_command)
     assert await cypherbench._graph_ready("art") is False
+
+
+@pytest.mark.asyncio
+async def test_cypherbench_loader_connects_directly_to_standalone_graphs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    urls: list[str] = []
+
+    async def from_url_async(*, url: str, **kwargs: object) -> object:
+        urls.append(url)
+        return object()
+
+    monkeypatch.setattr(Neo4jConnector, "from_url_async", from_url_async)
+    loader = cypherbench.CypherBenchDatasetLoader(directory=str(tmp_path))
+
+    await loader.get_db_connectors_async("test", ["movie", "geography"])
+
+    assert urls == ["bolt://localhost:15066", "bolt://localhost:15065"]
 
 
 @pytest.mark.asyncio

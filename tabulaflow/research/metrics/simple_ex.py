@@ -1,4 +1,6 @@
 import math
+
+import numpy as np
 import pandas as pd
 from typing import Any, ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
@@ -39,6 +41,8 @@ class SimpleEx:
         - bool
         - str that can be converted to float (e.g. "1.0")
         """
+        if isinstance(v, (list, set, dict, np.ndarray)):
+            return ("object", str(v))
         if pd.isna(v):
             return ("nan", None)
         elif isinstance(v, (int, float, bool)):

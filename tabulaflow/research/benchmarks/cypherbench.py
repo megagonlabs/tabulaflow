@@ -331,7 +331,7 @@ class CypherBenchDatasetLoader:
                     f"Known graphs: {sorted(self._graph_ports)}. "
                     "Override with graph_ports={{...}} if using custom ports."
                 )
-            url = f"neo4j://{self.neo4j_host}:{self._graph_ports[graph]}"
+            url = f"bolt://{self.neo4j_host}:{self._graph_ports[graph]}"
             return await Neo4jConnector.from_url_async(
                 global_id=f"cypherbench+{graph}",
                 url=url,

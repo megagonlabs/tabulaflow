@@ -2,6 +2,7 @@
 
 import json
 
+import numpy as np
 import pandas as pd
 
 from tabulaflow.research.metrics.cypherbench_ex import (
@@ -58,6 +59,19 @@ def test_normalize_cell_none_and_nan() -> None:
 
 def test_normalize_cell_json_list() -> None:
     assert _normalize_cell(json.dumps([3, 1, 2])) == (1, 2, 3)
+
+
+def test_normalize_cell_native_collections() -> None:
+    assert _normalize_cell([3, 1, 2]) == (1, 2, 3)
+    assert _normalize_cell({"b": 2, "a": 1}) == (("a", 1), ("b", 2))
+    assert _normalize_cell({3, 1, 2}) == (1, 2, 3)
+    assert _normalize_cell(np.array([3, 1, 2])) == (1, 2, 3)
+
+
+def test_normalize_cell_preserves_tuple_behavior() -> None:
+    value = ([2, 1], [4, 3])
+
+    assert _normalize_cell(value) is value
 
 
 def test_normalize_cell_json_dict() -> None:
