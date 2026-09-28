@@ -287,15 +287,60 @@ The username is `neo4j` and the password is `cypherbench`.
     /connect bolt://neo4j:cypherbench@localhost:15067 --alias nba
     ```
 
-Run five tasks against the NBA database:
+Run five tasks against the NBA database with a
+[configured model provider](../models.md#supported-providers):
 
-```bash
-tabulaflow benchmark run cypherbench \
-  --split test \
-  --database nba \
-  --agent direct_prompting \
-  --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run cypherbench \
+      --split test \
+      --database nba \
+      --agent direct_prompting \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run cypherbench \
+      --split test \
+      --database nba \
+      --agent direct_prompting \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run cypherbench \
+      --split test \
+      --database nba \
+      --agent direct_prompting \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run cypherbench \
+      --split test \
+      --database nba \
+      --agent direct_prompting \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 When selecting tasks with `--qid` or `--sample-size`, only the databases used
 by those tasks need to be running.
