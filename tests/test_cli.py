@@ -1,6 +1,8 @@
+import asyncio
 import importlib
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pydantic_ai
 from pytest import MonkeyPatch
@@ -15,7 +17,8 @@ from tabulaflow.app.config import InvalidAppConfigError
 from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
-from tabulaflow.research.cli import console
+from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol
+from tabulaflow.research.cli import _selected_runtime_databases, console
 
 
 def _plain(output: str) -> str:
@@ -166,7 +169,7 @@ def test_benchmark_download_has_no_split_option() -> None:
     assert "--split" not in _plain(result.stdout)
 
 
-def test_benchmark_runtime_commands_support_split_selection() -> None:
+def test_benchmark_runtime_commands_support_split_and_database_selection() -> None:
     runner = CliRunner()
 
     start = runner.invoke(app, ["benchmark", "start", "--help"])
@@ -176,6 +179,29 @@ def test_benchmark_runtime_commands_support_split_selection() -> None:
     assert stop.exit_code == 0
     assert "--split" in _plain(start.stdout)
     assert "--split" in _plain(stop.stdout)
+    assert "--database" in _plain(start.stdout)
+    assert "--database" in _plain(stop.stdout)
+
+
+def test_benchmark_start_forwards_selected_databases(monkeypatch: MonkeyPatch) -> None:
+    received: dict[str, object] = {}
+
+    async def start(split: str | None, progress: object, databases: list[str] | None) -> None:
+        received["start"] = (split, databases)
+
+    benchmark = SimpleNamespace(installation=SimpleNamespace(require=lambda: None))
+    runtime = SimpleNamespace(start=start, resolve_split=lambda split: split or "test")
+    monkeypatch.setattr("tabulaflow.research.cli._get_benchmark", lambda _name: benchmark)
+    monkeypatch.setattr("tabulaflow.research.cli._get_runtime", lambda _name: runtime)
+
+    result = CliRunner().invoke(
+        app,
+        ["benchmark", "start", "cypherbench", "--database", "movie", "--database", "geography"],
+    )
+
+    assert result.exit_code == 0
+    assert received["start"] == (None, ["movie", "geography"])
+    assert "movie, geography" in _plain(result.output)
 
 
 def test_benchmark_start_requires_download(monkeypatch: MonkeyPatch) -> None:
@@ -252,6 +278,26 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
         ["bird_sql_ex", "executable"],
         tmp_path,
     )
+
+
+def test_benchmark_runtime_databases_are_inferred_from_selected_qids() -> None:
+    tasks = [
+        SimpleNamespace(qid="movie-1", db="movie"),
+        SimpleNamespace(qid="movie-2", db="movie"),
+        SimpleNamespace(qid="geo-1", db="geography"),
+    ]
+
+    async def get_tasks_async(split: str, databases: list[str] | None = None) -> list[SimpleNamespace]:
+        assert split == "test"
+        return tasks
+
+    loader = cast(DatasetLoaderProtocol, SimpleNamespace(get_tasks_async=get_tasks_async))
+
+    selected = asyncio.run(
+        _selected_runtime_databases(loader, "test", None, ["movie-2", "geo-1"], None)
+    )
+
+    assert selected == ["movie", "geography"]
 
 
 def test_benchmark_run_rejects_qids_with_sample_size() -> None:

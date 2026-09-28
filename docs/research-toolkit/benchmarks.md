@@ -232,27 +232,54 @@ tabulaflow benchmark run ambrosia-s --split test --sample-size 5
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. Download the benchmark, then
-start the test databases with Docker running. Starting imports each graph into
-Neo4j, which can take a while:
+Text-to-Cypher tasks over Neo4j property graphs. Docker must be running.
+Download the benchmark first:
 
 ```bash
 tabulaflow benchmark download cypherbench
+```
+
+Start all test databases. The first start imports each graph into Neo4j and
+takes around 7 minutes:
+
+```bash
 tabulaflow benchmark start cypherbench
 ```
 
+Alternatively, start only the databases you plan to use:
+
 ```bash
-tabulaflow benchmark run cypherbench --split test --sample-size 5
+tabulaflow benchmark start cypherbench \
+  --database movie \
+  --database geography
 ```
 
-Stop the databases when finished (this removes the containers, so the
-next start imports again):
+Run five tasks against the movie database:
+
+```bash
+tabulaflow benchmark run cypherbench \
+  --database movie \
+  --sample-size 5
+```
+
+When selecting tasks with `--qid` or `--sample-size`, only the databases used
+by those tasks need to be running.
+
+Stop a selected database when finished. Stopping removes its container, so the
+next start imports it again:
+
+```bash
+tabulaflow benchmark stop cypherbench --database movie
+```
+
+To stop all test databases instead:
 
 ```bash
 tabulaflow benchmark stop cypherbench
 ```
 
-For training databases, add `--split train` to both `start` and `stop`.
+Use `--split train` with `start`, `run`, and `stop` when working with the
+training split.
 
 ## Load in Python
 

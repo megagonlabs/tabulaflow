@@ -68,7 +68,7 @@ BEAVER_CONTAINERS = {
 }
 
 
-async def _beaver_ready(split: str | None) -> bool:
+async def _beaver_ready(split: str | None, databases: list[str] | None) -> bool:
     async def database_ready(container: str) -> bool:
         try:
             await run_command(
@@ -89,7 +89,11 @@ async def _beaver_ready(split: str | None) -> bool:
     return all(await asyncio.gather(*(database_ready(container) for container, _ in BEAVER_CONTAINERS.values())))
 
 
-async def _start_beaver(split: str | None, progress: ProgressCallback) -> None:
+async def _start_beaver(
+    split: str | None,
+    databases: list[str] | None,
+    progress: ProgressCallback,
+) -> None:
     await ensure_docker()
     progress("Starting Beaver databases")
     existing = []
@@ -117,10 +121,14 @@ async def _start_beaver(split: str | None, progress: ProgressCallback) -> None:
     if existing:
         await run_command("docker", "start", *existing)
     progress("Waiting for MySQL")
-    await wait_until_ready(lambda: _beaver_ready(None), "Beaver databases")
+    await wait_until_ready(lambda: _beaver_ready(None, None), "Beaver databases")
 
 
-async def _stop_beaver(split: str | None, progress: ProgressCallback) -> None:
+async def _stop_beaver(
+    split: str | None,
+    databases: list[str] | None,
+    progress: ProgressCallback,
+) -> None:
     await ensure_docker()
     progress("Stopping Beaver databases")
     existing = [container for container, _ in BEAVER_CONTAINERS.values() if await container_exists(container)]
