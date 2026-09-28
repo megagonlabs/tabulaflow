@@ -10,8 +10,22 @@ Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 
-Like a general-purpose coding agent, it can also write code, run shell commands,
-and browse the web.
+Unlike existing coding-agent harnesses, which are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
+
+- **Agent ergonomics.** The agent writes only queries and visualization
+  specifications. TabulaFlow handles data resolution and rendering, so the
+  agent never wastes tokens handcrafting data values or HTML to create visual
+  artifacts.
+- **Human ergonomics.** Data provenance is automatically tracked: each
+  visualization exposes its underlying data table, and each table exposes the
+  query that produced it.
+- **Shell-independent.** The core harness remains fully functional for data work
+  even when shell and filesystem access are disabled (e.g., when building
+  hosted applications).
+
+Like a general-purpose coding agent, TabulaFlow can also write code, run shell
+commands, and browse the web.
 
 Explore the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
