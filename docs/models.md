@@ -1,7 +1,7 @@
-# Model setup
+# Models and providers
 
-TabulaFlow supports hundreds of tool-capable models across more than 25 cloud
-and local provider routes. It uses one model for the main conversation and
+TabulaFlow supports hundreds of models across more than 25 cloud
+and local providers. It uses one model for the main conversation and
 another for parallel subagent work. Most users only need to export one provider
 API key and choose models in `/config`.
 
@@ -36,7 +36,7 @@ TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
 models. Credentials are read from the environment and never saved.
 
-!!! important "vLLM tool calling"
+!!! note "vLLM tool calling"
     TabulaFlow relies on automatic tool calling. Follow the current
     [vLLM tool-calling guide](https://docs.vllm.ai/en/stable/features/tool_calling/)
     to configure it for your model.
