@@ -152,7 +152,7 @@ class ModelPickerScreen(Screen[str | None]):
             self._refresh()
 
     def on_resize(self) -> None:
-        self._refresh()
+        self.call_after_refresh(self._refresh)
 
     def on_key(self, event: events.Key) -> None:
         if not event.is_printable or event.character is None:

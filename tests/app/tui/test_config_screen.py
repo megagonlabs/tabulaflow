@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from textual.app import App
 from textual.content import Content
@@ -466,7 +468,7 @@ async def test_role_specific_recommendations() -> None:
         assert "openai:gpt-5.4-mini  (recommended)" not in options
 
 
-async def test_model_list_resizes_with_terminal() -> None:
+async def test_model_list_resizes_with_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
     screen = ConfigScreen(ResolvedLLMConfig(_CONFIG, _CONFIG))
     app = _App(screen)
     async with app.run_test(size=(80, 18)) as pilot:
@@ -476,8 +478,18 @@ async def test_model_list_resizes_with_terminal() -> None:
         assert isinstance(picker, ModelPickerScreen)
         options = picker.query_one("#model-options", Static)
         short_line_count = len(str(options.render()).splitlines())
+        resize_rendered = asyncio.Event()
+        original_refresh = picker._refresh
+
+        def track_refresh() -> None:
+            original_refresh()
+            if picker.size.height == 40:
+                resize_rendered.set()
+
+        monkeypatch.setattr(picker, "_refresh", track_refresh)
 
         await pilot.resize_terminal(80, 40)
+        await asyncio.wait_for(resize_rendered.wait(), timeout=2)
 
         assert len(str(options.render()).splitlines()) > short_line_count
 

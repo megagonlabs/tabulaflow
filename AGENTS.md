@@ -10,6 +10,7 @@ They are organized into six layers: `core <- data <- output <- agents <- {app, r
 ## Project Conventions
 
 - Use `uv` for Python operations.
+- In async UI and browser tests, wait for explicit causal signals rather than sleeps or repeated idle pauses; defer geometry-dependent rendering until after layout refresh.
 - Use Google style for all Python docstrings.
 - When writing agent tools in `tabulaflow.agents.tools`, Keep `__call__` as the LLM-facing adapter; put reusable logic in `execute(...)`.
   Reusable `execute(...)` methods raise expected validation/runtime errors;
