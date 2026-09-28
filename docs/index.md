@@ -124,17 +124,6 @@ datasets.
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
 
-## Why TabulaFlow?
-
-General-purpose coding agents (e.g., Claude Code) are powerful tools for
-programming and simple data analysis. TabulaFlow is built on a
-harness (see [How TabulaFlow works](#how-does-tabulaflow-work)) that enables workflows such as
-ambitious deep research and large-scale data enrichment. It also
-provides a UI for browsing large tables and visualizing data.
-
-Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
-single database. TabulaFlow supports broader, general-purpose workflows across
-relational and graph databases, local files, public datasets, and the web.
 
 ## How does TabulaFlow work?
 
@@ -204,6 +193,11 @@ tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
 default. You can ask the agent at any time to export results to local files in
 any format you need for saving, sharing, or further use.
+
+Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
+single database. TabulaFlow supports broader, general-purpose workflows across
+SQL and graph databases, local files, public datasets, and the web.
+
 
 ## Build and research with TabulaFlow
 
