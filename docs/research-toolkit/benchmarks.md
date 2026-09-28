@@ -34,9 +34,49 @@ SQLite databases. The download includes tasks and databases for all splits;
 tabulaflow benchmark download bird-sql
 ```
 
-```bash
-tabulaflow benchmark run bird-sql --split dev --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run bird-sql \
+      --split dev \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run bird-sql \
+      --split dev \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run bird-sql \
+      --split dev \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run bird-sql \
+      --split dev \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
@@ -66,9 +106,49 @@ export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
 ```
 
-```bash
-tabulaflow benchmark run spider2-snow --split test --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-snow \
+      --split test \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-snow \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run spider2-snow \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-snow \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
@@ -123,12 +203,53 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
 
 Run five tasks against a local SQLite database:
 
-```bash
-tabulaflow benchmark run spider2-lite \
-  --split test \
-  --database bank_sales_trading \
-  --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-lite \
+      --split test \
+      --database bank_sales_trading \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-lite \
+      --split test \
+      --database bank_sales_trading \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run spider2-lite \
+      --split test \
+      --database bank_sales_trading \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-lite \
+      --split test \
+      --database bank_sales_trading \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
@@ -151,9 +272,49 @@ tabulaflow benchmark download spider2-dbt
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
-```bash
-tabulaflow benchmark run spider2-dbt --split test --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-dbt \
+      --split test \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-dbt \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run spider2-dbt \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run spider2-dbt \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
@@ -182,9 +343,49 @@ The start command prints every database URL. Beaver uses these local endpoints:
 | `dw` | `mysql://root:root@localhost:3311/dw` |
 | `csail_stata_cinder`, `csail_stata_neutron`, `csail_stata_glance`, `csail_stata_nova`, `keystone` | `mysql://root:root@localhost:3312/<database>` |
 
-```bash
-tabulaflow benchmark run beaver --split test --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run beaver \
+      --split test \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run beaver \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run beaver \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run beaver \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 Stop the databases when finished:
 
@@ -223,9 +424,49 @@ Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 tabulaflow benchmark download ambrosia-s
 ```
 
-```bash
-tabulaflow benchmark run ambrosia-s --split test --sample-size 5
-```
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run ambrosia-s \
+      --split test \
+      --llm openai:gpt-5.6-sol \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run ambrosia-s \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run ambrosia-s \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run ambrosia-s \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
