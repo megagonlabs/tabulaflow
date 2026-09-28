@@ -1,0 +1,84 @@
+name: Stable Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Tag, branch, or commit containing a docs-only fix
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify docs-only changes
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.verify.outputs.source_sha }}
+    steps:
+      - name: Require the workflow from the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+            echo "Run this workflow from $DEFAULT_BRANCH and provide the docs branch as source_ref." >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify against the latest stable release
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          git fetch --force origin "refs/tags/$release_tag:refs/tags/$release_tag"
+
+          release_sha=$(git rev-parse "$release_tag^{commit}")
+          source_sha=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$release_sha" "$source_sha"; then
+            echo "The selected source must be based on the latest stable release ($release_tag)." >&2
+            exit 1
+          fi
+
+          git diff --name-only -z "$release_sha" "$source_sha" > "$RUNNER_TEMP/changed-files"
+          CHANGED_FILES="$RUNNER_TEMP/changed-files" python - <<'PY'
+          import os
+          from pathlib import Path
+
+          changed = Path(os.environ["CHANGED_FILES"]).read_bytes().split(b"\0")
+          paths = [path.decode() for path in changed if path]
+          invalid = [
+              path
+              for path in paths
+              if path != "mkdocs.yml" and not path.startswith("docs/")
+          ]
+          if invalid:
+              formatted = "\n".join(f"  {path}" for path in invalid)
+              raise SystemExit(
+                  "Stable documentation deployment rejected. "
+                  f"Files outside the documentation allowlist:\n{formatted}"
+              )
+
+          print("Verified changed files:")
+          for path in paths:
+              print(f"  {path}")
+          PY
+
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy verified docs
+    needs: verify
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: $/.github/workflows/deploy-docs.yml
+    with:
+      source_sha: ${{ needs.verify.outputs.source_sha }}
