@@ -14,7 +14,7 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
 This brings three benefits:
 
 - **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles the result data and rendering,
+  visualization specifications. TabulaFlow handles the data resolution and rendering,
   so the agent never handcrafts data values or HTML to create
   visual artifacts.
 - **Human ergonomics.** Data provenance is automatically tracked: each visualization
