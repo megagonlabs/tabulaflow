@@ -17,10 +17,10 @@ and browse the web.
   <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
   <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
     <button type="button" role="tab" id="demo-tab-research" aria-selected="true" data-anchor-id="demo-research"
-      data-title="Find Research Papers"
-      data-description="Find relevant conference papers and assemble them into a structured dataset."
+      data-title="Build a Research Paper Database"
+      data-description="Build a comprehensive, structured database of conference papers on a research topic."
       data-type="Research workflow"
-      data-video-src="assets/demos/find-research-papers.mp4">Find Research Papers</button>
+      data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
     <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
       data-title="Ask Your Database Anything"
       data-description="Connect a database and ask TabulaFlow to introduce and explore it."
@@ -48,8 +48,8 @@ and browse the web.
     <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
       <div class="media-placeholder__content">
         <span class="media-placeholder__type">Research workflow</span>
-        <strong>Find Research Papers</strong>
-        <span>Find relevant conference papers and assemble them into a structured dataset.</span>
+        <strong>Build a Research Paper Database</strong>
+        <span>Build a comprehensive, structured database of conference papers on a research topic.</span>
       </div>
       <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
     </figure>
@@ -100,11 +100,11 @@ datasets.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
-  [Find research papers demo](#demo-research){ .inline-cta }
+  [Research paper database demo](#demo-research){ .inline-cta }
 - **Agentic data enrichment.** Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
-  [Find research papers demo](#demo-research){ .inline-cta } ·
+  [Research paper database demo](#demo-research){ .inline-cta } ·
   [Map demo](#demo-travel){ .inline-cta }
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
