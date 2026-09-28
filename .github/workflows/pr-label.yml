@@ -1,0 +1,39 @@
+name: PR Label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: pr-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  category:
+    name: Category label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require exactly one category label
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+        run: |
+          set -euo pipefail
+
+          labels=$(jq -r '.pull_request.labels[].name' "$EVENT_PATH")
+          categories=(bug enhancement documentation dependencies chore)
+          matches=()
+
+          for category in "${categories[@]}"; do
+            if grep -Fxq "$category" <<< "$labels"; then
+              matches+=("$category")
+            fi
+          done
+
+          if [ "${#matches[@]}" -ne 1 ]; then
+            echo "::error::Apply exactly one category label: ${categories[*]}. Found: ${matches[*]:-none}."
+            exit 1
+          fi
+
+          echo "Category: ${matches[0]}"

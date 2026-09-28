@@ -2,6 +2,8 @@ changelog:
   exclude:
     labels:
       - documentation
+      - dependencies
+      - chore
 
   categories:
     - title: Features
