@@ -60,6 +60,14 @@ def _origin_url(url: str) -> str:
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/", "", ""))
 
 
+def _open_browser_pane(page: Any, url: str) -> None:
+    with page.expect_response(
+        lambda response: urllib.parse.urlsplit(response.url).path.endswith("/events")
+    ) as response:
+        page.goto(url, wait_until="domcontentloaded")
+    assert response.value.ok
+
+
 def _runtime_paths(root: Path) -> RuntimePaths:
     return RuntimePaths.for_session("test-session", home_dir=root)
 
@@ -261,7 +269,7 @@ def test_browser_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
                 pytest.skip(f"Playwright Chromium is unavailable: {exc}")
             try:
                 page = browser.new_page(viewport={"width": 1_280, "height": 720})
-                page.goto(pane.url, wait_until="domcontentloaded")
+                _open_browser_pane(page, pane.url)
                 page.evaluate("document.hasFocus = () => false")
                 turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
 
@@ -470,7 +478,7 @@ def test_large_manual_table_scrolls_inside_viewport(tmp_path: Path) -> None:
                 )
                 stage = "page initialization"
                 try:
-                    page.goto(pane.url, wait_until="domcontentloaded")
+                    _open_browser_pane(page, pane.url)
                     pane.push(turn_payload(title="manual", source="manual", cards=[card]))
                     stage = "manual turn delivery"
                     page.wait_for_selector(".manual-preview")
@@ -837,7 +845,7 @@ def test_live_view_survives_replay_and_view_switching(tmp_path: Path) -> None:
                 pytest.skip(f"Playwright Chromium is unavailable: {exc}")
             try:
                 page = browser.new_page(viewport={"width": 1200, "height": 900})
-                page.goto(pane.url, wait_until="domcontentloaded")
+                _open_browser_pane(page, pane.url)
                 for index, card in enumerate(cards):
                     pane.push(turn_payload(title=f"replay {index}", cards=[card]))
                 pane.push(turn_payload(title="reused card", cards=[cards[0]]))
