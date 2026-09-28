@@ -192,7 +192,7 @@ Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
 default. You can ask the agent at any time to export results to local files in
-any format you need for saving, sharing, or further use.
+any format you need for sharing or further use.
 
 Tabulaflow also goes beyond exiting AI database assistants (e.g., Chat2DB), which
 typically focus on generating SQL for a single database. TabulaFlow supports
