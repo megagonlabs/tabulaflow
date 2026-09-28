@@ -897,7 +897,7 @@ async def test_startup_paints_banner_before_starting_initialization(
         assert started == [True]
 
 
-async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
+async def test_unconfigured_prompts_model_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = _app_for_selection(_selection(None, inferred=True))
@@ -913,7 +913,7 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
             await pilot.pause()
 
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."]
+        assert messages == ["✓ LLM off · Choose models in /config."]
 
 
 async def test_unconfigured_single_vllm_model_is_selected_automatically(
