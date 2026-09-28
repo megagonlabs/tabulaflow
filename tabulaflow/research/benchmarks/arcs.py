@@ -143,7 +143,9 @@ class ARCSDatasetLoader:
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
         self.connector_config = (
-            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+            SQLConnectorConfig(schema_cache_mode="read_write", query_timeout_seconds=300)
+            if connector_config is None
+            else connector_config
         )
 
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
