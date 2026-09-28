@@ -34,6 +34,9 @@ SQLite databases. The download includes tasks and databases for all splits;
 tabulaflow benchmark download bird-sql
 ```
 
+Run five tasks with a
+[configured model provider](../models.md#supported-providers):
+
 === "OpenAI"
 
     ```bash
@@ -105,6 +108,9 @@ export SF_USER="your-username"
 export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
 ```
+
+Run five tasks with a
+[configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
 
@@ -201,7 +207,8 @@ or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authen
     # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
     ```
 
-Run five tasks against a local SQLite database:
+Run five tasks against a local SQLite database with a
+[configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
 
@@ -271,6 +278,9 @@ tabulaflow benchmark download spider2-dbt
 ```
 
 Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
+
+Run five tasks with a
+[configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
 
@@ -342,6 +352,9 @@ The start command prints every database URL. Beaver uses these local endpoints:
 | --- | --- |
 | `dw` | `mysql://root:root@localhost:3311/dw` |
 | `csail_stata_cinder`, `csail_stata_neutron`, `csail_stata_glance`, `csail_stata_nova`, `keystone` | `mysql://root:root@localhost:3312/<database>` |
+
+Run five tasks with a
+[configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
 
@@ -423,6 +436,9 @@ Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 ```bash
 tabulaflow benchmark download ambrosia-s
 ```
+
+Run five tasks with a
+[configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
 
