@@ -62,6 +62,9 @@ export OPENAI_API_KEY="your-api-key"
 tabulaflow examples run quick-start
 ```
 
+For another model, see [supported providers and credentials](../models.md#supported-providers)
+and update the `ChatSession` model.
+
 The tool installation can run every bundled example from any directory. For an
 example without an API key, try [Data connectors](data-connectors.md).
 
