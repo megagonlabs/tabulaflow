@@ -9,7 +9,7 @@
 | `AmbigSimpleSQLAgent` | Ambiguous query | Resolve and predict the intended query |
 | `AmbigFlatSQLAgent` | Ambiguous query | Produce a flat set of interpretations and queries |
 | `AmbigStructuredSQLAgent` | Ambiguous query | Model ambiguity points and interpretation queries |
-| [`DbtAgent`](api/agents.md#dbt-strategy) | Transformation | Modify a dbt project to produce the requested tables |
+| `DbtAgent` | Transformation | Modify a dbt project to produce the requested tables |
 
 Schema linking and discovery support SQL databases. Direct prompting and full
 schema also support Cypher.
