@@ -338,8 +338,9 @@ Run five tasks with a
 
 </div>
 
-Beaver contains enterprise text-to-SQL tasks over MySQL databases. Download the
-benchmark, then start its databases with Docker running:
+Beaver contains enterprise text-to-SQL tasks over MySQL databases. Ensure that
+[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running,
+then download the benchmark and start its databases:
 
 ```bash
 tabulaflow benchmark download beaver
@@ -496,7 +497,8 @@ Run five tasks with a
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. Docker must be running.
+Text-to-Cypher tasks over Neo4j property graphs. Ensure that
+[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running.
 Download the benchmark first:
 
 ```bash
