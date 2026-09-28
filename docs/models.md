@@ -32,6 +32,13 @@ Choose one provider and configure it before launching TabulaFlow:
     tabulaflow
     ```
 
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+    tabulaflow
+    ```
+
 TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
 models. Credentials are read from the environment and never saved.

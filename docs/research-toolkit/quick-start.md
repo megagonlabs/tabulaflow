@@ -51,6 +51,9 @@ tabulaflow benchmark download bird-sql
 export OPENAI_API_KEY="your-api-key"
 ```
 
+For another model, see [supported providers and credentials](../models.md#supported-providers)
+and pass its `provider:model` identifier through `--llm` or `BasicAgentConfig`.
+
 ### Run with the CLI
 
 Run a standard end-to-end experiment:
