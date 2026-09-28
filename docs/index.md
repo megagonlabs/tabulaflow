@@ -20,8 +20,8 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
   even when shell and filesystem access are disabled (e.g., when building
   hosted applications).
 
-Like a general-purpose coding
-agent, TabulaFlow can also write code, run shell commands, and browse the web.
+Like a general-purpose coding agent, TabulaFlow can also write code, run shell
+commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
   <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
@@ -194,10 +194,10 @@ directory, so your source data and project directory remain unchanged by
 default. You can ask the agent at any time to export results to local files in
 any format you need for sharing or further use.
 
-Tabulaflow also goes beyond exiting AI database assistants (e.g., Chat2DB), which
-typically focus on generating SQL for a single database. TabulaFlow supports
-broader, general-purpose workflows across SQL and graph databases, local files, public
-datasets, and the web.
+TabulaFlow also goes beyond existing AI database assistants (e.g., Chat2DB),
+which typically focus on generating SQL for a single database. TabulaFlow
+supports broader, general-purpose workflows across SQL and graph databases,
+local files, public datasets, and the web.
 
 ## Build and research with TabulaFlow
 
