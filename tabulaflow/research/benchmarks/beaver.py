@@ -66,6 +66,23 @@ BEAVER_CONTAINERS = {
     "dw": ("tabulaflow-beaver-dw", 3311),
     "nw": ("tabulaflow-beaver-nw", 3312),
 }
+BEAVER_DATABASE_NAMES = [
+    "dw",
+    "csail_stata_cinder",
+    "csail_stata_neutron",
+    "csail_stata_glance",
+    "csail_stata_nova",
+    "keystone",
+]
+
+
+def _beaver_endpoints(split: str | None, databases: list[str] | None) -> dict[str, str]:
+    dw_port = BEAVER_CONTAINERS["dw"][1]
+    nw_port = BEAVER_CONTAINERS["nw"][1]
+    return {
+        database: f"mysql://root:root@localhost:{dw_port if database == 'dw' else nw_port}/{database}"
+        for database in BEAVER_DATABASE_NAMES
+    }
 
 
 async def _beaver_ready(split: str | None, databases: list[str] | None) -> bool:
@@ -140,6 +157,7 @@ BEAVER_RUNTIME = BenchmarkRuntime(
     start_action=_start_beaver,
     stop_action=_stop_beaver,
     ready_action=_beaver_ready,
+    endpoint_resolver=_beaver_endpoints,
 )
 
 
@@ -178,14 +196,7 @@ class BeaverDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        return [
-            "dw",
-            "csail_stata_cinder",
-            "csail_stata_neutron",
-            "csail_stata_glance",
-            "csail_stata_nova",
-            "keystone",
-        ]
+        return list(BEAVER_DATABASE_NAMES)
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
         if split not in self.splits:

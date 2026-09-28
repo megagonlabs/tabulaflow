@@ -38,6 +38,17 @@ def test_runtime_resolves_default_and_validates_splits() -> None:
         runtime.resolve_split("dev")
 
 
+def test_managed_runtime_resolves_selected_endpoints() -> None:
+    assert beaver.BEAVER_RUNTIME.endpoints(None) == {
+        database: f"mysql://root:root@localhost:{3311 if database == 'dw' else 3312}/{database}"
+        for database in beaver.BEAVER_DATABASE_NAMES
+    }
+    assert cypherbench.CYPHERBENCH_RUNTIME.endpoints("test", ["movie", "geography"]) == {
+        "movie": "bolt://localhost:15066",
+        "geography": "bolt://localhost:15065",
+    }
+
+
 @pytest.mark.asyncio
 async def test_runtime_preflight_reports_start_command() -> None:
     async def not_ready(split: str | None, databases: list[str] | None) -> bool:

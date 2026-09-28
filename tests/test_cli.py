@@ -190,7 +190,14 @@ def test_benchmark_start_forwards_selected_databases(monkeypatch: MonkeyPatch) -
         received["start"] = (split, databases)
 
     benchmark = SimpleNamespace(installation=SimpleNamespace(require=lambda: None))
-    runtime = SimpleNamespace(start=start, resolve_split=lambda split: split or "test")
+    runtime = SimpleNamespace(
+        start=start,
+        resolve_split=lambda split: split or "test",
+        endpoints=lambda split, databases: {
+            database: f"bolt://localhost:{15066 if database == 'movie' else 15065}" for database in databases
+        },
+        authentication="username neo4j, password cypherbench",
+    )
     monkeypatch.setattr("tabulaflow.research.cli._get_benchmark", lambda _name: benchmark)
     monkeypatch.setattr("tabulaflow.research.cli._get_runtime", lambda _name: runtime)
 
@@ -202,6 +209,11 @@ def test_benchmark_start_forwards_selected_databases(monkeypatch: MonkeyPatch) -
     assert result.exit_code == 0
     assert received["start"] == (None, ["movie", "geography"])
     assert "movie, geography" in _plain(result.output)
+    assert "movie" in _plain(result.output)
+    assert "bolt://localhost:15066" in _plain(result.output)
+    assert "geography" in _plain(result.output)
+    assert "bolt://localhost:15065" in _plain(result.output)
+    assert "Authentication: username neo4j, password cypherbench" in _plain(result.output)
 
 
 def test_benchmark_start_requires_download(monkeypatch: MonkeyPatch) -> None:
