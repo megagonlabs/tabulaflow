@@ -5,6 +5,7 @@ TabulaFlow is an open-source data agent built on a modular Python library.
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
+
 Unlike existing coding-agent harnesses, which are built around files and the
 shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
 This data-first design brings several benefits:
@@ -16,11 +17,11 @@ This data-first design brings several benefits:
 - **Human ergonomics.** Data provenance is automatically tracked: each
   visualization exposes its underlying data table, and each table exposes the
   query that produced it.
-- **Shell-independent.** The data agent remains fully functional for data work
+- **Shell-independent.** The core harness remains fully functional for data work
   even when shell and filesystem access are disabled (e.g., when building
   hosted applications).
 
-This design does not limit its capabilities: like a general-purpose coding
+Like a general-purpose coding
 agent, TabulaFlow can also write code, run shell commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
