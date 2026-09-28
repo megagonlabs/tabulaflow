@@ -293,6 +293,7 @@ Run five tasks against the NBA database:
 tabulaflow benchmark run cypherbench \
   --split test \
   --database nba \
+  --agent direct_prompting \
   --sample-size 5
 ```
 
