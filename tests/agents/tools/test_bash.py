@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import re
 import stat
-import time
 from collections.abc import AsyncIterator
 
 import pytest
@@ -66,13 +65,10 @@ class TestExecution:
         assert "configured" in result
 
     async def test_commands_run_concurrently(self, bash: ExecuteBashTool) -> None:
-        started = time.monotonic()
         first, second = await asyncio.gather(
-            bash("sleep 0.4; echo first"),
-            bash("sleep 0.4; echo second"),
+            bash("touch first-started; while [ ! -e second-started ]; do sleep 0.01; done; echo first"),
+            bash("touch second-started; while [ ! -e first-started ]; do sleep 0.01; done; echo second"),
         )
-        elapsed = time.monotonic() - started
-        assert elapsed < 0.7
         assert "first" in first and "second" not in first
         assert "second" in second and "first" not in second
 
@@ -85,12 +81,18 @@ class TestExecution:
 
 
 class TestJobModes:
-    async def test_background_returns_immediately_and_records_completion(self, bash: ExecuteBashTool) -> None:
-        started = time.monotonic()
-        result = await bash("sleep 0.3; echo finished", mode="background")
-        assert time.monotonic() - started < 0.2
+    async def test_background_returns_immediately_and_records_completion(
+        self,
+        bash: ExecuteBashTool,
+        tmp_path: Path,
+    ) -> None:
+        result = await asyncio.wait_for(
+            bash("while [ ! -e release ]; do sleep 0.01; done; echo finished", mode="background"),
+            timeout=3,
+        )
         assert _metadata(result, "job_id") == "J1"
         log_path = Path(_metadata(result, "log"))
+        (tmp_path / "release").touch()
         text = await _wait_for_footer(log_path)
         assert "finished" in text
         assert "state: exited, exit_code: 0" in text
