@@ -280,9 +280,11 @@ async def test_cypherbench_loader_connects_directly_to_standalone_graphs(
     tmp_path: Path,
 ) -> None:
     urls: list[str] = []
+    driver_options: list[object] = []
 
     async def from_url_async(*, url: str, **kwargs: object) -> object:
         urls.append(url)
+        driver_options.append(kwargs.get("notifications_min_severity"))
         return object()
 
     monkeypatch.setattr(Neo4jConnector, "from_url_async", from_url_async)
@@ -291,6 +293,7 @@ async def test_cypherbench_loader_connects_directly_to_standalone_graphs(
     await loader.get_db_connectors_async("test", ["movie", "geography"])
 
     assert urls == ["bolt://localhost:15066", "bolt://localhost:15065"]
+    assert driver_options == ["OFF", "OFF"]
 
 
 @pytest.mark.asyncio

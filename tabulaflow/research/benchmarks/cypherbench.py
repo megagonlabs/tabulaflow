@@ -350,6 +350,7 @@ class CypherBenchDatasetLoader:
                 display_name=graph,
                 read_only=True,
                 config=self.connector_config,
+                notifications_min_severity="OFF",
             )
 
         connectors = await asyncio.gather(*[connect(g) for g in databases])
