@@ -245,7 +245,18 @@ def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path
     )
 
     assert result.exit_code == 0
-    assert received["args"] == ("bird-sql", "dev", None, None, None, 5, "full_schema", None, None, tmp_path)
+    assert received["args"] == (
+        "bird-sql",
+        "dev",
+        None,
+        None,
+        None,
+        64,
+        "full_schema",
+        None,
+        None,
+        tmp_path,
+    )
 
 
 def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
@@ -284,7 +295,7 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
         None,
         ["dev_001", "dev_002"],
         ["concert_singer"],
-        5,
+        64,
         "full_schema",
         None,
         ["bird_sql_ex", "executable"],

@@ -15,7 +15,7 @@ async def run_experiment_async(
     dataset: NL2QDataset,
     metrics: list[MetricProtocol],
     *,
-    batch_size: int,
+    batch_size: int = 64,
 ) -> NL2QRunResult:
     """Predict, execute, and evaluate one experiment.
 
@@ -27,7 +27,7 @@ async def run_experiment_async(
         agent_config: Configuration passed to each agent instance.
         dataset: Loaded tasks and their database connectors.
         metrics: Task-level metrics to compute after query execution.
-        batch_size: Maximum tasks processed concurrently.
+        batch_size: Maximum tasks processed concurrently. Defaults to 64.
 
     Returns:
         The predicted, executed, and evaluated run result.

@@ -37,7 +37,7 @@ async def evaluate_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
     metrics: list[MetricProtocol],
-    batch_size: int,
+    batch_size: int = 64,
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -47,7 +47,7 @@ async def evaluate_async(
         result: Run result to update in place.
         dataset: Dataset providing database connectors.
         metrics: Task-level metrics to compute.
-        batch_size: Maximum tasks evaluated concurrently.
+        batch_size: Maximum tasks evaluated concurrently. Defaults to 64.
         metric_aggregators: Policies for aggregating task metrics. Defaults to
             ``SimpleAverageAggregator``. Pass an empty list to skip aggregation.
         verbose: Whether to display progress.
@@ -76,7 +76,7 @@ async def evaluate_async(
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir", nargs="?", default="output/test/")
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--metrics", nargs="+", default=None)
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()

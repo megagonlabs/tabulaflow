@@ -114,7 +114,7 @@ async def ensemble_async(
     ensembler: Ensembler,
     results: list[NL2QRunResult],
     dataset: NL2QDataset,
-    batch_size: int,
+    batch_size: int = 64,
     verbose: bool = True,
 ) -> NL2QRunResult:
     """Ensemble multiple run results into a single result.
@@ -123,7 +123,7 @@ async def ensemble_async(
         ensembler: The ensembler instance.
         results: List of run results to ensemble.
         dataset: The dataset (used for db connectors).
-        batch_size: Number of tasks to process concurrently.
+        batch_size: Number of tasks to process concurrently. Defaults to 64.
         verbose: Whether to print progress.
 
     Returns:
@@ -218,7 +218,7 @@ async def main_async() -> None:
         help="Deduplicate candidates with identical results (LLM ensemblers, default true).",
     )
     parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()

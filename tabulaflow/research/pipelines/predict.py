@@ -56,7 +56,7 @@ async def predict_async(
     agent_cls: type[Any],
     agent_config: BaseModel,
     dataset: NL2QDataset,
-    batch_size: int,
+    batch_size: int = 64,
     few_shot_dataset: NL2QDataset | None = None,
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
@@ -70,7 +70,7 @@ async def predict_async(
         agent_cls: Registered agent implementation.
         agent_config: Configuration passed to each agent instance.
         dataset: Tasks and their database connectors.
-        batch_size: Maximum tasks processed concurrently.
+        batch_size: Maximum tasks processed concurrently. Defaults to 64.
         few_shot_dataset: Optional examples supplied to compatible agents.
         metric_aggregators: Inference-metric aggregators, or the default.
         verbose: Whether to display progress.
@@ -210,7 +210,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     general = parser.add_argument_group("general")
     general.add_argument("--agent", default="schema_linking")
-    general.add_argument("--batch-size", type=int, default=8)
+    general.add_argument("--batch-size", type=int, default=64)
     general.add_argument("--output-dir", default="output/test/")
     general.add_argument("--overwrite", action="store_true")
     general.add_argument(

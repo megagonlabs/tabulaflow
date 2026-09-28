@@ -3,7 +3,6 @@
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
-
 if TYPE_CHECKING:
     from tabulaflow.research.pipelines.ensemble import ensemble_async
     from tabulaflow.research.pipelines.evaluate import evaluate_async

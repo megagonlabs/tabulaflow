@@ -73,8 +73,8 @@ loader = BirdSQLDatasetLoader(connector_config=SQLConnectorConfig(
 ))
 ```
 
-`batch_size` limits concurrent tasks. Runtime limits apply to model requests
-across the process; connector limits apply to database queries.
+`batch_size` defaults to 64 and limits concurrent tasks. Runtime limits apply
+to model requests across the process; connector limits apply to database queries.
 
 `read_write` reuses cached schemas and preprocessing outputs across runs.
 You can also [prepare inputs](api/preprocessing.md#prepare-reusable-inputs), such
