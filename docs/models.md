@@ -7,7 +7,7 @@ API key and choose models in `/config`.
 
 ## Quick setup
 
-Choose one provider and set its key before launching TabulaFlow:
+Choose one provider and configure it before launching TabulaFlow:
 
 === "OpenAI"
 
@@ -23,12 +23,23 @@ Choose one provider and set its key before launching TabulaFlow:
     tabulaflow
     ```
 
-Without a saved model selection, automatic setup checks only
-`OPENAI_API_KEY`, then `ANTHROPIC_API_KEY`, and selects provider-specific default
-models for both roles. Credentials for other providers are not detected for
-automatic setup; configure their authentication and choose their models in
-`/config`. API keys are read from the environment and are never saved to the
-app configuration file.
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+    # For authenticated endpoints:
+    # export VLLM_API_KEY="your-api-key"
+    tabulaflow
+    ```
+
+TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
+vLLM endpoints. Use `/config` to change them or select among multiple vLLM
+models. Credentials are read from the environment and never saved.
+
+!!! important "vLLM tool calling"
+    TabulaFlow relies on automatic tool calling. Follow the current
+    [vLLM tool-calling guide](https://docs.vllm.ai/en/stable/features/tool_calling/)
+    to configure it for your model.
 
 ## Choose models
 
@@ -51,36 +62,13 @@ identifier. TabulaFlow saves model selections in
 `~/.tabulaflow/app_config.json`, but continues to read credentials from the
 environment.
 
-## Use vLLM
-
-Start a local or remote vLLM OpenAI-compatible server, then set the Pydantic AI
-vLLM provider's base URL before launching TabulaFlow:
-
-```bash
-export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
-tabulaflow
-```
-
-For an authenticated endpoint, also set:
-
-```bash
-export VLLM_API_KEY="your-api-key"
-```
-
-!!! note "Configure tool calling in vLLM"
-    TabulaFlow relies heavily on model tool calls. Select a model with reliable
-    tool support and configure vLLM's model-specific tool parser when required.
-    See the [vLLM tool-calling guide](https://docs.vllm.ai/en/stable/features/tool_calling/).
-
-Configure the vLLM server itself with its server arguments, such as `--host`, `--port`,
-and `--api-key`.
-
 ## Supported providers
 
 The model picker includes models from all the provider routes below. TabulaFlow
 uses Pydantic AI's environment variables and authentication unchanged; it does
 not store these credentials. Set the listed variables before launching
-TabulaFlow, then select a `provider:model` identifier in `/config`.
+TabulaFlow, then select a `provider:model` identifier in `/config` when
+automatic setup does not apply.
 
 ### API key providers
 
@@ -122,7 +110,7 @@ TabulaFlow, then select a `provider:model` identifier in `/config`.
 | Provider | Prefix | Connection settings |
 | --- | --- | --- |
 | [Ollama](https://pydantic.dev/docs/ai/models/ollama/) | `ollama:` | `OLLAMA_BASE_URL`; optional `OLLAMA_API_KEY` |
-| [vLLM](#use-vllm) | `vllm:` | `VLLM_BASE_URL`; optional `VLLM_API_KEY` |
+| [vLLM](https://pydantic.dev/docs/ai/models/openai/#vllm) | `vllm:` | `VLLM_BASE_URL`; optional `VLLM_API_KEY` |
 
 Provider requirements can change independently of TabulaFlow. Follow the
 linked Pydantic AI provider page for account setup and provider-specific
