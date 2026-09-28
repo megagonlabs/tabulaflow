@@ -22,6 +22,7 @@ from tabulaflow.app.tui.commands import (
     HuggingFaceSubsetSelection,
 )
 from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMConfig, ResolvedLLMConfig
+from tabulaflow.app.model_catalog import VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
@@ -73,10 +74,10 @@ def _selection(
     config: LLMConfig | None,
     *,
     inferred: bool = False,
-    detected_api_key_env: str | None = None,
+    automatic_env: str | None = None,
 ) -> ResolvedLLMConfig:
     selection = None if inferred else (config if config is not None else LLM_OFF)
-    return ResolvedLLMConfig(selection, config, detected_api_key_env)
+    return ResolvedLLMConfig(selection, config, automatic_env)
 
 
 def _app_for_selection(
@@ -690,6 +691,11 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
             "ANTHROPIC_API_KEY",
             "✓ ANTHROPIC_API_KEY detected · using claude-opus-4-8. Change models in /config.",
         ),
+        (
+            ("api-key-not-set", "api-key-not-set"),
+            "VLLM_BASE_URL",
+            "✓ VLLM_BASE_URL detected · using claude-opus-4-8. Change models in /config.",
+        ),
     ],
 )
 def test_llm_config_success_message(
@@ -703,7 +709,7 @@ def test_llm_config_success_message(
         subagent_model="openai:gpt-5.4-mini",
     )
 
-    message = tui._llm_config_success_message(config, api_keys, detected_api_key_env=detected_env)
+    message = tui._llm_config_success_message(config, api_keys, automatic_env=detected_env)
 
     assert message.plain == expected
     assert str(message.style) == "dim"
@@ -910,6 +916,105 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
         assert messages == ["✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."]
 
 
+async def test_unconfigured_single_vllm_model_is_selected_automatically(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app_for_selection(_selection(None, inferred=True))
+    app._vllm_discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")  # noqa: SLF001
+    discovered = VLLMDiscoveryResult(models=("vllm:Qwen/Qwen3-8B",))
+    events: list[str] = []
+
+    async def warm_vllm() -> VLLMDiscoveryResult:
+        if not events:
+            events.append("discovery")
+        return discovered
+
+    class FakeSession:
+        def activate_llm_config(self, config: LLMConfig) -> tuple[None, None]:
+            events.append("activation")
+            assert config.main.model == "vllm:Qwen/Qwen3-8B"
+            assert config.subagent.model == "vllm:Qwen/Qwen3-8B"
+            return None, None
+
+    async def fake_ensure_session() -> object:
+        events.append("session")
+        return FakeSession()
+
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app._vllm_discovery, "warm", warm_vllm)  # noqa: SLF001
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages == ["✓ VLLM_BASE_URL detected · using Qwen3-8B. Change models in /config."]
+        assert events == ["discovery", "session", "activation"]
+        assert app._llm_config.config is not None  # noqa: SLF001
+        assert app._llm_config.config.main.model == "vllm:Qwen/Qwen3-8B"  # noqa: SLF001
+
+
+@pytest.mark.parametrize(
+    ("result", "expected"),
+    [
+        (
+            VLLMDiscoveryResult(models=("vllm:main", "vllm:fast")),
+            "✓ LLM off · 2 vLLM models discovered at localhost:8000. Choose models in /config.",
+        ),
+        (
+            VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY"),
+            "✓ LLM off · vLLM discovery failed at localhost:8000: authentication failed — check "
+            "VLLM_API_KEY. Fix it and restart TabulaFlow.",
+        ),
+    ],
+)
+async def test_unconfigured_vllm_without_one_model_stays_off(
+    monkeypatch: pytest.MonkeyPatch,
+    result: VLLMDiscoveryResult,
+    expected: str,
+) -> None:
+    app = _app_for_selection(_selection(None, inferred=True))
+    app._vllm_discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")  # noqa: SLF001
+
+    async def warm_vllm() -> VLLMDiscoveryResult:
+        return result
+
+    async def fake_ensure_session() -> object:
+        return _InactiveSession()
+
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app._vllm_discovery, "warm", warm_vllm)  # noqa: SLF001
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages == [expected]
+        assert app._llm_config.config is None  # noqa: SLF001
+        assert not app._llm_activation_in_progress  # noqa: SLF001
+
+
+async def test_llm_activation_flag_is_cleared_after_unexpected_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selection = _selection(None, inferred=True)
+    app = _app_for_selection(selection)
+    app._llm_activation_in_progress = True  # noqa: SLF001
+
+    async def fail(_selection: ResolvedLLMConfig) -> None:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(app, "_activate_llm_selection", fail)
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        await app._activate_llm_option(selection)  # noqa: SLF001
+
+    assert not app._llm_activation_in_progress  # noqa: SLF001
+
+
 async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -919,7 +1024,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         subagent_model="openai:gpt-5-mini",
         subagent_reasoning="medium",
     )
-    app = _app_for_selection(_selection(config, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
+    app = _app_for_selection(_selection(config, inferred=True, automatic_env="OPENAI_API_KEY"))
 
     class FakeSession:
         def activate_llm_config(self, selected: LLMConfig) -> tuple[str | None, str | None]:

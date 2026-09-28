@@ -32,10 +32,11 @@ from tabulaflow.app.tui.commands import (
 )
 from tabulaflow.app.config import (
     LLMConfig,
+    LLMRoleConfig,
     ResolvedLLMConfig,
     update_app_config,
 )
-from tabulaflow.app.model_catalog import ModelCatalog, VLLMModelDiscovery
+from tabulaflow.app.model_catalog import ModelCatalog, VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane.cards import render_resolved_output
 from tabulaflow.app.pane.contract import (
@@ -186,7 +187,7 @@ def _llm_config_success_message(
     config: LLMConfig,
     keys: tuple[str | None, str | None],
     *,
-    detected_api_key_env: str | None = None,
+    automatic_env: str | None = None,
 ) -> Text:
     """Build the status message for an activated LLM configuration."""
     main_key, subagent_key = keys
@@ -194,11 +195,11 @@ def _llm_config_success_message(
     subagent_mask = _masked_api_key(subagent_key)
     shared_key = main_key is not None and main_key == subagent_key
 
-    if detected_api_key_env is not None:
+    if automatic_env is not None:
         detected_key = main_key or subagent_key
-        detected_mask = _masked_api_key(detected_key)
-        detected = f"{detected_api_key_env} detected"
-        if detected_mask is not None:
+        detected_mask = _masked_api_key(detected_key) if automatic_env.endswith("_API_KEY") else None
+        detected = f"{automatic_env} detected"
+        if detected_mask:
             detected += f" ({detected_mask})"
         return Text(
             f"✓ {detected} · using {model_label(config.main.model)}. Change models in /config.",
@@ -730,7 +731,7 @@ class TabulaflowApp(App[None]):
 
     def _start_llm_activation(self, selection: ResolvedLLMConfig) -> None:
         """Initialize the confirmed LLM option in the background."""
-        self._llm_activation_in_progress = selection.config is not None
+        self._llm_activation_in_progress = True
         self._llm_activation_error = None
         self.run_worker(
             self._activate_llm_option(selection),
@@ -740,8 +741,16 @@ class TabulaflowApp(App[None]):
 
     async def _activate_llm_option(self, selection: ResolvedLLMConfig) -> None:
         """Activate a confirmed LLM configuration or LLM off."""
+        try:
+            await self._activate_llm_selection(selection)
+        finally:
+            self._llm_activation_in_progress = False
+
+    async def _activate_llm_selection(self, selection: ResolvedLLMConfig) -> None:
         import asyncio
 
+        selection, vllm_status = await self._resolve_automatic_vllm(selection)
+        self._llm_config = selection
         config = selection.config
         if self._session is None:
             await self._show_initialization_spinner("Initializing session...")
@@ -753,13 +762,13 @@ class TabulaflowApp(App[None]):
             return
         if config is None:
             session.activate_llm_config(None)
-            if selection.selection is None:
+            if vllm_status is not None:
+                status = vllm_status
+            elif selection.selection is None:
                 status = "✓ LLM off · no OpenAI or Anthropic API key detected. Choose models in /config."
             else:
                 status = "✓ LLM off · /connect and the data explorer remain available."
-            await self._publish_initialization_status(
-                Text(status, style="dim"),
-            )
+            await self._publish_initialization_status(Text(status, style="dim"))
             return
         await self._show_initialization_spinner("Initializing agent...")
         try:
@@ -769,6 +778,30 @@ class TabulaflowApp(App[None]):
             await self._finish_llm_activation(selection, result=error)
             return
         await self._finish_llm_activation(selection, result=keys)
+
+    async def _resolve_automatic_vllm(self, selection: ResolvedLLMConfig) -> tuple[ResolvedLLMConfig, str | None]:
+        if selection.selection is not None or selection.config is not None or not self._vllm_discovery.base_url:
+            return selection, None
+
+        await self._show_initialization_spinner("Discovering vLLM models...")
+        result = await self._vllm_discovery.warm()
+        if result is None:
+            return selection, None
+        if len(result.models) == 1:
+            model = result.models[0]
+            config = LLMConfig(
+                main=LLMRoleConfig(model=model, effort="medium"),
+                subagent=LLMRoleConfig(model=model, effort="medium"),
+            )
+            return ResolvedLLMConfig(None, config, "VLLM_BASE_URL"), None
+        return selection, self._vllm_discovery_status(result)
+
+    def _vllm_discovery_status(self, result: VLLMDiscoveryResult) -> str:
+        endpoint = self._vllm_discovery.endpoint_label or "configured endpoint"
+        if result.error:
+            return f"✓ LLM off · vLLM discovery failed at {endpoint}: {result.error}. Fix it and restart TabulaFlow."
+        count = len(result.models)
+        return f"✓ LLM off · {count} vLLM models discovered at {endpoint}. Choose models in /config."
 
     async def _show_initialization_spinner(self, label: str) -> None:
         if self._initialization_spinner is not None:
@@ -798,7 +831,6 @@ class TabulaflowApp(App[None]):
         detail = _sanitize_exception_message(error)
         message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
         await self._publish_initialization_status(message)
-        self._llm_activation_in_progress = False
 
     async def _finish_llm_activation(
         self,
@@ -818,10 +850,9 @@ class TabulaflowApp(App[None]):
             message = _llm_config_success_message(
                 config,
                 result,
-                detected_api_key_env=selection.detected_api_key_env,
+                automatic_env=selection.automatic_env,
             )
         await self._publish_initialization_status(message)
-        self._llm_activation_in_progress = False
         input_bar = self.query_one("#input-bar", HistoryInput)
         if len(self.screen_stack) == 1:
             input_bar.focus()

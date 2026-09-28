@@ -105,7 +105,7 @@ class ResolvedLLMConfig:
 
     selection: LLMConfig | Literal["off"] | None
     config: LLMConfig | None
-    detected_api_key_env: str | None = None
+    automatic_env: str | None = None
 
     @property
     def requests_per_minute(self) -> LLMRequestsPerMinute:
@@ -119,8 +119,8 @@ class ResolvedLLMConfig:
             raise ValueError("LLM off cannot resolve to a configuration")
         if isinstance(self.selection, LLMConfig) and self.selection != self.config:
             raise ValueError("An explicit LLM selection must be its effective configuration")
-        if self.detected_api_key_env is not None and (self.selection is not None or self.config is None):
-            raise ValueError("Detected credentials are only valid for automatic configuration")
+        if self.automatic_env is not None and (self.selection is not None or self.config is None):
+            raise ValueError("Detected environment settings are only valid for automatic configuration")
 
 
 def resolve_llm_config(config: AppConfig) -> ResolvedLLMConfig:
