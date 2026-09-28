@@ -232,17 +232,21 @@ tabulaflow benchmark run ambrosia-s --split test --sample-size 5
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. Download the benchmark, then
-start the test databases with Docker running. Starting imports each graph into
-Neo4j, which can take a while:
+Text-to-Cypher tasks over Neo4j property graphs. Docker must be running.
+Download the benchmark first:
 
 ```bash
 tabulaflow benchmark download cypherbench
+```
+
+Start all test databases. The first start imports each graph into Neo4j and
+can take 10+ minutes:
+
+```bash
 tabulaflow benchmark start cypherbench
 ```
 
-Each graph runs in its own container. To start only the databases needed for a
-run, repeat `--database` as needed:
+Alternatively, start only the databases you plan to use:
 
 ```bash
 tabulaflow benchmark start cypherbench \
@@ -250,25 +254,32 @@ tabulaflow benchmark start cypherbench \
   --database geography
 ```
 
+Run five tasks against the movie database:
+
 ```bash
-tabulaflow benchmark run cypherbench --split test --sample-size 5
+tabulaflow benchmark run cypherbench \
+  --database movie \
+  --sample-size 5
 ```
 
-You only need to start the databases used by the tasks you run. This also
-works when selecting tasks with `--qid`, `--database`, or `--sample-size`. For
-example, a run containing only movie QIDs requires only the movie database.
+When selecting tasks with `--qid` or `--sample-size`, only the databases used
+by those tasks need to be running.
 
-Stop the databases when finished (this removes the containers, so the
-next start imports again):
+Stop a selected database when finished. Stopping removes its container, so the
+next start imports it again:
+
+```bash
+tabulaflow benchmark stop cypherbench --database movie
+```
+
+To stop all test databases instead:
 
 ```bash
 tabulaflow benchmark stop cypherbench
 ```
 
-Pass `--database` to remove only selected database containers. Unselected
-containers are left running.
-
-For training databases, add `--split train` to both `start` and `stop`.
+Use `--split train` with `start`, `run`, and `stop` when working with the
+training split.
 
 ## Load in Python
 
