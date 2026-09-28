@@ -10,11 +10,15 @@ from tabulaflow.research.benchmarks import registry
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
 
 
-async def _noop(split: str | None, progress: Callable[[str], None]) -> None:
+async def _noop(
+    split: str | None,
+    databases: list[str] | None,
+    progress: Callable[[str], None],
+) -> None:
     return None
 
 
-async def _ready(split: str | None) -> bool:
+async def _ready(split: str | None, databases: list[str] | None) -> bool:
     return True
 
 
@@ -35,7 +39,7 @@ def test_runtime_resolves_default_and_validates_splits() -> None:
 
 @pytest.mark.asyncio
 async def test_runtime_preflight_reports_start_command() -> None:
-    async def not_ready(split: str | None) -> bool:
+    async def not_ready(split: str | None, databases: list[str] | None) -> bool:
         return False
 
     runtime = BenchmarkRuntime(
@@ -44,18 +48,23 @@ async def test_runtime_preflight_reports_start_command() -> None:
         ready_action=not_ready,
         splits=("test", "train"),
         default_split="test",
+        supports_database_selection=True,
     )
 
-    with pytest.raises(BenchmarkRuntimeError, match="tabulaflow benchmark start example --split train"):
-        await runtime.require_ready("example", "train")
+    with pytest.raises(
+        BenchmarkRuntimeError,
+        match="tabulaflow benchmark start example --split train --database art",
+    ):
+        await runtime.require_ready("example", "train", ["art"])
 
 
 @pytest.mark.asyncio
 async def test_benchmark_preflight_checks_managed_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     checked: list[tuple[str, str | None]] = []
 
-    async def ready(split: str | None) -> bool:
+    async def ready(split: str | None, databases: list[str] | None) -> bool:
         checked.append(("ready", split))
+        assert databases == ["db"]
         return True
 
     benchmark_runtime = BenchmarkRuntime(start_action=_noop, stop_action=_noop, ready_action=ready)
@@ -70,7 +79,7 @@ async def test_benchmark_preflight_checks_managed_runtime(monkeypatch: pytest.Mo
 
     monkeypatch.setattr(registry.dataset_registry, "get_class", lambda name: Benchmark)
 
-    await registry.preflight_benchmark("example", "test")
+    await registry.preflight_benchmark("example", "test", ["db"])
 
     assert checked == [("installation", None), ("ready", None)]
 
@@ -94,8 +103,8 @@ async def test_cypherbench_runtime_runs_a_container_per_graph(
     async def wait_until_ready(check: Callable[[], Awaitable[bool]], description: str, **kwargs: object) -> None:
         assert await check()
 
-    async def ready(split: str | None) -> bool:
-        return split == "train"
+    async def ready(split: str | None, databases: list[str] | None) -> bool:
+        return split == "train" and databases == cypherbench.CYPHERBENCH_SPLIT_GRAPHS["train"]
 
     monkeypatch.setattr(cypherbench, "ensure_docker", ensure_docker)
     monkeypatch.setattr(cypherbench, "container_exists", container_exists)
@@ -111,6 +120,26 @@ async def test_cypherbench_runtime_runs_a_container_per_graph(
     art = next(command for command in run_commands if "cypherbench-art" in command)
     assert "15060:7687" in art
     assert any(item.endswith("graphs/simplekg/art_simplekg.json:/init/graph.json:ro") for item in art)
+
+
+@pytest.mark.asyncio
+async def test_cypherbench_runtime_starts_only_selected_graphs(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[tuple[str, ...]] = []
+    _stub_runtime(monkeypatch, commands, exists=False, ready=True)
+
+    await cypherbench.CYPHERBENCH_RUNTIME.start("test", lambda _: None, ["movie", "geography"])
+
+    run_commands = [command for command in commands if command[:2] == ("docker", "run")]
+    assert [command[command.index("--name") + 1] for command in run_commands] == [
+        "cypherbench-movie",
+        "cypherbench-geography",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cypherbench_runtime_rejects_graph_from_another_split() -> None:
+    with pytest.raises(BenchmarkRuntimeError, match="'art' belongs to split 'train'"):
+        await cypherbench.CYPHERBENCH_RUNTIME.start("test", lambda _: None, ["art"])
 
 
 def _stub_runtime(
@@ -176,6 +205,16 @@ async def test_cypherbench_stop_removes_containers(monkeypatch: pytest.MonkeyPat
     assert commands == [
         ("docker", "rm", "-fv", "cypherbench-art", "cypherbench-biology", "cypherbench-soccer", "cypherbench-terrorist-attack")
     ]
+
+
+@pytest.mark.asyncio
+async def test_cypherbench_stop_removes_only_selected_containers(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[tuple[str, ...]] = []
+    _stub_runtime(monkeypatch, commands, exists=True, ready=True)
+
+    await cypherbench.CYPHERBENCH_RUNTIME.stop("test", lambda _: None, ["movie"])
+
+    assert commands == [("docker", "rm", "-fv", "cypherbench-movie")]
 
 
 @pytest.mark.asyncio
@@ -264,6 +303,12 @@ async def test_beaver_readiness_requires_tcp(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(beaver, "run_command", run_command)
 
-    assert await beaver._beaver_ready(None)
+    assert await beaver._beaver_ready(None, ["dw"])
     assert len(commands) == len(beaver.BEAVER_CONTAINERS)
     assert all("--protocol=tcp" in command for command in commands)
+
+
+@pytest.mark.asyncio
+async def test_beaver_runtime_rejects_database_selection() -> None:
+    with pytest.raises(BenchmarkRuntimeError, match="does not support per-database runtime management"):
+        await beaver.BEAVER_RUNTIME.start(None, lambda _: None, ["dw"])

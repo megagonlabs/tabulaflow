@@ -12,7 +12,13 @@ from rich.table import Table
 from rich.text import Text
 
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
-from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol, dataset_registry, preflight_benchmark
+from tabulaflow.research.benchmarks.registry import (
+    DatasetLoaderProtocol,
+    dataset_registry,
+    preflight_benchmark,
+    select_tasks,
+    selected_databases,
+)
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
 
 benchmark_app = typer.Typer(help="Download, run, and manage research benchmarks.", no_args_is_help=True)
@@ -42,6 +48,19 @@ def _get_runtime(name: str) -> BenchmarkRuntime:
 
 def _progress(message: str) -> None:
     console.print(f"{message}...")
+
+
+async def _selected_runtime_databases(
+    loader: DatasetLoaderProtocol,
+    split: str,
+    databases: list[str] | None,
+    qids: list[str] | None,
+    sample_size: int | None,
+) -> list[str]:
+    tasks = select_tasks(list(await loader.get_tasks_async(split, databases)), qids, sample_size)
+    if not tasks:
+        raise ValueError("no tasks selected")
+    return selected_databases(tasks)
 
 
 async def _run_benchmark_async(
@@ -80,9 +99,10 @@ async def _run_benchmark_async(
     if not metrics:
         raise ValueError(f"no selected metrics support {agent_cls.output_type!r} agent output")
 
-    await preflight_benchmark(name, split)
     loader_kwargs = {"workspace_dir": destination / "work"} if name == "spider2-dbt" else {}
     loader = benchmark(**loader_kwargs)
+    required_databases = await _selected_runtime_databases(loader, split, databases, qids, sample_size)
+    await preflight_benchmark(name, split, required_databases)
     dataset = await loader.get_split_async(
         split,
         databases=databases,
@@ -166,6 +186,9 @@ def download(
 def start(
     name: str = typer.Argument(help="Benchmark name."),
     split: str | None = typer.Option(None, "--split", help="Database split to start."),
+    databases: list[str] | None = typer.Option(
+        None, "--database", help="Database name. Repeat to start multiple databases."
+    ),
 ) -> None:
     """Start a downloaded benchmark's managed databases."""
     benchmark = _get_benchmark(name)
@@ -173,32 +196,37 @@ def start(
 
     try:
         benchmark.installation.require()
-        asyncio.run(runtime.start(split, _progress))
+        asyncio.run(runtime.start(split, _progress, databases))
     except (BenchmarkInstallationError, BenchmarkRuntimeError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
     resolved_split = runtime.resolve_split(split)
     target = f"{name} {resolved_split}" if resolved_split else name
-    console.print("[green]Started:[/green]", f"{target} databases")
+    selection = f": {', '.join(dict.fromkeys(databases))}" if databases else ""
+    console.print("[green]Started:[/green]", f"{target} databases{selection}")
 
 
 @benchmark_app.command()
 def stop(
     name: str = typer.Argument(help="Benchmark name."),
     split: str | None = typer.Option(None, "--split", help="Database split to stop."),
+    databases: list[str] | None = typer.Option(
+        None, "--database", help="Database name. Repeat to stop multiple databases."
+    ),
 ) -> None:
-    """Stop a benchmark's managed databases without deleting their data."""
+    """Stop a benchmark's managed databases."""
     benchmark = _get_benchmark(name)
     runtime = _get_runtime(name)
     try:
         benchmark.installation.require()
-        asyncio.run(runtime.stop(split, _progress))
+        asyncio.run(runtime.stop(split, _progress, databases))
     except (BenchmarkInstallationError, BenchmarkRuntimeError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
     resolved_split = runtime.resolve_split(split)
     target = f"{name} {resolved_split}" if resolved_split else name
-    console.print("[green]Stopped:[/green]", f"{target} databases")
+    selection = f": {', '.join(dict.fromkeys(databases))}" if databases else ""
+    console.print("[green]Stopped:[/green]", f"{target} databases{selection}")
 
 
 @benchmark_app.command("run")

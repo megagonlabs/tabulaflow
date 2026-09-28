@@ -185,6 +185,9 @@ The databases use local ports `3311` and `3312`. Stop them when finished:
 tabulaflow benchmark stop beaver
 ```
 
+Beaver's logical databases share two MySQL containers, so its runtime is
+managed as a whole and does not support `start` or `stop` with `--database`.
+
 <div class="benchmark-heading" markdown="1">
 
 ## ARCS
@@ -241,9 +244,22 @@ tabulaflow benchmark download cypherbench
 tabulaflow benchmark start cypherbench
 ```
 
+Each graph runs in its own container. To start only the databases needed for a
+run, repeat `--database` as needed:
+
+```bash
+tabulaflow benchmark start cypherbench \
+  --database movie \
+  --database geography
+```
+
 ```bash
 tabulaflow benchmark run cypherbench --split test --sample-size 5
 ```
+
+`benchmark run` derives runtime requirements from the tasks selected after
+`--qid`, `--database`, and `--sample-size` filtering. For example, a run
+selecting only movie QIDs requires only the movie database to be running.
 
 Stop the databases when finished (this removes the containers, so the
 next start imports again):
@@ -251,6 +267,9 @@ next start imports again):
 ```bash
 tabulaflow benchmark stop cypherbench
 ```
+
+Pass `--database` to remove only selected database containers. Unselected
+containers are left running.
 
 For training databases, add `--split train` to both `start` and `stop`.
 

@@ -111,9 +111,31 @@ async def _graph_ready(graph: str) -> bool:
         await driver.close()
 
 
-async def _cypherbench_ready(split: str | None) -> bool:
+def _resolve_graphs(split: str, databases: list[str] | None) -> list[str]:
+    available = CYPHERBENCH_SPLIT_GRAPHS[split]
+    if databases is None:
+        return available
+    graphs = list(dict.fromkeys(databases))
+    unknown = [graph for graph in graphs if graph not in available]
+    if unknown:
+        locations = {
+            graph: graph_split
+            for graph in unknown
+            for graph_split, split_graphs in CYPHERBENCH_SPLIT_GRAPHS.items()
+            if graph in split_graphs
+        }
+        details = ", ".join(
+            f"{graph!r} belongs to split {locations[graph]!r}" if graph in locations else repr(graph)
+            for graph in unknown
+        )
+        raise BenchmarkRuntimeError(f"databases not available in split {split!r}: {details}")
+    return graphs
+
+
+async def _cypherbench_ready(split: str | None, databases: list[str] | None) -> bool:
     assert split is not None
-    return all(await asyncio.gather(*(_graph_ready(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split])))
+    graphs = _resolve_graphs(split, databases)
+    return all(await asyncio.gather(*(_graph_ready(graph) for graph in graphs)))
 
 
 def _container_name(graph: str) -> str:
@@ -122,11 +144,16 @@ def _container_name(graph: str) -> str:
     return f"cypherbench-{graph.replace('_', '-')}"
 
 
-async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> None:
+async def _start_cypherbench(
+    split: str | None,
+    databases: list[str] | None,
+    progress: ProgressCallback,
+) -> None:
     assert split is not None
+    graphs = _resolve_graphs(split, databases)
     await ensure_docker()
     progress(f"Starting CypherBench {split} databases")
-    for graph in CYPHERBENCH_SPLIT_GRAPHS[split]:
+    for graph in graphs:
         container = _container_name(graph)
         if await container_exists(container):
             if await _graph_ready(graph):
@@ -155,14 +182,23 @@ async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> N
             CYPHERBENCH_NEO4J_IMAGE,
         )
     progress("Waiting for Neo4j (importing graphs; can take 10+ minutes)")
-    await wait_until_ready(lambda: _cypherbench_ready(split), f"CypherBench {split} databases", timeout=1800)
+    await wait_until_ready(
+        lambda: _cypherbench_ready(split, graphs),
+        f"CypherBench {split} databases",
+        timeout=1800,
+    )
 
 
-async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> None:
+async def _stop_cypherbench(
+    split: str | None,
+    databases: list[str] | None,
+    progress: ProgressCallback,
+) -> None:
     assert split is not None
+    graphs = _resolve_graphs(split, databases)
     await ensure_docker()
     progress(f"Stopping CypherBench {split} databases")
-    containers = [_container_name(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split]]
+    containers = [_container_name(graph) for graph in graphs]
     existing = [container for container in containers if await container_exists(container)]
     if existing:
         # Mirrors the official stop script (docker compose down): containers
@@ -176,6 +212,7 @@ CYPHERBENCH_RUNTIME = BenchmarkRuntime(
     ready_action=_cypherbench_ready,
     splits=("test", "train"),
     default_split="test",
+    supports_database_selection=True,
 )
 
 

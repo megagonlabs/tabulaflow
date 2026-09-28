@@ -127,13 +127,13 @@ class DatasetRegistry(ClassRegistry[DatasetLoaderProtocol]):
 dataset_registry = DatasetRegistry()
 
 
-async def preflight_benchmark(name: str, split: str) -> None:
+async def preflight_benchmark(name: str, split: str, databases: list[str] | None = None) -> None:
     """Validate local data and managed runtime readiness for a benchmark."""
     benchmark = dataset_registry.get_class(name)
     benchmark.installation.require()
     runtime = cast(BenchmarkRuntime | None, getattr(benchmark, "runtime", None))
     if runtime is not None:
-        await runtime.require_ready(name, split)
+        await runtime.require_ready(name, split, databases)
 
 
 __all__ = [

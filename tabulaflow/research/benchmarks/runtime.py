@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import shlex
 import shutil
 import time
 from collections.abc import Awaitable, Callable
@@ -11,8 +12,8 @@ from pathlib import Path
 
 from tabulaflow.research.benchmarks.installation import ProgressCallback
 
-RuntimeAction = Callable[[str | None, ProgressCallback], Awaitable[None]]
-RuntimeCheck = Callable[[str | None], Awaitable[bool]]
+RuntimeAction = Callable[[str | None, list[str] | None, ProgressCallback], Awaitable[None]]
+RuntimeCheck = Callable[[str | None, list[str] | None], Awaitable[bool]]
 ReadinessCheck = Callable[[], Awaitable[bool]]
 
 
@@ -29,6 +30,7 @@ class BenchmarkRuntime:
     ready_action: RuntimeCheck
     splits: tuple[str, ...] = ()
     default_split: str | None = None
+    supports_database_selection: bool = False
 
     def resolve_split(self, split: str | None) -> str | None:
         """Validate and resolve an optional runtime split."""
@@ -42,20 +44,45 @@ class BenchmarkRuntime:
             raise BenchmarkRuntimeError(f"unsupported split {resolved!r}; available: {choices}")
         return resolved
 
-    async def start(self, split: str | None, progress: ProgressCallback) -> None:
-        await self.start_action(self.resolve_split(split), progress)
+    def _validate_database_selection(self, databases: list[str] | None) -> None:
+        if databases and not self.supports_database_selection:
+            raise BenchmarkRuntimeError("this benchmark does not support per-database runtime management")
 
-    async def stop(self, split: str | None, progress: ProgressCallback) -> None:
-        await self.stop_action(self.resolve_split(split), progress)
+    async def start(
+        self,
+        split: str | None,
+        progress: ProgressCallback,
+        databases: list[str] | None = None,
+    ) -> None:
+        self._validate_database_selection(databases)
+        await self.start_action(self.resolve_split(split), databases, progress)
 
-    async def require_ready(self, benchmark: str, split: str | None) -> None:
+    async def stop(
+        self,
+        split: str | None,
+        progress: ProgressCallback,
+        databases: list[str] | None = None,
+    ) -> None:
+        self._validate_database_selection(databases)
+        await self.stop_action(self.resolve_split(split), databases, progress)
+
+    async def require_ready(
+        self,
+        benchmark: str,
+        split: str | None,
+        databases: list[str] | None = None,
+    ) -> None:
         """Raise an actionable error when the requested runtime is not ready."""
         resolved = self.resolve_split(split) if self.splits else None
-        if await self.ready_action(resolved):
+        if await self.ready_action(resolved, databases):
             return
         split_option = f" --split {resolved}" if resolved and resolved != self.default_split else ""
+        database_options = ""
+        if self.supports_database_selection and databases:
+            database_options = "".join(f" --database {shlex.quote(database)}" for database in databases)
         raise BenchmarkRuntimeError(
-            f"{benchmark} databases are not running. Run: tabulaflow benchmark start {benchmark}{split_option}"
+            f"{benchmark} databases are not running. "
+            f"Run: tabulaflow benchmark start {benchmark}{split_option}{database_options}"
         )
 
 
