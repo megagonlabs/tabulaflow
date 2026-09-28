@@ -6,8 +6,22 @@ Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 
-Like a general-purpose coding agent, it can also write code, run shell commands,
-and browse the web.
+Unlike existing coding-agent harnesses, which are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
+
+- **Agent ergonomics.** The agent writes only queries and
+  visualization specifications. TabulaFlow handles data resolution and
+  rendering, so the agent never wastes tokens handcrafting data values or HTML
+  to create visual artifacts.
+- **Human ergonomics.** Data provenance is automatically tracked: each
+  visualization exposes its underlying data table, and each table exposes the
+  query that produced it.
+- **Shell-independent.** The core harness remains fully functional for data work
+  even when shell and filesystem access are disabled (e.g., when building
+  hosted applications).
+
+Like a general-purpose coding agent, TabulaFlow can also write code, run shell
+commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
   <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
@@ -110,25 +124,8 @@ datasets.
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
 
-## Why TabulaFlow?
 
-General-purpose coding agents (e.g., Claude Code) are powerful tools for
-programming and simple data analysis. TabulaFlow is built on a
-harness (see [How TabulaFlow is designed](#how-tabulaflow-is-designed)) that enables workflows such as
-ambitious deep research and large-scale data enrichment. It also
-provides a UI for browsing large tables and visualizing data.
-
-Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
-single database. TabulaFlow supports broader, general-purpose workflows across
-relational and graph databases, local files, public datasets, and the web.
-
-## How TabulaFlow is designed
-
-Like a coding agent, TabulaFlow is an LLM that calls tools in a loop.
-The main difference is that exiting coding agent harness are built around files and shell,
-while TabulaFlow treats tables as first-class citizens, as its name suggests.
-Our harness is designed to maximize agent and human ergonomics for data tasks, and
-remains fully functional without filesystem or shell access.
+## How does TabulaFlow work?
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
@@ -191,23 +188,16 @@ its answer.
   </div>
 </figure>
 
-This design has three benefits:
-
-- **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles the result data and rendering,
-  so the agent never handcrafts data values or HTML to create
-  visual artifacts.
-- **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
-  exposes its underlying data table, and each table exposes the query that
-  produced it.
-- **Security.** The data agent remains fully functional for data work even when
-  the shell tool is disabled.
-
 Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
 default. You can ask the agent at any time to export results to local files in
-any format you need for saving, sharing, or further use.
+any format you need for sharing or further use.
+
+TabulaFlow also goes beyond existing AI database assistants (e.g., Chat2DB),
+which typically focus on generating SQL for a single database. TabulaFlow
+supports broader, general-purpose workflows across SQL and graph databases,
+local files, public datasets, and the web.
 
 ## Build and research with TabulaFlow
 
