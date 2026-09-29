@@ -5,7 +5,7 @@ import pytest
 from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
-from tabulaflow.data import Neo4jConnector
+from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.benchmarks import beaver, cypherbench
 from tabulaflow.research.benchmarks import registry
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
@@ -281,10 +281,12 @@ async def test_cypherbench_loader_connects_directly_to_standalone_graphs(
 ) -> None:
     urls: list[str] = []
     driver_options: list[object] = []
+    connector_configs: list[object] = []
 
     async def from_url_async(*, url: str, **kwargs: object) -> object:
         urls.append(url)
         driver_options.append(kwargs.get("notifications_min_severity"))
+        connector_configs.append(kwargs.get("config"))
         return object()
 
     monkeypatch.setattr(Neo4jConnector, "from_url_async", from_url_async)
@@ -294,6 +296,10 @@ async def test_cypherbench_loader_connects_directly_to_standalone_graphs(
 
     assert urls == ["bolt://localhost:15066", "bolt://localhost:15065"]
     assert driver_options == ["OFF", "OFF"]
+    assert all(
+        isinstance(config, Neo4jConnectorConfig) and config.graph_schema_introspection_mode == "full_scan"
+        for config in connector_configs
+    )
 
 
 @pytest.mark.asyncio

@@ -63,10 +63,13 @@ RETURN null AS source, relType, null AS target, propertyName, propertyTypes
 
 _FAST_RELATIONSHIP_TOPOLOGY_QUERY = """
 CALL db.schema.visualization()
-YIELD relationships
+YIELD nodes, relationships
 UNWIND relationships AS r
-UNWIND labels(startNode(r)) AS source
-UNWIND labels(endNode(r)) AS target
+WITH r,
+     head([n IN nodes WHERE elementId(n) = elementId(startNode(r)) | n]) AS sourceNode,
+     head([n IN nodes WHERE elementId(n) = elementId(endNode(r)) | n]) AS targetNode
+UNWIND labels(sourceNode) AS source
+UNWIND labels(targetNode) AS target
 RETURN source, type(r) AS relType, target,
        null AS propertyName, [] AS propertyTypes
 """.strip()
