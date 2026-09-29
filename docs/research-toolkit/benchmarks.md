@@ -513,8 +513,9 @@ tabulaflow benchmark start cypherbench \
   --database nba
 ```
 
-To start all test databases instead, allow around 7 minutes for the first
-import:
+To start all test databases at once, allow around 7 minutes for the first
+import and use a machine with at least 48 GB of RAM. On machines with less
+memory, start the databases individually with `--database` as shown above.
 
 ```bash
 tabulaflow benchmark start cypherbench --split test
