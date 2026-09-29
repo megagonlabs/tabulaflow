@@ -4,6 +4,10 @@
   </a>
 </h1>
 
+[![PyPI](https://img.shields.io/pypi/v/tabulaflow.svg)](https://pypi.org/project/tabulaflow/)
+[![Python](https://img.shields.io/pypi/pyversions/tabulaflow.svg)](https://pypi.org/project/tabulaflow/)
+[![CI](https://github.com/megagonlabs/tabulaflow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/megagonlabs/tabulaflow/actions/workflows/ci.yml)
+
 TabulaFlow is an open-source data agent built on a modular Python library.
 See the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
