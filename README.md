@@ -55,6 +55,9 @@ export OPENAI_API_KEY="your-api-key"
 tabulaflow
 ```
 
+See [Models and providers](https://megagonlabs.github.io/tabulaflow/models/) for
+Anthropic, vLLM, and other providers.
+
 We also recommend installing Chromium to enable agent-driven web browsing:
 
 ```bash
