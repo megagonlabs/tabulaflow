@@ -279,7 +279,11 @@ class CypherBenchDatasetLoader:
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
         self.connector_config = (
-            Neo4jConnectorConfig(schema_cache_mode="read_write", query_timeout_seconds=120)
+            Neo4jConnectorConfig(
+                schema_cache_mode="read_write",
+                query_timeout_seconds=120,
+                graph_schema_introspection_mode="full_scan",
+            )
             if connector_config is None
             else connector_config
         )
