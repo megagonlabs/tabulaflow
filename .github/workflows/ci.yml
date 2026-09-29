@@ -17,6 +17,71 @@ env:
   UV_PYTHON_PREFERENCE: only-managed
 
 jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      docs_only: ${{ steps.changes.outputs.docs_only }}
+    steps:
+      - name: Classify pull request changes
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          run_full_ci() {
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          }
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            run_full_ci
+            exit 0
+          fi
+
+          if ! total=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .changed_files); then
+            echo "::warning::Could not read the changed-file count; running full CI."
+            run_full_ci
+            exit 0
+          fi
+          if ! gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" \
+            --jq '.[] | [.filename, (.previous_filename // "")] | @tsv' \
+            > "$RUNNER_TEMP/changed-files"; then
+            echo "::warning::Could not list changed files; running full CI."
+            run_full_ci
+            exit 0
+          fi
+
+          mapfile -t changed_files < "$RUNNER_TEMP/changed-files"
+          if [ "$total" -eq 0 ] || [ "${#changed_files[@]}" -ne "$total" ]; then
+            echo "::warning::Changed-file list was incomplete; running full CI."
+            run_full_ci
+            exit 0
+          fi
+
+          is_documentation() {
+            case "$1" in
+              README.md|CONTRIBUTING.md|SECURITY.md|docs/*) ;;
+              *) return 1 ;;
+            esac
+            case "$1" in
+              AGENTS.md|CLAUDE.md|*/AGENTS.md|*/CLAUDE.md) return 1 ;;
+            esac
+          }
+
+          docs_only=true
+          for changed_file in "${changed_files[@]}"; do
+            IFS=$'\t' read -r filename previous_filename <<< "$changed_file"
+            if ! is_documentation "$filename" || \
+              { [ -n "$previous_filename" ] && ! is_documentation "$previous_filename"; }; then
+              docs_only=false
+              break
+            fi
+          done
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -33,6 +98,8 @@ jobs:
 
   quality:
     name: Quality
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,6 +116,8 @@ jobs:
 
   linux-tests:
     name: Linux / Python ${{ matrix.python-version }}
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -70,6 +139,8 @@ jobs:
 
   macos-tests:
     name: macOS / Python 3.13
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     runs-on: macos-14
     env:
       UV_PYTHON: "3.13"
@@ -87,6 +158,8 @@ jobs:
 
   package:
     name: Package
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,3 +190,31 @@ jobs:
           uv tool install "$wheel"
           HOME="$RUNNER_TEMP/home" "$UV_TOOL_BIN_DIR/tabulaflow" --help >/dev/null
           HOME="$RUNNER_TEMP/home" "$UV_TOOL_BIN_DIR/tabulaflow" benchmark list >/dev/null
+
+  check:
+    name: Check
+    if: always()
+    needs: [classify, docs, quality, linux-tests, macos-tests, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        env:
+          DOCS_ONLY: ${{ needs.classify.outputs.docs_only }}
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          LINUX_RESULT: ${{ needs.linux-tests.result }}
+          MACOS_RESULT: ${{ needs.macos-tests.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        run: |
+          if [ "$CLASSIFY_RESULT" != success ] || [ "$DOCS_RESULT" != success ]; then
+            exit 1
+          fi
+
+          for result in "$QUALITY_RESULT" "$LINUX_RESULT" "$MACOS_RESULT" "$PACKAGE_RESULT"; do
+            if [ "$DOCS_ONLY" = true ]; then
+              [ "$result" = success ] || [ "$result" = skipped ] || exit 1
+            else
+              [ "$result" = success ] || exit 1
+            fi
+          done
