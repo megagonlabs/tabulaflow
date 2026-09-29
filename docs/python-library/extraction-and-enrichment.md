@@ -48,7 +48,7 @@ Individual row failures are recorded while other rows continue.
 ## Extract records from documents
 
 Build a list of places to visit from a
-[sample travel guide](https://github.com/megagonlabs/tabulaflow/blob/dev/tabulaflow/examples/support/travel_guide.txt),
+[sample travel guide](https://github.com/megagonlabs/tabulaflow/blob/main/tabulaflow/examples/support/travel_guide.txt),
 with a category and a short reason for each recommendation. The script loads the guide automatically:
 
 ```python title="document_extraction.py"
