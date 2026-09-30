@@ -921,8 +921,9 @@ function gateActivate(entry) {
   if (window.ResizeObserver) {
     entry.observer = new ResizeObserver(function () { runGate(entry); });
     entry.observer.observe(entry.node);
+  } else {
+    scheduleGateCheck(entry);
   }
-  scheduleGateCheck(entry);
 }
 
 function gateDeactivate(entry) {
