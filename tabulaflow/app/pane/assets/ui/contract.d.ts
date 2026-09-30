@@ -152,6 +152,8 @@ export interface ViewCacheEntry {
   mounted?: boolean;
   observer?: ResizeObserver | null;
   gateFrame?: number | null;
+  measuredWidth?: number;
+  measuredHeight?: number;
   revision?: string;
   pendingRevision?: string | null;
   pendingGeneration?: number | null;

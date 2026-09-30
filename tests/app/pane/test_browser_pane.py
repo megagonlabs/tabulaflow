@@ -933,17 +933,19 @@ def test_container_chart_keeps_layout_after_data_view_switch(tmp_path: Path) -> 
                 pane.push(turn_payload(title="forecast", source="manual", cards=[card]))
                 line = page.locator(".view-active.tf-chart-view .mark-line.role-mark").first
                 line.wait_for()
-                assert line.evaluate("node => node.getBBox().height") > 0
+                initial_height = line.evaluate("node => node.getBBox().height")
+                assert initial_height > 0
 
-                page.locator(".seg-opt[data-kind='data']").click()
-                page.wait_for_selector(".view-shell .view-active.tf-table-view")
-                page.locator(".seg-opt[data-kind='chart']").click()
-                page.wait_for_selector(".view-shell .view-active.tf-chart-view")
-                page.evaluate(
-                    "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
-                )
+                for _ in range(3):
+                    page.locator(".seg-opt[data-kind='data']").click()
+                    page.wait_for_selector(".view-shell .view-active.tf-table-view")
+                    page.locator(".seg-opt[data-kind='chart']").click()
+                    page.wait_for_selector(".view-shell .view-active.tf-chart-view")
+                    page.evaluate(
+                        "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+                    )
 
-                assert line.evaluate("node => node.getBBox().height") > 0
+                    assert line.evaluate("node => node.getBBox().height") == pytest.approx(initial_height)
             finally:
                 browser.close()
     finally:

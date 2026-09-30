@@ -875,12 +875,25 @@ function renderMessage(node, data) {
   return { destroy: function () {} };
 }
 
-function measurable(node, requires) {
-  if (!node || !node.isConnected) return false;
+function gateMeasurement(node, requires) {
+  if (!node || !node.isConnected) return null;
   var rect = node.getBoundingClientRect();
-  if (requires && requires.width && !(rect.width > 0)) return false;
-  if (requires && requires.height && !(rect.height > 0)) return false;
-  return true;
+  if (requires && requires.width && !(rect.width > 0)) return null;
+  if (requires && requires.height && !(rect.height > 0)) return null;
+  return { width: rect.width, height: rect.height };
+}
+
+function gateMeasurementChanged(entry, measurement, requires) {
+  var changed = false;
+  if (requires.width) {
+    changed = entry.measuredWidth !== measurement.width;
+    entry.measuredWidth = measurement.width;
+  }
+  if (requires.height) {
+    changed = changed || entry.measuredHeight !== measurement.height;
+    entry.measuredHeight = measurement.height;
+  }
+  return changed;
 }
 
 function cancelGateFrame(entry) {
@@ -894,16 +907,18 @@ function runGate(entry) {
   if (!entry || !entry.gated || !entry.handle || !entry.handle.mount) return;
   var handle = entry.handle;
   var requires = handle.requires || {};
+  var measurement = gateMeasurement(entry.node, requires);
+  if (!measurement) {
+    if (!entry.observer) scheduleGateCheck(entry);
+    return;
+  }
   if (!entry.mounted) {
-    if (!measurable(entry.node, requires)) {
-      if (!entry.observer) scheduleGateCheck(entry);
-      return;
-    }
+    gateMeasurementChanged(entry, measurement, requires);
     entry.mounted = true;
     handle.mount();
     return;
   }
-  if (handle.resize) handle.resize();
+  if (handle.resize && gateMeasurementChanged(entry, measurement, requires)) handle.resize();
 }
 
 function scheduleGateCheck(entry) {
