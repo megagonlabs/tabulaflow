@@ -961,12 +961,17 @@ async def test_unconfigured_single_vllm_model_is_selected_automatically(
     [
         (
             VLLMDiscoveryResult(models=("vllm:main", "vllm:fast")),
-            "✓ LLM off · 2 vLLM models discovered at localhost:8000. Choose models in /config.",
+            "✓ LLM off · 2 vLLM models discovered at localhost:8000/v1. Choose models in /config.",
         ),
         (
             VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY"),
-            "✓ LLM off · vLLM discovery failed at localhost:8000: authentication failed — check "
+            "✓ LLM off · vLLM discovery failed at localhost:8000/v1: authentication failed — check "
             "VLLM_API_KEY. Fix it and restart TabulaFlow.",
+        ),
+        (
+            VLLMDiscoveryResult(error="no valid vLLM models API found — check VLLM_BASE_URL"),
+            "✓ LLM off · vLLM discovery failed at localhost:8000/v1: no valid vLLM models API found — "
+            "check VLLM_BASE_URL. Fix it and restart TabulaFlow.",
         ),
     ],
 )

@@ -26,6 +26,7 @@ MIN_MODEL_CONTEXT_TOKENS = 128_000
 MODEL_RELEASE_MAX_AGE_MONTHS = 6
 _CACHE_SCHEMA_VERSION = 5
 VLLM_DISCOVERY_TIMEOUT_SECONDS = 5
+_INVALID_VLLM_API_ERROR = "no valid vLLM models API found — check VLLM_BASE_URL"
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
     "openai": "openai",
@@ -124,11 +125,16 @@ async def _discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryRes
             response = await client.get(f"{base_url.rstrip('/')}/models", headers=headers)
         if response.status_code in {401, 403}:
             return VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY")
+        if response.status_code == 404:
+            return VLLMDiscoveryResult(error=_INVALID_VLLM_API_ERROR)
         response.raise_for_status()
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError:
+            return VLLMDiscoveryResult(error=_INVALID_VLLM_API_ERROR)
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, list):
-            raise ValueError("response does not contain a model list")
+            return VLLMDiscoveryResult(error=_INVALID_VLLM_API_ERROR)
         model_ids = sorted(
             {
                 item["id"].strip()
@@ -141,8 +147,10 @@ async def _discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryRes
         return VLLMDiscoveryResult(tuple(f"vllm:{model_id}" for model_id in model_ids))
     except httpx.TimeoutException:
         return VLLMDiscoveryResult(error="connection timed out")
-    except (httpx.HTTPError, ValueError):
-        return VLLMDiscoveryResult(error="model discovery failed")
+    except httpx.HTTPStatusError as error:
+        return VLLMDiscoveryResult(error=f"endpoint returned HTTP {error.response.status_code}")
+    except (httpx.InvalidURL, httpx.RequestError):
+        return VLLMDiscoveryResult(error="could not connect to endpoint")
 
 
 def _endpoint_label(base_url: str) -> str:
@@ -151,7 +159,9 @@ def _endpoint_label(base_url: str) -> str:
     except httpx.InvalidURL:
         return "configured endpoint"
     host = url.host or "configured endpoint"
-    return f"{host}:{url.port}" if url.port is not None else host
+    authority = f"{host}:{url.port}" if url.port is not None else host
+    path = url.path.rstrip("/")
+    return f"{authority}{path}" if path else authority
 
 
 class _ModelLimit(BaseModel):

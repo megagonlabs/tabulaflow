@@ -360,7 +360,7 @@ async def test_model_picker_lists_discovered_vllm_models() -> None:
     discovery = _VLLMDiscovery(
         base_url="http://localhost:8000/v1",
         result=VLLMDiscoveryResult(models=("vllm:Qwen/Qwen3-8B",)),
-        endpoint_label="localhost:8000",
+        endpoint_label="localhost:8000/v1",
     )
     picker = ModelPickerScreen("main", _CONFIG.main.model, vllm_discovery=discovery)
 
@@ -380,8 +380,8 @@ async def test_model_picker_lists_discovered_vllm_models() -> None:
 async def test_model_picker_surfaces_vllm_discovery_failure() -> None:
     discovery = _VLLMDiscovery(
         base_url="http://localhost:8000/v1",
-        result=VLLMDiscoveryResult(error="model discovery failed"),
-        endpoint_label="localhost:8000",
+        result=VLLMDiscoveryResult(error="no valid vLLM models API found — check VLLM_BASE_URL"),
+        endpoint_label="localhost:8000/v1",
     )
     picker = ModelPickerScreen("main", _CONFIG.main.model, vllm_discovery=discovery)
 
@@ -391,7 +391,7 @@ async def test_model_picker_surfaces_vllm_discovery_failure() -> None:
 
     async with PickerApp().run_test() as pilot:
         await pilot.pause()
-        assert "vLLM · model discovery failed at localhost:8000" in _option_text(picker)
+        assert "vLLM · localhost:8000/v1: no valid vLLM models API found — check VLLM_BASE_URL" in _option_text(picker)
 
 
 async def test_openai_chat_models_are_custom_only() -> None:
