@@ -246,21 +246,37 @@ async def test_model_picker_loads_available_models() -> None:
         assert "fireworks:accounts/fireworks/models/kimi-k3" in _option_text(picker)
 
 
-async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection() -> None:
+async def test_long_model_ids_stay_on_one_line_and_preserve_the_full_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
 
     async def available_catalog() -> tuple[str, ...]:
         return (model, *(f"test:model-{index}" for index in range(30)))
 
-    picker = ModelPickerScreen("main", model, catalog_loader=available_catalog)
+    picker = ModelPickerScreen(
+        "main",
+        model,
+        catalog_loader=available_catalog,
+        vllm_discovery=_VLLMDiscovery(),
+    )
     selected: list[str | None] = []
+    catalog_rendered = asyncio.Event()
+    original_refresh = picker._refresh
+
+    def track_refresh() -> None:
+        original_refresh()
+        if picker.size.width == 60 and "test:model-29" in picker._models:
+            catalog_rendered.set()
+
+    monkeypatch.setattr(picker, "_refresh", track_refresh)
 
     class PickerApp(App[None]):
         def on_mount(self) -> None:
             self.push_screen(picker, selected.append)
 
     async with PickerApp().run_test(size=(60, 18)) as pilot:
-        await pilot.pause()
+        await asyncio.wait_for(catalog_rendered.wait(), timeout=2)
         options = _option_text(picker)
         assert model not in options
         assert "❯ ● fireworks:…" in options
@@ -494,7 +510,9 @@ async def test_model_list_resizes_with_terminal(monkeypatch: pytest.MonkeyPatch)
         assert len(str(options.render()).splitlines()) > short_line_count
 
 
-async def test_long_configured_model_fits_the_config_field_and_expands_on_resize() -> None:
+async def test_long_configured_model_fits_the_config_field_and_expands_on_resize(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     model = "fireworks:accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b"
     config = _CONFIG.model_copy(deep=True)
     config.main.model = model
@@ -507,7 +525,17 @@ async def test_long_configured_model_fits_the_config_field_and_expands_on_resize
         assert "fireworks:…" in compact
         assert compact.endswith("3p5-30b-a3b")
         assert len(compact.splitlines()) == 1
+        resize_rendered = asyncio.Event()
+        original_refresh = screen._refresh
+
+        def track_refresh() -> None:
+            original_refresh()
+            if screen.size.width == 120:
+                resize_rendered.set()
+
+        monkeypatch.setattr(screen, "_refresh", track_refresh)
 
         await pilot.resize_terminal(120, 18)
+        await asyncio.wait_for(resize_rendered.wait(), timeout=2)
 
         assert model in _text(screen, "#field-main-model")
