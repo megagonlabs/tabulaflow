@@ -143,10 +143,9 @@ def test_crash_console_disables_color(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
-    submission_started = asyncio.Event()
 
     async def fake_run_submission(_question: object, _display_text: str, _input_bar: HistoryInput | None) -> None:
-        submission_started.set()
+        return None
 
     _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_run_submission", fake_run_submission)
@@ -163,7 +162,9 @@ async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyP
         assert input_bar.value == "Show me a table and chart on sample data"
 
         await pilot.press("enter")
-        await asyncio.wait_for(submission_started.wait(), timeout=2)
+        worker = app._submission_worker
+        assert worker is not None
+        await worker.wait()
         assert input_bar.placeholder == "Ask anything or type /connect"
         await pilot.press("tab")
         assert input_bar.value == ""
@@ -1155,17 +1156,17 @@ async def test_submission_builds_ordered_multimodal_input(monkeypatch: pytest.Mo
     monkeypatch.setattr(app, "_run_submission", fake_run_submission)
 
     async with app.run_test() as pilot:
-        for _ in range(3):
-            await pilot.pause()
         input_bar = app.query_one("#input-bar", HistoryInput)
         image = BinaryContent(b"image", media_type="image/png")
         input_bar._active_images[1] = image
         input_bar._image_counter = 1
         input_bar.value = "inspect [Image #1] now"
+        input_bar.focus()
 
         await pilot.press("enter")
-        for _ in range(2):
-            await pilot.pause()
+        worker = app._submission_worker
+        assert worker is not None
+        await worker.wait()
 
     assert captured == [(["inspect [Image #1]", image, " now"], "inspect [Image #1] now")]
 
@@ -1181,17 +1182,17 @@ async def test_unknown_slash_prefixed_submission_reaches_agent(monkeypatch: pyte
     monkeypatch.setattr(app, "_run_submission", fake_run_submission)
 
     async with app.run_test() as pilot:
-        for _ in range(3):
-            await pilot.pause()
         input_bar = app.query_one("#input-bar", HistoryInput)
         image = BinaryContent(b"image", media_type="image/png")
         input_bar._active_images[1] = image
         input_bar._image_counter = 1
         input_bar.value = "/summarize [Image #1]"
+        input_bar.focus()
 
         await pilot.press("enter")
-        for _ in range(2):
-            await pilot.pause()
+        worker = app._submission_worker
+        assert worker is not None
+        await worker.wait()
 
     assert captured == [(["/summarize [Image #1]", image], "/summarize [Image #1]")]
 
