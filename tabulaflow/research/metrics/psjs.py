@@ -179,5 +179,5 @@ class PSJS:
             union = len(target_ps | pred_ps)
             return intersection / union if union > 0 else 0.0
         except Exception as e:
-            logger.warning(f"PSJS evaluation failed: {e}")
+            logger.debug("PSJS evaluation failed: %s", e)
             return 0.0
