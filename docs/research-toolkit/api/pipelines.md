@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Pipelines
 
 See [Running experiments](../running-experiments.md) for saving and scaling runs
