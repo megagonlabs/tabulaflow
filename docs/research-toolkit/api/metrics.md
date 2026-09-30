@@ -80,7 +80,7 @@ treating missing tasks as zero. Other aggregators group scores by database,
 difficulty, or ambiguity type. Report the task count and missing values with scores.
 
 For paired comparisons, match QIDs and compare task scores. The optional
-[comparison script](https://github.com/megagonlabs/tabulaflow/blob/dev/tabulaflow/examples/compare_research_agents.py)
+[comparison script](https://github.com/megagonlabs/tabulaflow/blob/main/tabulaflow/examples/compare_research_agents.py)
 also summarizes
 usage and latency.
 
