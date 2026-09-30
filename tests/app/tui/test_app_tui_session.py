@@ -13,6 +13,7 @@ from textual import events
 from textual.containers import VerticalScroll
 from textual.widgets import Button, Static
 
+from tabulaflow.app import runtime_paths as runtime_paths_module
 from tabulaflow.app import session as session_module
 from tabulaflow.agents.chat import ChatResult
 from tabulaflow.agents.llm import ReasoningLevel
@@ -32,6 +33,11 @@ from tabulaflow.app.tui.widgets.choice import InlineChoiceSelector
 from tabulaflow.app.tui.widgets.input import HistoryInput
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.app.tui.widgets.suggestions import InputSuggestionMenu
+
+
+@pytest.fixture(autouse=True)
+def isolate_runtime_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime_paths_module, "DEFAULT_HOME_DIR", tmp_path)
 
 
 class _StatusCapture:
