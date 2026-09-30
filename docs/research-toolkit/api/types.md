@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Tasks and runs
 
 ## Queries
