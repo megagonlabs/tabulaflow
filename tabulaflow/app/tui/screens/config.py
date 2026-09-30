@@ -281,8 +281,8 @@ class ModelPickerScreen(Screen[str | None]):
             return "vLLM · discovering models…"
         assert result.error is not None
         detail = result.error
-        endpoint = f" at {self._vllm_discovery.endpoint_label}" if self._vllm_discovery.endpoint_label else ""
-        return f"vLLM · {detail}{endpoint}"
+        endpoint = f"{self._vllm_discovery.endpoint_label}: " if self._vllm_discovery.endpoint_label else ""
+        return f"vLLM · {endpoint}{detail}"
 
     def _model_window(self, row_count: int, height: int) -> tuple[int, int, bool, bool]:
         available = max(1, height)

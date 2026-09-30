@@ -147,7 +147,7 @@ async def test_vllm_discovery_returns_provider_qualified_models(monkeypatch: pyt
     assert result is not None
     assert result.models == ("vllm:Qwen/Qwen3-8B", "vllm:local-fast")
     assert result.error is None
-    assert discovery.endpoint_label == "localhost:8000"
+    assert discovery.endpoint_label == "localhost:8000/v1"
     assert requests[0].url == "http://localhost:8000/v1/models"
     assert requests[0].headers["authorization"] == "Bearer secret"
 
@@ -161,6 +161,53 @@ async def test_vllm_discovery_reports_authentication_failure(monkeypatch: pytest
 
     assert result is not None
     assert result.error == "authentication failed — check VLLM_API_KEY"
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(404),
+        httpx.Response(200, text="not JSON"),
+        httpx.Response(200, json={"models": []}),
+    ],
+)
+async def test_vllm_discovery_reports_invalid_models_api(
+    monkeypatch: pytest.MonkeyPatch,
+    response: httpx.Response,
+) -> None:
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: response))
+    monkeypatch.setattr("tabulaflow.app.model_catalog.httpx.AsyncClient", lambda **kwargs: client)
+    discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")
+
+    result = await discovery.warm()
+
+    assert result is not None
+    assert result.error == "no valid vLLM models API found — check VLLM_BASE_URL"
+
+
+async def test_vllm_discovery_reports_http_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(500)))
+    monkeypatch.setattr("tabulaflow.app.model_catalog.httpx.AsyncClient", lambda **kwargs: client)
+    discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")
+
+    result = await discovery.warm()
+
+    assert result is not None
+    assert result.error == "endpoint returned HTTP 500"
+
+
+async def test_vllm_discovery_reports_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(fail))
+    monkeypatch.setattr("tabulaflow.app.model_catalog.httpx.AsyncClient", lambda **kwargs: client)
+    discovery = VLLMModelDiscovery(base_url="http://localhost:8000/v1")
+
+    result = await discovery.warm()
+
+    assert result is not None
+    assert result.error == "could not connect to endpoint"
 
 
 @pytest.mark.asyncio
