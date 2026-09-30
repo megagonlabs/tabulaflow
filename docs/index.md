@@ -215,6 +215,6 @@ as Spider 2.0, CypherBench, and ARCS with TabulaFlow's research toolkit.
 [Explore the toolkit](research-toolkit/quick-start.md){ .inline-cta }
 
 !!! note "Public beta"
-    TabulaFlow 0.2.1 is a public beta. Patch releases preserve documented
+    TabulaFlow 0.2.2 is a public beta. Patch releases preserve documented
     public APIs; minor `0.x` releases may include documented breaking changes.
     We welcome your feedback.
