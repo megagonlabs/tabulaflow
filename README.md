@@ -32,6 +32,10 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
 Like a general-purpose coding agent, TabulaFlow can also write code, run shell
 commands, and browse the web.
 
+[**Use the data agent**](#get-started) ·
+[**Build a data application**](#tabulaflow-as-a-python-library) ·
+[**Run text-to-query experiments**](#tabulaflow-for-researchers)
+
 
 
 https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
