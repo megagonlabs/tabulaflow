@@ -74,7 +74,8 @@ dependencies = [
 tabulaflow = "tabulaflow.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/megagonlabs/tabulaflow"
+Homepage = "https://megagonlabs.github.io/tabulaflow/"
+Documentation = "https://megagonlabs.github.io/tabulaflow/"
 Repository = "https://github.com/megagonlabs/tabulaflow"
 Issues = "https://github.com/megagonlabs/tabulaflow/issues"
 Changelog = "https://github.com/megagonlabs/tabulaflow/releases"
