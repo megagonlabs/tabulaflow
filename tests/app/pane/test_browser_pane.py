@@ -869,6 +869,89 @@ def test_live_view_survives_replay_and_view_switching(tmp_path: Path) -> None:
         pane.stop()
 
 
+def test_container_chart_keeps_layout_after_data_view_switch(tmp_path: Path) -> None:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+
+    df = pd.DataFrame(
+        {
+            "week_start": pd.to_datetime(
+                ["2026-06-01", "2026-06-08", "2026-06-15", "2026-06-22", "2026-06-29", "2026-07-06"]
+            ),
+            "actual": [848, 875, 884, 916, None, None],
+            "fitted": [820, 879, 911, 905, None, None],
+            "forecast": [None, None, None, 905, 930, 955],
+            "pi_lower": [None, None, None, 875, 895, 915],
+            "pi_upper": [None, None, None, 935, 965, 995],
+        }
+    )
+    spec = {
+        "encoding": {"x": {"field": "week_start", "type": "temporal"}},
+        "layer": [
+            {
+                "mark": {"type": "area", "opacity": 0.18},
+                "encoding": {
+                    "y": {"field": "pi_lower", "type": "quantitative", "title": "Transactions per week"},
+                    "y2": {"field": "pi_upper"},
+                },
+            },
+            {
+                "mark": {"type": "line"},
+                "encoding": {
+                    "y": {"field": "fitted", "type": "quantitative", "title": "Transactions per week"}
+                },
+            },
+            {
+                "mark": {"type": "line", "point": True},
+                "encoding": {
+                    "y": {"field": "forecast", "type": "quantitative", "title": "Transactions per week"}
+                },
+            },
+            {
+                "mark": {"type": "point", "filled": True},
+                "encoding": {
+                    "y": {"field": "actual", "type": "quantitative", "title": "Transactions per week"}
+                },
+            },
+        ],
+    }
+    card = render_result_data(ResultCardInput(df=df, label="forecast", chart_spec=spec), tmp_path)
+    assert card is not None
+
+    pane = BrowserPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        with sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except PlaywrightError as exc:
+                pytest.skip(f"Playwright Chromium is unavailable: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 892, "height": 546})
+                _open_browser_pane(page, pane.url)
+                pane.push(turn_payload(title="forecast", source="manual", cards=[card]))
+                line = page.locator(".view-active.tf-chart-view .mark-line.role-mark").first
+                line.wait_for()
+                initial_height = line.evaluate("node => node.getBBox().height")
+                assert initial_height > 0
+
+                for _ in range(3):
+                    page.locator(".seg-opt[data-kind='data']").click()
+                    page.wait_for_selector(".view-shell .view-active.tf-table-view")
+                    page.locator(".seg-opt[data-kind='chart']").click()
+                    page.wait_for_selector(".view-shell .view-active.tf-chart-view")
+                    page.evaluate(
+                        "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+                    )
+
+                    assert line.evaluate("node => node.getBBox().height") == pytest.approx(initial_height)
+            finally:
+                browser.close()
+    finally:
+        pane.stop()
+
+
 def test_map_style_is_structurally_valid() -> None:
     assets = files("tabulaflow.app.pane.assets").joinpath("vendor", "maplibre")
     style = json.loads(assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))
