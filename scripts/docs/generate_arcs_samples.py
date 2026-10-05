@@ -10,6 +10,7 @@ from typing import Any
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import SqlLexer
+import sqlparse
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +32,7 @@ POINT_KEYS = {
 
 
 def highlighted_sql_template(sql: str, points: list[dict[str, Any]]) -> str:
+    sql = sqlparse.format(sql, reindent=True, keyword_case="upper", indent_width=2)
     markers: list[tuple[str, str, str]] = []
     for point in points:
         if point["type"] != "infinite":
