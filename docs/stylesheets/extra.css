@@ -2057,6 +2057,8 @@ body {
 }
 
 .md-typeset .arcs-sql code {
+  padding: 0;
+  overflow: visible;
   color: inherit;
   background: transparent;
 }
@@ -2679,25 +2681,34 @@ body {
 }
 
 .md-typeset pre > code,
+.md-typeset .arcs-sql,
 .md-search__scrollwrap,
 .md-tooltip2__inner {
   scrollbar-color: var(--tf-scrollbar-thumb) transparent;
 }
 
 .md-typeset pre > code:is(:hover, :focus-within),
+.md-typeset .arcs-sql:is(:hover, :focus-within),
 .md-search__scrollwrap:is(:hover, :focus-within),
 .md-tooltip2__inner:is(:hover, :focus-within) {
   scrollbar-color: var(--tf-scrollbar-thumb-hover) transparent;
 }
 
 .md-typeset pre > code::-webkit-scrollbar-thumb,
+.md-typeset .arcs-sql::-webkit-scrollbar-thumb,
 .md-search__scrollwrap::-webkit-scrollbar-thumb,
 .md-tooltip2__inner::-webkit-scrollbar-thumb {
   background-color: var(--tf-scrollbar-thumb);
 }
 
 .md-typeset pre > code::-webkit-scrollbar-thumb:hover,
+.md-typeset .arcs-sql::-webkit-scrollbar-thumb:hover,
 .md-search__scrollwrap::-webkit-scrollbar-thumb:hover,
 .md-tooltip2__inner::-webkit-scrollbar-thumb:hover {
   background-color: var(--tf-scrollbar-thumb-hover);
+}
+
+.md-typeset .arcs-sql::-webkit-scrollbar {
+  width: 0.2rem;
+  height: 0.2rem;
 }
