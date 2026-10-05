@@ -415,7 +415,7 @@ interpretations, and SQL queries.
 </div>
 <figure class="arcs-taxonomy__figure">
 <a href="../../assets/arcs/taxonomy.png" target="_blank" rel="noopener" aria-label="Open the ARCS taxonomy diagram at full size">
-<img src="../../assets/arcs/taxonomy.png" width="3747" height="1831" loading="lazy" alt="ARCS taxonomy diagram organizing text-to-SQL ambiguity by linguistic source and database element mapping">
+<img src="../../assets/arcs/taxonomy.png" width="2000" height="977" loading="lazy" alt="ARCS taxonomy diagram organizing text-to-SQL ambiguity by linguistic source and database element mapping">
 </a>
 </figure>
 </section>
