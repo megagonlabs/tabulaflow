@@ -1851,62 +1851,19 @@ body {
   flex-direction: column;
 }
 
-.md-typeset .arcs-loading__skeleton {
-  display: flex;
-  gap: 0.65rem;
-  flex-direction: column;
-}
-
-.md-typeset .arcs-loading__bar,
-.md-typeset .arcs-loading__grid > i,
-.md-typeset .arcs-loading__options > i,
-.md-typeset .arcs-loading__outputs > i {
-  display: block;
-  background: linear-gradient(100deg, var(--tf-card) 30%, var(--tf-code-hover) 50%, var(--tf-card) 70%);
-  background-size: 200% 100%;
-  border: 1px solid var(--tf-border);
-  border-radius: 10px;
-  animation: arcs-loading 1.4s ease-in-out infinite;
-}
-
-.md-typeset .arcs-loading__bar {
-  height: 2.25rem;
-}
-
-.md-typeset .arcs-loading__grid,
-.md-typeset .arcs-loading__options,
-.md-typeset .arcs-loading__outputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
-}
-
-.md-typeset .arcs-loading__grid > i {
-  height: 5.5rem;
-}
-
-.md-typeset .arcs-loading__options > i {
-  height: 4rem;
-}
-
-.md-typeset .arcs-loading__outputs > i {
-  height: 8rem;
-}
-
-.md-typeset .arcs-loading__error {
-  display: flex;
-  padding: 0.75rem;
-  gap: 0.65rem;
-  align-items: center;
-  justify-content: center;
-  color: #f0a487;
+.md-typeset .arcs-loading {
+  padding: 1rem;
+  color: var(--tf-text-muted);
   font-size: 0.55rem;
-  background: var(--tf-code-bg);
-  border: 1px solid var(--tf-border);
-  border-radius: 10px;
+  text-align: center;
 }
 
-.md-typeset .arcs-loading__error button {
+.md-typeset .arcs-loading[data-error="true"] {
+  color: #f0a487;
+}
+
+.md-typeset .arcs-loading button {
+  margin-left: 0.65rem;
   padding: 0.2rem 0.45rem;
   color: var(--tf-text);
   font: inherit;
@@ -1916,28 +1873,9 @@ body {
   border-radius: 5px;
 }
 
-.md-typeset .arcs-loading__error button:hover {
+.md-typeset .arcs-loading button:hover {
   color: var(--tf-accent);
   border-color: var(--tf-accent);
-}
-
-@keyframes arcs-loading {
-  from {
-    background-position: 100% 0;
-  }
-
-  to {
-    background-position: -100% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .md-typeset .arcs-loading__bar,
-  .md-typeset .arcs-loading__grid > i,
-  .md-typeset .arcs-loading__options > i,
-  .md-typeset .arcs-loading__outputs > i {
-    animation: none;
-  }
 }
 
 .md-typeset .arcs-question-row {
@@ -2673,12 +2611,6 @@ body {
 
   .md-typeset .arcs-schema-grid {
     column-count: 1;
-  }
-
-  .md-typeset .arcs-loading__grid,
-  .md-typeset .arcs-loading__options,
-  .md-typeset .arcs-loading__outputs {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .md-typeset .arcs-task-nav {

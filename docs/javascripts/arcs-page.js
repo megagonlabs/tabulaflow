@@ -3,48 +3,96 @@ let arcsSamplesModule
 let arcsSamplesData
 let arcsDatabasesModule
 let arcsDatabasesData
+const arcsLoadingTimers = new WeakMap()
 
-const loadArcsDatabases = page => {
+const showArcsLoading = root => {
+  const status = root.querySelector("[data-arcs-loading]")
+  status.querySelector("span").textContent = status.dataset.loadingLabel
+  status.querySelector("button").hidden = true
+  delete status.dataset.error
+  clearTimeout(arcsLoadingTimers.get(root))
+  arcsLoadingTimers.set(root, setTimeout(() => {
+    if (root.dataset.loading === "true") status.hidden = false
+  }, 150))
+}
+
+const finishArcsLoading = root => {
+  clearTimeout(arcsLoadingTimers.get(root))
+  arcsLoadingTimers.delete(root)
+  root.removeAttribute("aria-busy")
+  root.querySelector("[data-arcs-loading]").hidden = true
+}
+
+const failArcsLoading = (root, message, retry) => {
+  clearTimeout(arcsLoadingTimers.get(root))
+  arcsLoadingTimers.delete(root)
+  root.removeAttribute("aria-busy")
+  const status = root.querySelector("[data-arcs-loading]")
+  status.dataset.error = "true"
+  status.querySelector("span").textContent = message
+  const button = status.querySelector("button")
+  button.hidden = false
+  button.onclick = retry
+  status.hidden = false
+}
+
+const loadArcsDatabases = (page, showLoading = false) => {
   const databases = page.querySelector("[data-arcs-databases]")
-  if (!databases || databases.dataset.initialized === "true" || databases.dataset.loading === "true") return
+  if (!databases || databases.dataset.initialized === "true") return
+  if (showLoading) showArcsLoading(databases)
+  if (databases.dataset.loading === "true") return
 
   databases.dataset.loading = "true"
+  databases.setAttribute("aria-busy", "true")
   arcsDatabasesModule ??= import(new URL("arcs-databases.js", arcsPageScriptUrl))
   arcsDatabasesData ??= fetch(new URL(databases.dataset.source, window.location.href)).then(response => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     return response.json()
   })
   Promise.all([arcsDatabasesModule, arcsDatabasesData])
-    .then(([module, data]) => module.initializeArcsDatabases(databases, data))
+    .then(([module, data]) => {
+      module.initializeArcsDatabases(databases, data)
+      finishArcsLoading(databases)
+    })
     .catch(error => {
       arcsDatabasesModule = undefined
       arcsDatabasesData = undefined
       delete databases.dataset.loading
-      const status = databases.querySelector("[data-database-status]")
-      status.textContent = `Databases could not be loaded: ${error.message}`
-      status.classList.add("arcs-databases__status--error")
+      failArcsLoading(
+        databases,
+        `Databases could not be loaded: ${error.message}`,
+        () => loadArcsDatabases(page, true),
+      )
     })
 }
 
-const loadArcsSamples = page => {
+const loadArcsSamples = (page, showLoading = false) => {
   const samples = page.querySelector("[data-arcs-samples]")
-  if (!samples || samples.dataset.initialized === "true" || samples.dataset.loading === "true") return
+  if (!samples || samples.dataset.initialized === "true") return
+  if (showLoading) showArcsLoading(samples)
+  if (samples.dataset.loading === "true") return
 
   samples.dataset.loading = "true"
+  samples.setAttribute("aria-busy", "true")
   arcsSamplesModule ??= import(new URL("arcs-samples.js", arcsPageScriptUrl))
   arcsSamplesData ??= fetch(new URL(samples.dataset.source, window.location.href)).then(response => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     return response.json()
   })
   Promise.all([arcsSamplesModule, arcsSamplesData])
-    .then(([module, tasks]) => module.initializeArcsSamples(samples, tasks))
+    .then(([module, tasks]) => {
+      module.initializeArcsSamples(samples, tasks)
+      finishArcsLoading(samples)
+    })
     .catch(error => {
       arcsSamplesModule = undefined
       arcsSamplesData = undefined
       delete samples.dataset.loading
-      const status = samples.querySelector("[data-sample-status]")
-      status.textContent = `Sample tasks could not be loaded: ${error.message}`
-      status.classList.add("arcs-samples__status--error")
+      failArcsLoading(
+        samples,
+        `Sample tasks could not be loaded: ${error.message}`,
+        () => loadArcsSamples(page, true),
+      )
     })
 }
 
@@ -60,8 +108,8 @@ const selectArcsTab = (page, tab, updateHash = false) => {
   }
 
   const panel = tab.getAttribute("aria-controls")
-  if (panel === "arcs-database") loadArcsDatabases(page)
-  if (panel === "arcs-sample-tasks") loadArcsSamples(page)
+  if (panel === "arcs-database") loadArcsDatabases(page, true)
+  if (panel === "arcs-sample-tasks") loadArcsSamples(page, true)
   if (updateHash) history.replaceState(null, "", `#${tab.getAttribute("aria-controls")}`)
 }
 
@@ -139,6 +187,21 @@ const initializeArcsPage = marker => {
   const page = marker.closest(".md-content__inner")
   const tabs = [...page.querySelectorAll('[role="tab"]')]
   for (const tab of tabs) {
+    const panel = tab.getAttribute("aria-controls")
+    const prefetch = panel === "arcs-database"
+      ? () => loadArcsDatabases(page)
+      : panel === "arcs-sample-tasks"
+        ? () => loadArcsSamples(page)
+        : null
+    if (prefetch) {
+      let hoverTimer
+      tab.addEventListener("pointerenter", event => {
+        if (event.pointerType === "touch") return
+        hoverTimer = setTimeout(prefetch, 75)
+      })
+      tab.addEventListener("pointerleave", () => clearTimeout(hoverTimer))
+      tab.addEventListener("focus", prefetch, { once: true })
+    }
     tab.addEventListener("click", () => selectArcsTab(page, tab, true))
     tab.addEventListener("keydown", event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return
@@ -159,7 +222,7 @@ const initializeArcsPage = marker => {
   if (hashTab) selectArcsTab(page, hashTab)
 
   const activeTab = hashTab || tabs.find(tab => tab.getAttribute("aria-selected") === "true")
-  if (activeTab?.getAttribute("aria-controls") === "arcs-database") loadArcsDatabases(page)
+  if (activeTab?.getAttribute("aria-controls") === "arcs-database") loadArcsDatabases(page, true)
 
   const leaderboard = page.querySelector("[data-arcs-leaderboard]")
   if (leaderboard) initializeArcsLeaderboard(leaderboard)

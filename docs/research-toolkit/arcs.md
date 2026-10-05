@@ -50,7 +50,9 @@ interpretations, and SQL queries.
 
 <div id="arcs-database" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-database">
 <div class="arcs-databases" data-arcs-databases data-source="../../assets/arcs/databases.json">
-<div class="arcs-databases__status" data-database-status>Loading databases…</div>
+<div class="arcs-loading" data-arcs-loading data-database-status data-loading-label="Loading databases…" role="status" aria-live="polite" hidden>
+<span>Loading databases…</span><button type="button" hidden>Retry</button>
+</div>
 <div class="arcs-databases__browser" data-database-browser hidden>
 <div class="arcs-question-row">
 <button class="arcs-task-nav" type="button" data-database-previous aria-label="Previous database">
@@ -72,7 +74,9 @@ interpretations, and SQL queries.
 
 <div id="arcs-sample-tasks" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-sample-tasks" hidden>
 <div class="arcs-samples" data-arcs-samples data-source="../../assets/arcs/sample-tasks.compact.json">
-<div class="arcs-samples__status" data-sample-status>Loading sample tasks…</div>
+<div class="arcs-loading" data-arcs-loading data-sample-status data-loading-label="Loading sample tasks…" role="status" aria-live="polite" hidden>
+<span>Loading sample tasks…</span><button type="button" hidden>Retry</button>
+</div>
 <div class="arcs-samples__browser" data-sample-browser hidden>
 <div class="arcs-question-row">
 <button class="arcs-task-nav" type="button" data-task-previous aria-label="Previous sample task">
