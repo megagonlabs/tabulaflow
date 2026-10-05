@@ -2073,7 +2073,7 @@ body {
 }
 
 .md-typeset .arcs-results-panel .arcs-sample-panel__header {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.55rem;
   color: white;
   background: #a1c13b;
   border-bottom-color: #8aad2f;
@@ -2084,7 +2084,7 @@ body {
   gap: 0.3rem;
   align-items: center;
   color: white;
-  font-size: 0.8rem;
+  font-size: 0.65rem;
 }
 
 .md-typeset .arcs-results-panel .arcs-sample-panel__header h3 svg {
@@ -2099,14 +2099,14 @@ body {
 
 .md-typeset .arcs-results-panel .arcs-sample-panel__header > span {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.75rem;
+  font-size: 0.48rem;
   font-weight: 500;
 }
 
 .md-typeset .arcs-results table {
   width: 100%;
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.5rem;
   border: 0;
   border-collapse: collapse;
   border-radius: 0;
@@ -2114,7 +2114,7 @@ body {
 
 .md-typeset .arcs-results th,
 .md-typeset .arcs-results td {
-  padding: 0.25rem 1rem;
+  padding: 0.35rem 0.45rem;
   text-align: left;
   white-space: nowrap;
   border-bottom: 1px solid white;
@@ -2207,15 +2207,29 @@ body {
   background: #7259b6;
 }
 
+.md-typeset .arcs-leaderboard__table thead tr:first-child th:nth-child(3),
+.md-typeset .arcs-leaderboard__table thead tr:first-child th:nth-child(5),
+.md-typeset .arcs-leaderboard__table thead tr:first-child th:nth-child(6),
+.md-typeset .arcs-leaderboard__table tbody td:nth-child(3),
+.md-typeset .arcs-leaderboard__table tbody td:nth-child(5),
+.md-typeset .arcs-leaderboard__table tbody td:nth-child(6) {
+  border-left: 1px solid var(--tf-card);
+}
+
 .md-typeset .arcs-leaderboard__table .arcs-leaderboard__groups th {
   padding: 0.36rem 0.2rem;
-  color: #c4b5fd;
+  color: var(--tf-text-muted);
   font-size: 0.45rem;
   font-weight: 600;
   text-align: center;
   text-transform: none;
   letter-spacing: 0;
-  background: #242334;
+  background: #303846;
+  border-bottom: 1px solid var(--tf-card);
+}
+
+.md-typeset .arcs-leaderboard__table .arcs-leaderboard__groups th:nth-child(n + 3) {
+  border-left: 1px solid var(--tf-card);
 }
 
 .md-typeset .arcs-leaderboard__table .arcs-leaderboard__groups th:first-child,
