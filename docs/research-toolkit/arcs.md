@@ -1,3 +1,7 @@
+---
+title: "ARCS: Ambiguity Resolution Corpus for SQL"
+---
+
 <div class="arcs-page" data-arcs-page>
   <header class="arcs-hero">
     <div class="arcs-hero__title">
