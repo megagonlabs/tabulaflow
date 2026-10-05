@@ -1616,23 +1616,51 @@ body {
 }
 
 .md-typeset .arcs-tabs {
+  position: relative;
   display: flex;
-  gap: 0.2rem;
-  margin: 0.2rem 0 0.45rem;
+  gap: 0.15rem;
+  margin: 0.9rem 0 0.85rem;
   padding: 0.25rem;
   justify-content: center;
   overflow-x: auto;
-  background: transparent;
-  border: 0;
+  background: var(--tf-code-bg);
+  border: 1px solid var(--tf-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
   scrollbar-width: thin;
 }
 
+.md-typeset .arcs-tabs__indicator {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: color-mix(in srgb, var(--arcs-purple) 11%, var(--tf-card));
+  border-radius: 7px;
+  transition: width 220ms ease, transform 220ms ease, opacity 120ms ease;
+}
+
+.md-typeset .arcs-tabs__indicator.is-ready {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-typeset .arcs-tabs__indicator {
+    transition: none;
+  }
+}
+
 .md-typeset .arcs-tab {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   gap: 0.32rem;
   min-width: max-content;
-  padding: 0.55rem 0.65rem;
-  flex: 0 1 auto;
+  padding: 0.58rem 0.65rem;
+  flex: 1 1 0;
   align-items: center;
   justify-content: center;
   color: var(--tf-text-muted);
@@ -1642,9 +1670,9 @@ body {
   line-height: 1;
   cursor: pointer;
   background: transparent;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 7px;
-  transition: color 150ms ease, background-color 150ms ease;
+  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
 .md-typeset .arcs-tab:hover {
@@ -1654,7 +1682,7 @@ body {
 
 .md-typeset .arcs-tab[aria-selected="true"] {
   color: var(--arcs-purple);
-  background: var(--arcs-purple-soft);
+  background: transparent;
 }
 
 .md-typeset .arcs-tab svg {
@@ -1701,10 +1729,6 @@ body {
 
 .md-typeset .arcs-introduction {
   padding: 0.85rem 0.25rem 0.55rem;
-}
-
-.md-typeset .arcs-introduction > h2:first-child {
-  margin-top: 0.4rem;
 }
 
 .md-typeset .arcs-introduction > :last-child {

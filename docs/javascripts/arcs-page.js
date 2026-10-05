@@ -96,6 +96,14 @@ const loadArcsSamples = (page, showLoading = false) => {
     })
 }
 
+const updateArcsTabIndicator = (page, tab) => {
+  const indicator = page.querySelector(".arcs-tabs__indicator")
+  if (!indicator) return
+  indicator.style.width = `${tab.offsetWidth}px`
+  indicator.style.transform = `translateX(${tab.offsetLeft}px)`
+  requestAnimationFrame(() => indicator.classList.add("is-ready"))
+}
+
 const selectArcsTab = (page, tab, updateHash = false) => {
   for (const candidate of page.querySelectorAll('[role="tab"]')) {
     const selected = candidate === tab
@@ -110,6 +118,7 @@ const selectArcsTab = (page, tab, updateHash = false) => {
   const panel = tab.getAttribute("aria-controls")
   if (panel === "arcs-database") loadArcsDatabases(page, true)
   if (panel === "arcs-sample-tasks") loadArcsSamples(page, true)
+  updateArcsTabIndicator(page, tab)
   if (updateHash) history.replaceState(null, "", `#${tab.getAttribute("aria-controls")}`)
 }
 
@@ -223,6 +232,13 @@ const initializeArcsPage = marker => {
 
   const activeTab = hashTab || tabs.find(tab => tab.getAttribute("aria-selected") === "true")
   if (activeTab?.getAttribute("aria-controls") === "arcs-database") loadArcsDatabases(page, true)
+  if (activeTab) updateArcsTabIndicator(page, activeTab)
+
+  const tabsContainer = page.querySelector(".arcs-tabs")
+  new ResizeObserver(() => {
+    const selectedTab = tabs.find(tab => tab.getAttribute("aria-selected") === "true")
+    if (selectedTab) updateArcsTabIndicator(page, selectedTab)
+  }).observe(tabsContainer)
 
   const leaderboard = page.querySelector("[data-arcs-leaderboard]")
   if (leaderboard) initializeArcsLeaderboard(leaderboard)
