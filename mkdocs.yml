@@ -119,3 +119,4 @@ extra_javascript:
   - javascripts/copy-button.js
   - javascripts/demo-gallery.js
   - javascripts/arcs-page.js
+  - javascripts/arcs-samples.js

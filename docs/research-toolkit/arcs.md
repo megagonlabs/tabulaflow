@@ -57,12 +57,44 @@ interactive database browser will appear here.
 
 </div>
 
-<div id="arcs-sample-tasks" class="arcs-panel" role="tabpanel" aria-labelledby="arcs-tab-sample-tasks" hidden markdown="1">
-
-## Sample Tasks
-
-Explore ambiguous questions, choose interpretations, and inspect the resulting
-SQL and execution results. The interactive task browser will appear here.
+<div id="arcs-sample-tasks" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-sample-tasks" hidden>
+<div class="arcs-samples" data-arcs-samples data-source="../../assets/arcs/sample-tasks.json">
+<div class="arcs-samples__status" data-sample-status>Loading sample tasks…</div>
+<div class="arcs-samples__browser" data-sample-browser hidden>
+<div class="arcs-question-row">
+<button class="arcs-task-nav" type="button" data-task-previous aria-label="Previous sample task">
+<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+</button>
+<div class="arcs-question-card">
+<svg class="arcs-question-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+<p class="arcs-question" data-task-question></p>
+<div class="arcs-task-meta">
+<span data-task-position></span>
+<span data-task-database></span>
+</div>
+</div>
+<button class="arcs-task-nav" type="button" data-task-next aria-label="Next sample task">
+<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+</button>
+</div>
+<div class="arcs-ambiguity-controls" data-ambiguity-controls></div>
+<div class="arcs-sample-output">
+<section class="arcs-query-panel" aria-labelledby="arcs-sample-sql-heading">
+<div class="arcs-sample-panel__header">
+<h3 id="arcs-sample-sql-heading">SQL</h3>
+</div>
+<pre class="arcs-sql"><code data-task-sql></code></pre>
+</section>
+<section class="arcs-results-panel" aria-labelledby="arcs-sample-results-heading">
+<div class="arcs-sample-panel__header">
+<h3 id="arcs-sample-results-heading">Results</h3>
+<span data-results-count></span>
+</div>
+<div class="arcs-results" data-task-results></div>
+</section>
+</div>
+</div>
+</div>
 
 </div>
 
