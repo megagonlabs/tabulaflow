@@ -1574,6 +1574,13 @@ body {
   border-radius: 999px;
 }
 
+.md-typeset .arcs-resource:focus:not(:focus-visible) {
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 .md-typeset .arcs-resource svg {
   width: 0.78rem;
   height: 0.78rem;
