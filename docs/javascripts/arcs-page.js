@@ -1,3 +1,29 @@
+const arcsPageScriptUrl = document.currentScript.src
+let arcsSamplesModule
+let arcsSamplesData
+
+const loadArcsSamples = page => {
+  const samples = page.querySelector("[data-arcs-samples]")
+  if (!samples || samples.dataset.initialized === "true" || samples.dataset.loading === "true") return
+
+  samples.dataset.loading = "true"
+  arcsSamplesModule ??= import(new URL("arcs-samples.js", arcsPageScriptUrl))
+  arcsSamplesData ??= fetch(new URL(samples.dataset.source, window.location.href)).then(response => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.json()
+  })
+  Promise.all([arcsSamplesModule, arcsSamplesData])
+    .then(([module, tasks]) => module.initializeArcsSamples(samples, tasks))
+    .catch(error => {
+      arcsSamplesModule = undefined
+      arcsSamplesData = undefined
+      delete samples.dataset.loading
+      const status = samples.querySelector("[data-sample-status]")
+      status.textContent = `Sample tasks could not be loaded: ${error.message}`
+      status.classList.add("arcs-samples__status--error")
+    })
+}
+
 const selectArcsTab = (page, tab, updateHash = false) => {
   for (const candidate of page.querySelectorAll('[role="tab"]')) {
     const selected = candidate === tab
@@ -9,6 +35,7 @@ const selectArcsTab = (page, tab, updateHash = false) => {
     panel.hidden = panel.id !== tab.getAttribute("aria-controls")
   }
 
+  if (tab.getAttribute("aria-controls") === "arcs-sample-tasks") loadArcsSamples(page)
   if (updateHash) history.replaceState(null, "", `#${tab.getAttribute("aria-controls")}`)
 }
 

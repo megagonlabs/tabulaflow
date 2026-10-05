@@ -19,25 +19,16 @@ class ArcsSampleBrowser {
     this.parameters = new Map()
   }
 
-  async initialize() {
-    try {
-      const source = new URL(this.root.dataset.source, window.location.href)
-      const response = await fetch(source)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const tasks = await response.json()
-      if (!Array.isArray(tasks) || tasks.length === 0) throw new Error("No sample tasks found")
-      if (!this.root.isConnected) return
+  initialize(tasks) {
+    if (!Array.isArray(tasks) || tasks.length === 0) throw new Error("No sample tasks found")
+    if (!this.root.isConnected) return
 
-      this.tasks = tasks
-      this.previous.addEventListener("click", () => this.move(-1))
-      this.next.addEventListener("click", () => this.move(1))
-      this.status.hidden = true
-      this.browser.hidden = false
-      this.renderTask()
-    } catch (error) {
-      this.status.textContent = `Sample tasks could not be loaded: ${error.message}`
-      this.status.classList.add("arcs-samples__status--error")
-    }
+    this.tasks = tasks
+    this.previous.addEventListener("click", () => this.move(-1))
+    this.next.addEventListener("click", () => this.move(1))
+    this.status.hidden = true
+    this.browser.hidden = false
+    this.renderTask()
   }
 
   move(offset) {
@@ -244,16 +235,18 @@ class ArcsSampleBrowser {
       return
     }
 
-    let sql = query.query
+    this.sql.innerHTML = query.sql_html
     for (const point of this.task.gold_ambiguity_points.filter(candidate => candidate.type === "infinite")) {
-      const name = point.parameter_name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
       const operator = this.operators.get(point.parameter_name)
       const value = this.parameters.get(point.parameter_name)
-      sql = sql.replace(new RegExp(`([<>=!]+)\\s*(:${name})`, "g"), `${operator} $2`)
-      sql = sql.replace(new RegExp(`:${name}\\b`, "g"), String(value))
+      for (const token of this.sql.querySelectorAll(`[data-arcs-operator="${CSS.escape(point.parameter_name)}"]`)) {
+        token.textContent = operator
+      }
+      for (const token of this.sql.querySelectorAll(`[data-arcs-value="${CSS.escape(point.parameter_name)}"]`)) {
+        token.textContent = value
+      }
     }
-    this.sql.textContent = sql
-    this.renderResults(query.exec_result)
+    this.renderResults(query.result)
   }
 
   filteredRows(rows) {
@@ -266,13 +259,13 @@ class ArcsSampleBrowser {
     })
   }
 
-  renderResults(execResult) {
-    if (!execResult || execResult.error) {
-      this.renderMessage(execResult?.error ? `Error: ${execResult.error}` : "No execution result is available.", true)
+  renderResults(result) {
+    if (!result || result.error) {
+      this.renderMessage(result?.error ? `Error: ${result.error}` : "No execution result is available.", true)
       return
     }
 
-    const rows = this.filteredRows(execResult.df?.data || [])
+    const rows = this.filteredRows(result.rows)
     if (rows.length === 0) {
       this.renderMessage("Query returned no results.")
       return
@@ -304,9 +297,10 @@ class ArcsSampleBrowser {
     table.append(head, body)
     this.results.replaceChildren(table)
     const shown = Math.min(10, rows.length)
-    this.resultsCount.textContent = rows.length > shown || execResult.df_is_truncated
-      ? `Showing ${shown} of ${execResult.df_is_truncated ? "many" : rows.length} rows`
-      : `${rows.length} row${rows.length === 1 ? "" : "s"}`
+    const total = this.task.qid === "004" ? rows.length : result.total_rows
+    this.resultsCount.textContent = total > shown || result.truncated
+      ? `Showing ${shown} of ${result.truncated ? "many" : total} rows`
+      : `${total} row${total === 1 ? "" : "s"}`
   }
 
   formatValue(value) {
@@ -326,10 +320,9 @@ class ArcsSampleBrowser {
   }
 }
 
-document$.subscribe(() => {
-  const samples = document.querySelector("[data-arcs-samples]")
-  if (samples && samples.dataset.initialized !== "true") {
-    samples.dataset.initialized = "true"
-    new ArcsSampleBrowser(samples).initialize()
-  }
-})
+export const initializeArcsSamples = (samples, tasks) => {
+  if (samples.dataset.initialized === "true") return
+  new ArcsSampleBrowser(samples).initialize(tasks)
+  samples.dataset.initialized = "true"
+  delete samples.dataset.loading
+}

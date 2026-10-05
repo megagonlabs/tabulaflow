@@ -519,76 +519,76 @@ body {
   content: none;
 }
 
-.md-typeset .highlight .c,
-.md-typeset .highlight .ch,
-.md-typeset .highlight .cm,
-.md-typeset .highlight .cp,
-.md-typeset .highlight .cpf,
-.md-typeset .highlight .c1,
-.md-typeset .highlight .cs {
+.md-typeset :is(.highlight, .arcs-sql) .c,
+.md-typeset :is(.highlight, .arcs-sql) .ch,
+.md-typeset :is(.highlight, .arcs-sql) .cm,
+.md-typeset :is(.highlight, .arcs-sql) .cp,
+.md-typeset :is(.highlight, .arcs-sql) .cpf,
+.md-typeset :is(.highlight, .arcs-sql) .c1,
+.md-typeset :is(.highlight, .arcs-sql) .cs {
   color: var(--tf-code-comment);
 }
 
-.md-typeset .highlight .k,
-.md-typeset .highlight .kc,
-.md-typeset .highlight .kd,
-.md-typeset .highlight .kn,
-.md-typeset .highlight .kp,
-.md-typeset .highlight .kr,
-.md-typeset .highlight .kt,
-.md-typeset .highlight .ow {
+.md-typeset :is(.highlight, .arcs-sql) .k,
+.md-typeset :is(.highlight, .arcs-sql) .kc,
+.md-typeset :is(.highlight, .arcs-sql) .kd,
+.md-typeset :is(.highlight, .arcs-sql) .kn,
+.md-typeset :is(.highlight, .arcs-sql) .kp,
+.md-typeset :is(.highlight, .arcs-sql) .kr,
+.md-typeset :is(.highlight, .arcs-sql) .kt,
+.md-typeset :is(.highlight, .arcs-sql) .ow {
   color: var(--tf-code-keyword);
 }
 
-.md-typeset .highlight .s,
-.md-typeset .highlight .sa,
-.md-typeset .highlight .sb,
-.md-typeset .highlight .sc,
-.md-typeset .highlight .dl,
-.md-typeset .highlight .sd,
-.md-typeset .highlight .s1,
-.md-typeset .highlight .s2,
-.md-typeset .highlight .se,
-.md-typeset .highlight .sh,
-.md-typeset .highlight .si,
-.md-typeset .highlight .sr,
-.md-typeset .highlight .ss,
-.md-typeset .highlight .sx {
+.md-typeset :is(.highlight, .arcs-sql) .s,
+.md-typeset :is(.highlight, .arcs-sql) .sa,
+.md-typeset :is(.highlight, .arcs-sql) .sb,
+.md-typeset :is(.highlight, .arcs-sql) .sc,
+.md-typeset :is(.highlight, .arcs-sql) .dl,
+.md-typeset :is(.highlight, .arcs-sql) .sd,
+.md-typeset :is(.highlight, .arcs-sql) .s1,
+.md-typeset :is(.highlight, .arcs-sql) .s2,
+.md-typeset :is(.highlight, .arcs-sql) .se,
+.md-typeset :is(.highlight, .arcs-sql) .sh,
+.md-typeset :is(.highlight, .arcs-sql) .si,
+.md-typeset :is(.highlight, .arcs-sql) .sr,
+.md-typeset :is(.highlight, .arcs-sql) .ss,
+.md-typeset :is(.highlight, .arcs-sql) .sx {
   color: var(--tf-code-string);
 }
 
-.md-typeset .highlight .m,
-.md-typeset .highlight .mb,
-.md-typeset .highlight .mf,
-.md-typeset .highlight .mh,
-.md-typeset .highlight .mi,
-.md-typeset .highlight .mo,
-.md-typeset .highlight .il {
+.md-typeset :is(.highlight, .arcs-sql) .m,
+.md-typeset :is(.highlight, .arcs-sql) .mb,
+.md-typeset :is(.highlight, .arcs-sql) .mf,
+.md-typeset :is(.highlight, .arcs-sql) .mh,
+.md-typeset :is(.highlight, .arcs-sql) .mi,
+.md-typeset :is(.highlight, .arcs-sql) .mo,
+.md-typeset :is(.highlight, .arcs-sql) .il {
   color: var(--tf-code-number);
 }
 
-.md-typeset .highlight .nf,
-.md-typeset .highlight .fm {
+.md-typeset :is(.highlight, .arcs-sql) .nf,
+.md-typeset :is(.highlight, .arcs-sql) .fm {
   color: var(--tf-code-function);
 }
 
-.md-typeset .highlight .nb,
-.md-typeset .highlight .nc {
+.md-typeset :is(.highlight, .arcs-sql) .nb,
+.md-typeset :is(.highlight, .arcs-sql) .nc {
   color: var(--tf-code-type);
 }
 
-.md-typeset .highlight .n,
-.md-typeset .highlight .na,
-.md-typeset .highlight .nd,
-.md-typeset .highlight .ne,
-.md-typeset .highlight .ni,
-.md-typeset .highlight .nl,
-.md-typeset .highlight .nn,
-.md-typeset .highlight .no,
-.md-typeset .highlight .nt,
-.md-typeset .highlight .nv,
-.md-typeset .highlight .o,
-.md-typeset .highlight .p {
+.md-typeset :is(.highlight, .arcs-sql) .n,
+.md-typeset :is(.highlight, .arcs-sql) .na,
+.md-typeset :is(.highlight, .arcs-sql) .nd,
+.md-typeset :is(.highlight, .arcs-sql) .ne,
+.md-typeset :is(.highlight, .arcs-sql) .ni,
+.md-typeset :is(.highlight, .arcs-sql) .nl,
+.md-typeset :is(.highlight, .arcs-sql) .nn,
+.md-typeset :is(.highlight, .arcs-sql) .no,
+.md-typeset :is(.highlight, .arcs-sql) .nt,
+.md-typeset :is(.highlight, .arcs-sql) .nv,
+.md-typeset :is(.highlight, .arcs-sql) .o,
+.md-typeset :is(.highlight, .arcs-sql) .p {
   color: var(--tf-code-text);
 }
 
@@ -2049,7 +2049,7 @@ body {
   margin: 0;
   padding: 0.65rem;
   overflow: auto;
-  color: var(--tf-code);
+  color: var(--tf-code-text);
   font-size: 0.52rem;
   line-height: 1.55;
   background: transparent;

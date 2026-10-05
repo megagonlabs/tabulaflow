@@ -58,7 +58,7 @@ interactive database browser will appear here.
 </div>
 
 <div id="arcs-sample-tasks" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-sample-tasks" hidden>
-<div class="arcs-samples" data-arcs-samples data-source="../../assets/arcs/sample-tasks.json">
+<div class="arcs-samples" data-arcs-samples data-source="../../assets/arcs/sample-tasks.compact.json">
 <div class="arcs-samples__status" data-sample-status>Loading sample tasks…</div>
 <div class="arcs-samples__browser" data-sample-browser hidden>
 <div class="arcs-question-row">
