@@ -2030,17 +2030,17 @@ body {
 
 .md-typeset .arcs-color-1 {
   --arcs-ambiguity: #e88766;
-  --arcs-ambiguity-tint: rgba(232, 135, 102, 0.12);
+  --arcs-ambiguity-tint: rgba(232, 135, 102, 0.36);
 }
 
 .md-typeset .arcs-color-2 {
   --arcs-ambiguity: #35c98a;
-  --arcs-ambiguity-tint: rgba(53, 201, 138, 0.12);
+  --arcs-ambiguity-tint: rgba(53, 201, 138, 0.24);
 }
 
 .md-typeset .arcs-color-3 {
   --arcs-ambiguity: #4ba8e5;
-  --arcs-ambiguity-tint: rgba(75, 168, 229, 0.12);
+  --arcs-ambiguity-tint: rgba(75, 168, 229, 0.24);
 }
 
 .md-typeset .arcs-ambig-phrase {
@@ -2054,11 +2054,11 @@ body {
 }
 
 .md-typeset .arcs-ambig-phrase:hover {
-  background: color-mix(in srgb, var(--arcs-ambiguity) 20%, transparent);
+  background: color-mix(in srgb, var(--arcs-ambiguity) 34%, transparent);
 }
 
 .md-typeset .arcs-ambig-phrase.is-active {
-  background: color-mix(in srgb, var(--arcs-ambiguity) 30%, transparent);
+  background: color-mix(in srgb, var(--arcs-ambiguity) 34%, transparent);
 }
 
 .md-typeset .arcs-ambig-phrase.is-active {
@@ -2086,7 +2086,7 @@ body {
 }
 
 .md-typeset .arcs-ambiguity-control.is-highlighted {
-  background: color-mix(in srgb, var(--arcs-ambiguity) 25%, transparent);
+  background: color-mix(in srgb, var(--arcs-ambiguity) 30%, transparent);
 }
 
 .md-typeset .arcs-ambiguity-heading {
