@@ -1823,9 +1823,12 @@ body {
   transition: background-color 150ms ease, transform 150ms ease;
 }
 
-.md-typeset .arcs-ambig-phrase:hover,
+.md-typeset .arcs-ambig-phrase:hover {
+  background: color-mix(in srgb, var(--arcs-ambiguity) 20%, transparent);
+}
+
 .md-typeset .arcs-ambig-phrase.is-active {
-  background: color-mix(in srgb, var(--arcs-ambiguity) 24%, transparent);
+  background: color-mix(in srgb, var(--arcs-ambiguity) 30%, transparent);
 }
 
 .md-typeset .arcs-ambig-phrase.is-active {
@@ -1849,12 +1852,11 @@ body {
   border: 0;
   border-left: 4px solid var(--arcs-ambiguity);
   border-radius: 9px;
-  transition: box-shadow 150ms ease, transform 150ms ease;
+  transition: background-color 150ms ease;
 }
 
 .md-typeset .arcs-ambiguity-control.is-highlighted {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--arcs-ambiguity) 65%, transparent);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--arcs-ambiguity) 25%, transparent);
 }
 
 .md-typeset .arcs-ambiguity-heading {
