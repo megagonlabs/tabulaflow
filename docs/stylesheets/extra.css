@@ -2010,10 +2010,12 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.55rem;
+  align-items: start;
 }
 
 .md-typeset .arcs-query-panel,
 .md-typeset .arcs-results-panel {
+  width: 100%;
   min-width: 0;
   overflow: hidden;
   background: var(--tf-code-bg);
@@ -2043,7 +2045,7 @@ body {
 }
 
 .md-typeset .arcs-sql {
-  max-height: 22rem;
+  max-height: 300px;
   margin: 0;
   padding: 0.65rem;
   overflow: auto;
@@ -2130,7 +2132,7 @@ body {
   position: static;
   color: #4a5e1a;
   font-weight: 600;
-  background: #e4f4b1;
+  background: #c7dc74;
 }
 
 .md-typeset .arcs-results td {

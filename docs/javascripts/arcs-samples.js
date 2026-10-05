@@ -280,6 +280,7 @@ class ArcsSampleBrowser {
 
     const columns = Object.keys(rows[0])
     const table = document.createElement("table")
+    table.className = "arcs-results-table"
     const head = document.createElement("thead")
     const headRow = document.createElement("tr")
     for (const column of columns) {
