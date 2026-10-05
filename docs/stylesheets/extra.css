@@ -1504,10 +1504,14 @@ body {
   }
 }
 
-.md-typeset .arcs-page {
+.md-typeset .arcs-page,
+.md-typeset .arcs-tabs {
   --arcs-orange: #e08161;
   --arcs-purple: #a78bfa;
   --arcs-purple-soft: rgba(145, 112, 224, 0.17);
+}
+
+.md-typeset .arcs-page {
   margin-top: 0.35rem;
 }
 
@@ -1522,7 +1526,7 @@ body {
   text-align: center;
   background: var(--arcs-orange);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px 12px 0 0;
+  border-radius: 12px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
 }
 
@@ -1582,14 +1586,12 @@ body {
 .md-typeset .arcs-tabs {
   display: flex;
   gap: 0.2rem;
-  margin: 0;
+  margin: 0.2rem 0 0.85rem;
   padding: 0.25rem;
   justify-content: center;
   overflow-x: auto;
-  background: var(--tf-code-bg);
-  border: 1px solid var(--tf-border);
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
+  background: transparent;
+  border: 0;
   scrollbar-width: thin;
 }
 
@@ -1647,7 +1649,7 @@ body {
 
 .md-typeset .arcs-panel {
   min-height: 14rem;
-  margin-top: 1rem;
+  margin-top: 0;
   padding: 0.3rem 1.1rem 1rem;
   background: rgba(26, 33, 44, 0.45);
   border: 1px solid var(--tf-border);
@@ -1656,6 +1658,18 @@ body {
 
 .md-typeset .arcs-panel > h2:first-child {
   margin-top: 0.8rem;
+}
+
+.md-typeset .arcs-introduction {
+  padding: 0.85rem 0.25rem 0.55rem;
+}
+
+.md-typeset .arcs-introduction > h2:first-child {
+  margin-top: 0.4rem;
+}
+
+.md-typeset .arcs-introduction > :last-child {
+  margin-bottom: 0;
 }
 
 @media screen and (max-width: 44.99em) {

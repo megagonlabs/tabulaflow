@@ -21,18 +21,9 @@
       </span>
     </div>
   </header>
-
-  <div class="arcs-tabs" role="tablist" aria-label="ARCS benchmark">
-    <button id="arcs-tab-introduction" class="arcs-tab" type="button" role="tab" aria-controls="arcs-introduction" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 17v-6"></path><circle cx="12" cy="8" r="0.5" fill="currentColor"></circle></svg>Introduction</button>
-    <button id="arcs-tab-database" class="arcs-tab" type="button" role="tab" aria-controls="arcs-database" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>Database</button>
-    <button id="arcs-tab-sample-tasks" class="arcs-tab" type="button" role="tab" aria-controls="arcs-sample-tasks" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>Sample Tasks</button>
-    <button id="arcs-tab-leaderboard" class="arcs-tab" type="button" role="tab" aria-controls="arcs-leaderboard" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>Leaderboard</button>
-    <button id="arcs-tab-taxonomy" class="arcs-tab" type="button" role="tab" aria-controls="arcs-taxonomy" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Taxonomy</button>
-  </div>
-
 </div>
 
-<div id="arcs-introduction" class="arcs-panel" role="tabpanel" aria-labelledby="arcs-tab-introduction" markdown="1">
+<div class="arcs-introduction" markdown="1">
 
 ## Introduction
 
@@ -50,7 +41,14 @@ interpretations, and SQL queries.
 
 </div>
 
-<div id="arcs-database" class="arcs-panel" role="tabpanel" aria-labelledby="arcs-tab-database" hidden markdown="1">
+<div class="arcs-tabs" role="tablist" aria-label="Explore ARCS">
+    <button id="arcs-tab-database" class="arcs-tab" type="button" role="tab" aria-controls="arcs-database" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>Database</button>
+    <button id="arcs-tab-sample-tasks" class="arcs-tab" type="button" role="tab" aria-controls="arcs-sample-tasks" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>Sample Tasks</button>
+    <button id="arcs-tab-leaderboard" class="arcs-tab" type="button" role="tab" aria-controls="arcs-leaderboard" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>Leaderboard</button>
+    <button id="arcs-tab-taxonomy" class="arcs-tab" type="button" role="tab" aria-controls="arcs-taxonomy" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Taxonomy</button>
+</div>
+
+<div id="arcs-database" class="arcs-panel" role="tabpanel" aria-labelledby="arcs-tab-database" markdown="1">
 
 ## Database
 
