@@ -58,7 +58,7 @@ class ArcsDatabaseBrowser {
     line.setAttribute("y2", "9")
     icon.append(box, line)
 
-    const name = document.createElement("code")
+    const name = document.createElement("h3")
     name.textContent = table.name
     const rows = document.createElement("span")
     rows.textContent = `${table.rows} rows`
