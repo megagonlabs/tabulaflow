@@ -1,6 +1,30 @@
 const arcsPageScriptUrl = document.currentScript.src
 let arcsSamplesModule
 let arcsSamplesData
+let arcsDatabasesModule
+let arcsDatabasesData
+
+const loadArcsDatabases = page => {
+  const databases = page.querySelector("[data-arcs-databases]")
+  if (!databases || databases.dataset.initialized === "true" || databases.dataset.loading === "true") return
+
+  databases.dataset.loading = "true"
+  arcsDatabasesModule ??= import(new URL("arcs-databases.js", arcsPageScriptUrl))
+  arcsDatabasesData ??= fetch(new URL(databases.dataset.source, window.location.href)).then(response => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.json()
+  })
+  Promise.all([arcsDatabasesModule, arcsDatabasesData])
+    .then(([module, data]) => module.initializeArcsDatabases(databases, data))
+    .catch(error => {
+      arcsDatabasesModule = undefined
+      arcsDatabasesData = undefined
+      delete databases.dataset.loading
+      const status = databases.querySelector("[data-database-status]")
+      status.textContent = `Databases could not be loaded: ${error.message}`
+      status.classList.add("arcs-databases__status--error")
+    })
+}
 
 const loadArcsSamples = page => {
   const samples = page.querySelector("[data-arcs-samples]")
@@ -35,7 +59,9 @@ const selectArcsTab = (page, tab, updateHash = false) => {
     panel.hidden = panel.id !== tab.getAttribute("aria-controls")
   }
 
-  if (tab.getAttribute("aria-controls") === "arcs-sample-tasks") loadArcsSamples(page)
+  const panel = tab.getAttribute("aria-controls")
+  if (panel === "arcs-database") loadArcsDatabases(page)
+  if (panel === "arcs-sample-tasks") loadArcsSamples(page)
   if (updateHash) history.replaceState(null, "", `#${tab.getAttribute("aria-controls")}`)
 }
 
@@ -131,6 +157,9 @@ const initializeArcsPage = marker => {
 
   const hashTab = tabForArcsHash(page)
   if (hashTab) selectArcsTab(page, hashTab)
+
+  const activeTab = hashTab || tabs.find(tab => tab.getAttribute("aria-selected") === "true")
+  if (activeTab?.getAttribute("aria-controls") === "arcs-database") loadArcsDatabases(page)
 
   const leaderboard = page.querySelector("[data-arcs-leaderboard]")
   if (leaderboard) initializeArcsLeaderboard(leaderboard)

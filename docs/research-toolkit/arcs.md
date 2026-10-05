@@ -48,13 +48,26 @@ interpretations, and SQL queries.
     <button id="arcs-tab-taxonomy" class="arcs-tab" type="button" role="tab" aria-controls="arcs-taxonomy" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Taxonomy</button>
 </div>
 
-<div id="arcs-database" class="arcs-panel" role="tabpanel" aria-labelledby="arcs-tab-database" markdown="1">
-
-## Database
-
-Explore the schemas of the real-world databases included in ARCS. The
-interactive database browser will appear here.
-
+<div id="arcs-database" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-database">
+<div class="arcs-databases" data-arcs-databases data-source="../../assets/arcs/databases.json">
+<div class="arcs-databases__status" data-database-status>Loading databases…</div>
+<div class="arcs-databases__browser" data-database-browser hidden>
+<div class="arcs-question-row">
+<button class="arcs-task-nav" type="button" data-database-previous aria-label="Previous database">
+<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+</button>
+<div class="arcs-database-card">
+<svg class="arcs-database-card__icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+<code data-database-name></code>
+<span data-database-position></span>
+</div>
+<button class="arcs-task-nav" type="button" data-database-next aria-label="Next database">
+<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+</button>
+</div>
+<div class="arcs-schema-grid" data-database-schema></div>
+</div>
+</div>
 </div>
 
 <div id="arcs-sample-tasks" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-sample-tasks" hidden>
