@@ -2356,6 +2356,48 @@ body {
   font-style: italic;
 }
 
+.md-typeset .arcs-taxonomy {
+  padding-top: 0.4rem;
+}
+
+.md-typeset .arcs-taxonomy__description {
+  padding: 0 0.2rem;
+}
+
+.md-typeset .arcs-taxonomy__description h2 {
+  margin: 0.35rem 0 0.45rem;
+}
+
+.md-typeset .arcs-taxonomy__description p {
+  margin: 0;
+  color: var(--tf-text-muted);
+}
+
+.md-typeset .arcs-taxonomy__figure {
+  margin: 0.8rem 0 0;
+  padding: 0.35rem;
+  overflow: hidden;
+  background: #f8f8f8;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.md-typeset .arcs-taxonomy__figure a,
+.md-typeset .arcs-taxonomy__figure img {
+  display: block;
+  width: 100%;
+}
+
+.md-typeset .arcs-taxonomy__figure a {
+  border-radius: 7px;
+}
+
+.md-typeset .arcs-taxonomy__figure img {
+  height: auto;
+  margin: 0;
+  border-radius: 7px;
+}
+
 @media screen and (max-width: 44.99em) {
   .md-typeset .arcs-hero {
     min-height: 11rem;
