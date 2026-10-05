@@ -1536,7 +1536,9 @@ body {
 }
 
 .md-typeset .arcs-hero h1 {
-  margin: 0;
+  position: relative;
+  width: max-content;
+  margin: 0 auto;
   color: white;
   font-family: var(--md-text-font);
   font-size: clamp(2.55rem, 7vw, 3.7rem);
@@ -1544,6 +1546,18 @@ body {
   line-height: 0.95;
   letter-spacing: -0.04em;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  transform: translateX(0.22em);
+}
+
+.md-typeset .arcs-hero__logo {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.18em);
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0;
+  object-fit: contain;
+  transform: translateY(-50%);
 }
 
 .md-typeset .arcs-hero__title p {
@@ -1570,8 +1584,10 @@ body {
   font-size: 0.58rem;
   font-weight: 600;
   line-height: 1;
+  text-decoration: none;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 999px;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
 
 .md-typeset .arcs-resource:focus:not(:focus-visible) {
@@ -1579,6 +1595,14 @@ body {
   text-decoration: none;
   background: transparent;
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+.md-typeset .arcs-resource:hover,
+.md-typeset .arcs-resource:focus-visible {
+  color: white;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .md-typeset .arcs-resource svg {
