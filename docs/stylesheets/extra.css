@@ -2061,8 +2061,8 @@ body {
 
 .md-typeset .arcs-ambiguity-options {
   display: grid;
-  gap: 0.25rem;
-  margin-top: 0.4rem;
+  gap: 0.12rem;
+  margin-top: 0.3rem;
 }
 
 .md-typeset .arcs-ambiguity-option,
@@ -2070,12 +2070,12 @@ body {
   display: flex;
   min-width: 0;
   margin: 0;
-  padding: 0.3rem 0.4rem;
+  padding: 0.22rem 0.35rem;
   gap: 0.35rem;
   align-items: center;
   color: #cbd2dc;
   font-size: 0.6rem;
-  line-height: 1.35;
+  line-height: 1.25;
   cursor: pointer;
   background: transparent;
   border: 1px solid transparent;
