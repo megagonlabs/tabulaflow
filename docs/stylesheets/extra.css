@@ -1538,8 +1538,8 @@ body {
 .md-typeset .arcs-hero h1 {
   margin: 0;
   color: white;
-  font-family: "Space Grotesk", var(--md-text-font);
-  font-size: clamp(2.9rem, 8vw, 4.2rem);
+  font-family: var(--md-text-font);
+  font-size: clamp(2.55rem, 7vw, 3.7rem);
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.04em;
@@ -1549,7 +1549,7 @@ body {
 .md-typeset .arcs-hero__title p {
   margin: 0.55rem 0 0;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 500;
 }
 
@@ -1567,7 +1567,7 @@ body {
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 600;
   line-height: 1;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -2586,11 +2586,11 @@ body {
   }
 
   .md-typeset .arcs-hero h1 {
-    font-size: 2.8rem;
+    font-size: 2.45rem;
   }
 
   .md-typeset .arcs-hero__title p {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
   }
 
   .md-typeset .arcs-tab {
