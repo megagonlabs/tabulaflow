@@ -62,8 +62,11 @@ def highlighted_sql_template(sql: str, points: list[dict[str, Any]]) -> str:
 
 def compact_result(query: dict[str, Any], *, keep_all_rows: bool) -> dict[str, Any]:
     execution = query.get("exec_result") or {}
-    rows = (execution.get("df") or {}).get("data") or []
+    frame = execution.get("df") or {}
+    rows = frame.get("data") or []
+    columns = list((frame.get("schema") or {}).get("dtypes") or (rows[0] if rows else {}))
     return {
+        "columns": columns,
         "error": execution.get("error"),
         "rows": rows if keep_all_rows else rows[:10],
         "total_rows": len(rows),

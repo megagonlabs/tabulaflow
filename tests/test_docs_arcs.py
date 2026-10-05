@@ -20,4 +20,5 @@ def test_arcs_sample_bundle_is_current_and_compact() -> None:
         for query in task["gold_queries"]:
             assert '<span class="k">' in query["sql_html"]
             assert "query" not in query
+            assert query["result"]["columns"]
             assert len(query["result"]["rows"]) <= (155 if task["qid"] == "004" else 10)

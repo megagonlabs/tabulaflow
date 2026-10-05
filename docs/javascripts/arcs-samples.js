@@ -266,17 +266,11 @@ class ArcsSampleBrowser {
     }
 
     const rows = this.filteredRows(result.rows)
-    if (rows.length === 0) {
-      this.renderMessage("Query returned no results.")
-      return
-    }
-
-    const columns = Object.keys(rows[0])
     const table = document.createElement("table")
     table.className = "arcs-results-table"
     const head = document.createElement("thead")
     const headRow = document.createElement("tr")
-    for (const column of columns) {
+    for (const column of result.columns) {
       const cell = document.createElement("th")
       cell.scope = "col"
       cell.textContent = column
@@ -287,7 +281,7 @@ class ArcsSampleBrowser {
     const body = document.createElement("tbody")
     for (const row of rows.slice(0, 10)) {
       const tableRow = document.createElement("tr")
-      for (const column of columns) {
+      for (const column of result.columns) {
         const cell = document.createElement("td")
         cell.textContent = this.formatValue(row[column])
         tableRow.append(cell)

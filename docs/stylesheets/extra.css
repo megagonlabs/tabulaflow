@@ -2034,14 +2034,27 @@ body {
 }
 
 .md-typeset .arcs-sample-panel__header h3 {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
   margin: 0;
   color: var(--tf-text);
-  font-size: 0.65rem;
+  font-size: 0.58rem;
+}
+
+.md-typeset .arcs-sample-panel__header h3 svg {
+  width: 0.68rem;
+  height: 0.68rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .md-typeset .arcs-sample-panel__header span {
   color: var(--tf-text-dim);
-  font-size: 0.48rem;
+  font-size: 0.44rem;
 }
 
 .md-typeset .arcs-sql {
@@ -2050,7 +2063,7 @@ body {
   padding: 0.65rem;
   overflow: auto;
   color: var(--tf-code-text);
-  font-size: 0.52rem;
+  font-size: 0.48rem;
   line-height: 1.55;
   background: transparent;
   border-radius: 0;
@@ -2064,9 +2077,10 @@ body {
 }
 
 .md-typeset .arcs-results {
+  min-height: 2.8rem;
   max-height: 300px;
   overflow: auto;
-  background: white;
+  background: #e4f4b1;
 }
 
 .md-typeset .arcs-results-panel {
@@ -2084,33 +2098,19 @@ body {
 }
 
 .md-typeset .arcs-results-panel .arcs-sample-panel__header h3 {
-  display: flex;
-  gap: 0.3rem;
-  align-items: center;
   color: white;
-  font-size: 0.65rem;
-}
-
-.md-typeset .arcs-results-panel .arcs-sample-panel__header h3 svg {
-  width: 0.75rem;
-  height: 0.75rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
 }
 
 .md-typeset .arcs-results-panel .arcs-sample-panel__header > span {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.48rem;
+  font-size: 0.44rem;
   font-weight: 500;
 }
 
 .md-typeset .arcs-results table {
   width: 100%;
   margin: 0;
-  font-size: 0.5rem;
+  font-size: 0.46rem;
   border: 0;
   border-collapse: collapse;
   border-radius: 0;
