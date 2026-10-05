@@ -28,9 +28,7 @@
 As text-to-SQL systems move beyond demonstrations toward real-world deployment,
 ambiguity in user questions becomes a primary source of errors. These ambiguities
 are often subtle, domain- or data-specific, and can silently cause system outputs
-to deviate from the user's true intent. **Structured disambiguation** resolves
-ambiguity through explicit, constrained interactions rather than free-form
-dialogue.
+to deviate from the user's true intent.
 
 ARCS (**A**mbiguity **R**esolution **C**orpus for **S**QL) is a text-to-SQL
 benchmark featuring naturally occurring, unconstrained ambiguities over
