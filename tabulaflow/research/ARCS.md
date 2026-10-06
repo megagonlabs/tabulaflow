@@ -1,8 +1,9 @@
-# ARCS in TabulaFlow
+# ARCS: Towards Precise Text-to-SQL via Structured Disambiguation
 
-TabulaFlow provides the supported implementation for downloading, running, and
-evaluating the [ARCS](https://huggingface.co/datasets/megagonlabs/arcs)
-benchmark.
+This TabulaFlow repository is the official code repository for
+[ARCS](https://megagonlabs.github.io/tabulaflow/research-toolkit/arcs/). It
+provides the reference implementation for downloading, running, and evaluating
+the benchmark.
 
 ## Get started
 
@@ -16,7 +17,7 @@ tabulaflow benchmark run arcs --split test --sample-size 5
 ```
 
 See the [ARCS setup guide](https://megagonlabs.github.io/tabulaflow/research-toolkit/benchmarks/#arcs)
-for model-provider configuration and split details.
+for model-provider configuration and other details.
 
 ## Code
 
