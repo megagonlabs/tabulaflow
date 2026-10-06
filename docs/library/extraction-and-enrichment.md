@@ -23,7 +23,7 @@ Behind the scenes, TabulaFlow runs a subagent for each row in parallel. Each run
 returns structured output validated against `JobDetails`, which TabulaFlow turns
 into new DataFrame columns.
 
-Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
+Set [`OPENAI_API_KEY`](index.md#try-it-yourself), then run:
 
 ```bash
 tabulaflow examples run data-enrichment
@@ -61,7 +61,7 @@ with a category and a short reason for each recommendation. The script loads the
     --8<-- "examples/results/library-extraction.txt"
     ```
 
-Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
+Set [`OPENAI_API_KEY`](index.md#try-it-yourself), then run:
 
 ```bash
 tabulaflow examples run document-extraction

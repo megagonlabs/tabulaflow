@@ -183,7 +183,7 @@ to `extract(..., record_type=Place, instruction=...)` to receive a `list[Place]`
 ## Tool metrics
 
 Tool `metrics` properties expose these per-tool counters. Research-specific
-counters are documented with the [research tools](../../research-toolkit/api/agents.md#tool-metrics).
+counters are documented with the [research tools](../../research/api/agents.md#tool-metrics).
 
 ::: tabulaflow.agents.tools.protocols.ToolMetrics
 

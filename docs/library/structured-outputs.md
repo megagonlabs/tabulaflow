@@ -95,7 +95,7 @@ query result, and returning to an earlier selection reuses that result:
     --8<-- "examples/results/library-transfers.txt"
     ```
 
-After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
+After [installing TabulaFlow](index.md#try-it-yourself), run the complete
 example without a database server or API key:
 
 ```bash

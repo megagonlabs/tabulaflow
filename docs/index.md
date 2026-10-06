@@ -206,13 +206,13 @@ local files, public datasets, and the web.
 Create your own data agents and applications with an async-native library
 written in pure Python. Reuse its connectors, tools, and structured outputs
 to build workflows tailored to your needs.
-[Explore the library](python-library/quick-start.md){ .inline-cta }
+[Explore the library](library/index.md){ .inline-cta }
 
 ### Run research experiments
 
 Run large-scale experiments on text-to-SQL and text-to-Cypher benchmarks such
 as Spider 2.0, CypherBench, and ARCS with TabulaFlow's research toolkit.
-[Explore the toolkit](research-toolkit/quick-start.md){ .inline-cta }
+[Explore the toolkit](research/index.md){ .inline-cta }
 
 !!! note "Public beta"
     TabulaFlow 0.2.2 is a public beta. Patch releases preserve documented

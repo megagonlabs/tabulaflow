@@ -19,7 +19,7 @@ and opens a support ticket.
     --8<-- "examples/results/library-custom-agent.txt"
     ```
 
-Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
+Set [`OPENAI_API_KEY`](index.md#try-it-yourself), then run the complete example:
 
 ```bash
 tabulaflow examples run custom-agents

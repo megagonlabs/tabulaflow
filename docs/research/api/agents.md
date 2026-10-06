@@ -90,7 +90,7 @@ create isolated project copies and connectors before prediction. Evaluate with
 ## Research tools
 
 For general data, browser, and filesystem tools, see the
-[library reference](../../python-library/api/agents.md).
+[library reference](../../library/api/agents.md).
 
 ::: tabulaflow.research.tools.ask_user.AskUserTool
 

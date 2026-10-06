@@ -1,0 +1,16 @@
+# API reference
+
+Start with the layer you need, whether you're querying a dataset, presenting
+results, or building an agent.
+
+| Layer | APIs |
+| --- | --- |
+| [Core](core.md) | Schemas, execution results, serialization, and class registry |
+| [Data](data.md) | Connectors, configuration, loaders, and source catalog |
+| [Output](output.md) | Specifications, result storage, resolution, and formatting |
+| [Agents](agents.md) | Chat sessions, tools, extraction, enrichment, summarization, and traces |
+
+The dependency order is `core <- data <- output <- agents`. Use connectors
+without an agent, or build outputs without the application UI.
+
+For benchmarks and evaluation, see the [research API reference](../../research/api/index.md).
