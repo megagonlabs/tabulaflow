@@ -2398,6 +2398,13 @@ body {
   padding-top: 0.4rem;
 }
 
+.md-typeset .arcs-leaderboard__submission {
+  margin: 0 0 0.5rem;
+  color: var(--tf-text-muted);
+  font-size: 0.58rem;
+  text-align: center;
+}
+
 .md-typeset .arcs-leaderboard__scroller {
   overflow: hidden;
   background: var(--tf-card);

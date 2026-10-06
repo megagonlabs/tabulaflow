@@ -118,6 +118,7 @@ to deviate from the user's true intent.
 
 <div id="arcs-leaderboard" class="arcs-panel arcs-panel--flush" role="tabpanel" aria-labelledby="arcs-tab-leaderboard" hidden>
 <section class="arcs-leaderboard" data-arcs-leaderboard>
+<p class="arcs-leaderboard__submission">Leaderboard submissions are coming soon.</p>
 <div class="arcs-leaderboard__scroller">
 <table aria-describedby="arcs-leaderboard-note" class="arcs-leaderboard__table" data-arcs-leaderboard-table>
                         <caption>ARCS model performance leaderboard</caption>
