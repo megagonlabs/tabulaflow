@@ -36,12 +36,10 @@ extra:
 nav:
   - Overview: index.md
   - Models and providers: models.md
-  - TabulaFlow App:
-      - Overview: app/index.md
-      - Connect data: app/connecting-data.md
-      - Configuration: app/configuration.md
-  - Python Library:
-      - Overview: library/index.md
+  - Connect data: app/connecting-data.md
+  - Configuration: app/configuration.md
+  - TabulaFlow as a Python Library:
+      - Quick start: library/index.md
       - Data connectors: library/data-connectors.md
       - Extraction and enrichment: library/extraction-and-enrichment.md
       - Chat sessions: library/chat-sessions.md
@@ -53,8 +51,8 @@ nav:
           - Data: library/api/data.md
           - Output: library/api/output.md
           - Agents: library/api/agents.md
-  - Research Toolkit:
-      - Overview: research/index.md
+  - TabulaFlow for Researchers:
+      - Quick start: research/index.md
       - Benchmarks: research/benchmarks.md
       - "ARCS: Ambiguous Text-to-SQL": research/arcs.md
       - Agents: research/agents.md
@@ -74,6 +72,7 @@ plugins:
   - search
   - redirects:
       redirect_maps:
+        app/index.md: index.md
         data-agent/configuration.md: app/configuration.md
         data-agent/connecting-data.md: app/connecting-data.md
         python-library/quick-start.md: library/index.md
