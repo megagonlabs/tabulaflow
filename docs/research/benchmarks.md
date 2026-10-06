@@ -538,7 +538,7 @@ The username is `neo4j` and the password is `cypherbench`.
 
 !!! tip "Explore with the data agent"
     If you want to explore a running graph, [connect it directly in the TabulaFlow
-    data agent](../data-agent/connecting-data.md#connect-directly):
+    data agent](../app/connecting-data.md#connect-directly):
 
     ```text
     /connect bolt://neo4j:cypherbench@localhost:15067 --alias nba

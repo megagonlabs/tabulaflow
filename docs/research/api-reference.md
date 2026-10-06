@@ -10,5 +10,5 @@
 | [Metrics](api/metrics.md) | Metric protocol, registered metrics, and aggregation policies |
 
 See [Extend the toolkit](extending.md) for worked examples and the
-[library reference](../python-library/api-reference.md) for connectors, schemas,
+[library reference](../library/api-reference.md) for connectors, schemas,
 execution results, and model infrastructure.

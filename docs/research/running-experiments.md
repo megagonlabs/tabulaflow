@@ -80,8 +80,8 @@ to model requests across the process; connector limits apply to database queries
 You can also [prepare inputs](api/preprocessing.md#prepare-reusable-inputs), such
 as ER diagrams and embeddings, before prediction.
 
-See [runtime settings](../python-library/api/agents.md#runtime-and-model-configuration)
-and [connector settings](../python-library/api/data.md#configuration) for all
+See [runtime settings](../library/api/agents.md#runtime-and-model-configuration)
+and [connector settings](../library/api/data.md#configuration) for all
 limits and cache policies.
 
 ## Ensemble predictions

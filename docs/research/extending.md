@@ -69,7 +69,7 @@ Pass `dataset` to the pipeline above, then call `await connector.close_async()`
 when finished.
 
 Task QIDs must be unique and each task's `db` must match a connector key.
-See [Data connectors](../python-library/data-connectors.md) to connect an existing database.
+See [Data connectors](../library/data-connectors.md) to connect an existing database.
 
 For reusable splits, [implement a dataset loader](api/benchmarks.md#implement-a-loader).
 

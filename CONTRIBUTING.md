@@ -46,7 +46,7 @@ Check the documentation before submitting changes:
 uv run --group docs mkdocs build --strict
 ```
 
-API references in `docs/python-library/api/` and `docs/research-toolkit/api/`
+API references in `docs/library/api/` and `docs/research/api/`
 select public objects with mkdocstrings directives. Update signatures and
 docstrings in the Python source; keep reference introductions and examples
 in Markdown. Add new reference pages to `mkdocs.yml`.

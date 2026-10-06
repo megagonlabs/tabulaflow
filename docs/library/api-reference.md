@@ -13,4 +13,4 @@ results, or building an agent.
 The dependency order is `core <- data <- output <- agents`. Use connectors
 without an agent, or build outputs without the application UI.
 
-For benchmarks and evaluation, see the [research API reference](../research-toolkit/api-reference.md).
+For benchmarks and evaluation, see the [research API reference](../research/api-reference.md).
