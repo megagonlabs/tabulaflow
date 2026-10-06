@@ -483,9 +483,11 @@ Run five tasks with a
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. Ensure that
-[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running.
-Download the benchmark first:
+CypherBench evaluates text-to-Cypher translation with more than 10,000
+question–Cypher pairs across 11 large-scale Neo4j property graphs transformed
+from Wikidata, totaling 7.8 million entities. Ensure that [Docker is
+installed](https://docs.docker.com/get-started/get-docker/) and running, then
+download the benchmark:
 
 ```bash
 tabulaflow benchmark download cypherbench
@@ -621,10 +623,11 @@ training split.
 
 </div>
 
-Ambiguous text-to-SQL tasks with complete annotations of ambiguity points,
-valid interpretations, and corresponding SQL queries. The `test` split has
-311 intended-resolution instances; `base` contains the 101 original questions
-before expansion.
+ARCS (**A**mbiguity **R**esolution **C**orpus for **S**QL) is a text-to-SQL
+benchmark featuring naturally occurring, unconstrained ambiguities over
+real-world databases, with complete annotations of valid ambiguity points,
+interpretations, and SQL queries. The `test` split has 311 end-to-end
+instances with intended resolution; `base` contains the 101 unique questions before sampling the resolution.
 
 Download the tasks and six SQLite databases (about 9 GB):
 
