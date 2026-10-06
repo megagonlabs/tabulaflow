@@ -424,9 +424,58 @@ valid interpretations, and corresponding SQL queries. The `test` split has
 311 intended-resolution instances; `base` contains the 101 original questions
 before expansion.
 
+Download the tasks and six SQLite databases (about 9 GB):
+
 ```bash
 tabulaflow benchmark download arcs
 ```
+
+Run five tasks with the structured ambiguity agent and a
+[configured model provider](../models.md#supported-providers):
+
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 <div class="benchmark-heading" markdown="1">
 
