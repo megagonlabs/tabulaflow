@@ -232,6 +232,7 @@ const initializeArcsPage = marker => {
 
   const activeTab = hashTab || tabs.find(tab => tab.getAttribute("aria-selected") === "true")
   if (activeTab?.getAttribute("aria-controls") === "arcs-database") loadArcsDatabases(page, true)
+  if (activeTab?.getAttribute("aria-controls") === "arcs-sample-tasks") loadArcsSamples(page, true)
   if (activeTab) updateArcsTabIndicator(page, activeTab)
 
   const tabsContainer = page.querySelector(".arcs-tabs")
