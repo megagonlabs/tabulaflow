@@ -63,8 +63,8 @@ class OfficialSplitScoreAggregator:
         # unavailable gold databases remain failures in the official score.
         ("spider2-dbt", "test"): (68, "spider2_duckdb_match"),
         ("beaver", "test"): (209, "simple_ex"),
-        ("arcs", "test"): (331, "simple_ex"),
-        ("arcs", "test_unsampled"): (101, "simple_ex"),
+        ("arcs", "test"): (311, "simple_ex"),
+        ("arcs", "base"): (101, "simple_ex"),
         ("ambrosia-s", "test"): (1149, "simple_ex"),
         ("ambrosia-s", "few_shot_examples"): (128, "simple_ex"),
     }

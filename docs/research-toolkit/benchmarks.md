@@ -4,12 +4,12 @@
 | --- | --- | --- | --- |
 | [BIRD-SQL](#bird-sql) | Text-to-SQL | SQLite | `dev`, `dev_20251106`, `train` |
 | [Spider 2.0 Snow](#spider-20-snow) | Text-to-SQL | Snowflake | `test` |
-| [Spider 2.0 Lite](#spider-20-lite) | Text-to-SQL | BigQuery, Snowflake, SQLite | `test` |
+| [Spider 2.0 Lite](#spider-20-lite) | Text-to-SQL | SQLite, Snowflake, BigQuery | `test` |
 | [Spider 2.0 dbt](#spider-20-dbt) | Data transformation | DuckDB | `test` |
 | [Beaver](#beaver) | Text-to-SQL | MySQL | `test` |
-| [ARCS](#arcs) (coming soon) | Ambiguous text-to-SQL | SQLite | `test`, `test_unsampled` |
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
-| [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
+| [CypherBench](#cypherbench) <span class="benchmark-tag benchmark-tag--official">official</span> | Text-to-Cypher | Neo4j | `test`, `train` |
+| [ARCS](#arcs) <span class="benchmark-tag benchmark-tag--official">official</span> <span class="benchmark-tag benchmark-tag--new">new</span> | Ambiguous text-to-SQL | SQLite | `test`, `base` |
 
 Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try-it-yourself).
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
@@ -29,6 +29,8 @@ with `tabulaflow benchmark list`.
 Text-to-SQL questions with supporting evidence and column descriptions over
 SQLite databases. The download includes tasks and databases for all splits;
 `dev` uses the June 2024 release, while `dev_20251106` uses updated annotations.
+Each contains 1,534 questions, while `train` contains 9,428. Download all
+splits (approximately 32 GB):
 
 ```bash
 tabulaflow benchmark download bird-sql
@@ -93,8 +95,9 @@ Run five tasks with a
 
 </div>
 
-Text-to-SQL tasks over Snowflake databases. Download the tasks, schema metadata,
-and reference results:
+Text-to-SQL tasks over Snowflake databases. The `test` split contains 544
+runnable questions. Download the tasks, schema metadata, and reference results
+(approximately 0.8 GB):
 
 ```bash
 tabulaflow benchmark download spider2-snow
@@ -168,8 +171,9 @@ Run five tasks with a
 
 </div>
 
-Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The download includes
-task assets and the local SQLite databases:
+Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The `test` split
+contains 543 runnable questions. Download the task assets and local SQLite
+databases (approximately 2.7 GB):
 
 ```bash
 tabulaflow benchmark download spider2-lite
@@ -270,8 +274,9 @@ Run five tasks against a local SQLite database with a
 
 </div>
 
-Data transformation tasks in dbt projects backed by DuckDB. The download includes
-the projects and their starting and reference databases:
+Data transformation questions in dbt projects backed by DuckDB. The `test`
+split contains 64 runnable projects. Download the projects and their starting
+and reference databases (approximately 4 GB):
 
 ```bash
 tabulaflow benchmark download spider2-dbt
@@ -338,9 +343,10 @@ Run five tasks with a
 
 </div>
 
-Beaver contains enterprise text-to-SQL tasks over MySQL databases. Ensure that
-[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running,
-then download the benchmark and start its databases:
+Beaver contains 209 enterprise text-to-SQL questions in its `test` split over
+MySQL databases. Ensure that [Docker is
+installed](https://docs.docker.com/get-started/get-docker/) and running, then
+download the benchmark (approximately 4.2 GB) and start its databases:
 
 ```bash
 tabulaflow benchmark download beaver
@@ -409,20 +415,6 @@ tabulaflow benchmark stop beaver
 
 <div class="benchmark-heading" markdown="1">
 
-## ARCS
-
-<div class="benchmark-resources" aria-label="ARCS resources">
-  <span class="benchmark-resource benchmark-resource--unavailable">Paper forthcoming</span>
-  <span class="benchmark-resource benchmark-resource--unavailable">Website forthcoming</span>
-  <span class="benchmark-resource benchmark-resource--unavailable">Dataset forthcoming</span>
-</div>
-
-</div>
-
-Coming soon.
-
-<div class="benchmark-heading" markdown="1">
-
 ## AMBROSIA
 
 <div class="benchmark-resources" aria-label="AMBROSIA resources">
@@ -432,7 +424,10 @@ Coming soon.
 
 </div>
 
-Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
+Ambiguous text-to-SQL questions covering scope, attachment, and vagueness. The
+`test` split contains 1,149 questions, and `few_shot_examples` contains 128.
+
+Download the benchmark (approximately 0.1 GB):
 
 ```bash
 tabulaflow benchmark download ambrosia-s
@@ -497,9 +492,11 @@ Run five tasks with a
 
 </div>
 
-Text-to-Cypher tasks over Neo4j property graphs. Ensure that
-[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running.
-Download the benchmark first:
+CypherBench evaluates text-to-Cypher translation across 11 large-scale Neo4j
+property graphs transformed from Wikidata, totaling 7.8 million entities. The
+`train` split contains 8,534 questions, and `test` contains 2,348. Ensure that
+[Docker is installed](https://docs.docker.com/get-started/get-docker/) and
+running, then download the benchmark (approximately 5 GB):
 
 ```bash
 tabulaflow benchmark download cypherbench
@@ -622,6 +619,77 @@ tabulaflow benchmark stop cypherbench --split test
 
 Use `--split train` with `start`, `run`, and `stop` when working with the
 training split.
+
+<div class="benchmark-heading" markdown="1">
+
+## ARCS
+
+<div class="benchmark-resources" aria-label="ARCS resources">
+  <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/arcs">Paper</a>
+  <a class="benchmark-resource" href="../arcs/">Website</a>
+  <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/arcs">Dataset</a>
+</div>
+
+</div>
+
+ARCS (**A**mbiguity **R**esolution **C**orpus for **S**QL) is a text-to-SQL
+benchmark featuring naturally occurring, unconstrained ambiguities over
+real-world databases, with complete annotations of valid ambiguity points,
+interpretations, and SQL queries. The `test` split has 311 end-to-end
+instances with intended resolution; `base` contains the 101 unique questions before sampling the resolution.
+
+Download the tasks and six SQLite databases (approximately 9 GB):
+
+```bash
+tabulaflow benchmark download arcs
+```
+
+Run five tasks with the structured ambiguity agent and a
+[configured model provider](../models.md#supported-providers):
+
+=== "OpenAI"
+
+    ```bash
+    export OPENAI_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
+=== "Anthropic"
+
+    ```bash
+    export ANTHROPIC_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm anthropic:claude-sonnet-5 \
+      --sample-size 5
+    ```
+
+=== "vLLM"
+
+    ```bash
+    export VLLM_BASE_URL="http://127.0.0.1:8000/v1"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm vllm:Qwen/Qwen3-8B \
+      --sample-size 5
+    ```
+
+=== "Fireworks AI"
+
+    ```bash
+    export FIREWORKS_API_KEY="your-api-key"
+
+    tabulaflow benchmark run arcs \
+      --split test \
+      --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --sample-size 5
+    ```
 
 ## Load in Python
 
