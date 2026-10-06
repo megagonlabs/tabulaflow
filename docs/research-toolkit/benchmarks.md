@@ -29,7 +29,8 @@ with `tabulaflow benchmark list`.
 Text-to-SQL questions with supporting evidence and column descriptions over
 SQLite databases. The download includes tasks and databases for all splits;
 `dev` uses the June 2024 release, while `dev_20251106` uses updated annotations.
-Download all splits (approximately 32 GB):
+Each contains 1,534 questions, while `train` contains 9,428. Download all
+splits (approximately 32 GB):
 
 ```bash
 tabulaflow benchmark download bird-sql
@@ -94,8 +95,9 @@ Run five tasks with a
 
 </div>
 
-Text-to-SQL tasks over Snowflake databases. Download the tasks, schema metadata,
-and reference results (approximately 0.8 GB):
+Text-to-SQL tasks over Snowflake databases. The `test` split contains 544
+runnable questions. Download the tasks, schema metadata, and reference results
+(approximately 0.8 GB):
 
 ```bash
 tabulaflow benchmark download spider2-snow
@@ -169,8 +171,9 @@ Run five tasks with a
 
 </div>
 
-Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The download includes
-task assets and the local SQLite databases (approximately 2.7 GB):
+Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The `test` split
+contains 543 runnable questions. Download the task assets and local SQLite
+databases (approximately 2.7 GB):
 
 ```bash
 tabulaflow benchmark download spider2-lite
@@ -271,8 +274,9 @@ Run five tasks against a local SQLite database with a
 
 </div>
 
-Data transformation tasks in dbt projects backed by DuckDB. The download includes
-the projects and their starting and reference databases (approximately 4 GB):
+Data transformation questions in dbt projects backed by DuckDB. The `test`
+split contains 64 runnable projects. Download the projects and their starting
+and reference databases (approximately 4 GB):
 
 ```bash
 tabulaflow benchmark download spider2-dbt
@@ -339,9 +343,10 @@ Run five tasks with a
 
 </div>
 
-Beaver contains enterprise text-to-SQL tasks over MySQL databases. Ensure that
-[Docker is installed](https://docs.docker.com/get-started/get-docker/) and running,
-then download the benchmark (approximately 4.2 GB) and start its databases:
+Beaver contains 209 enterprise text-to-SQL questions in its `test` split over
+MySQL databases. Ensure that [Docker is
+installed](https://docs.docker.com/get-started/get-docker/) and running, then
+download the benchmark (approximately 4.2 GB) and start its databases:
 
 ```bash
 tabulaflow benchmark download beaver
@@ -419,7 +424,8 @@ tabulaflow benchmark stop beaver
 
 </div>
 
-Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
+Ambiguous text-to-SQL questions covering scope, attachment, and vagueness. The
+`test` split contains 1,149 questions, and `few_shot_examples` contains 128.
 
 Download the benchmark (approximately 0.1 GB):
 
@@ -486,11 +492,11 @@ Run five tasks with a
 
 </div>
 
-CypherBench evaluates text-to-Cypher translation with more than 10,000
-question–Cypher pairs across 11 large-scale Neo4j property graphs transformed
-from Wikidata, totaling 7.8 million entities. Ensure that [Docker is
-installed](https://docs.docker.com/get-started/get-docker/) and running, then
-download the benchmark (approximately 5 GB):
+CypherBench evaluates text-to-Cypher translation across 11 large-scale Neo4j
+property graphs transformed from Wikidata, totaling 7.8 million entities. The
+`train` split contains 8,534 questions, and `test` contains 2,348. Ensure that
+[Docker is installed](https://docs.docker.com/get-started/get-docker/) and
+running, then download the benchmark (approximately 5 GB):
 
 ```bash
 tabulaflow benchmark download cypherbench
