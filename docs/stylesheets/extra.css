@@ -1848,7 +1848,7 @@ body {
   table-layout: fixed;
   border: 0;
   border-collapse: collapse;
-  background: transparent;
+  background: #394827;
 }
 
 .md-typeset .arcs-schema-card td {
@@ -2310,11 +2310,11 @@ body {
   min-height: 2.8rem;
   max-height: 300px;
   overflow: auto;
-  background: #e4f4b1;
+  background: var(--tf-card);
 }
 
 .md-typeset .arcs-results-panel {
-  background: white;
+  background: var(--tf-card);
   border: 0;
   border-radius: 10px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -2351,8 +2351,8 @@ body {
   padding: 0.35rem 0.45rem;
   text-align: left;
   white-space: nowrap;
-  border-bottom: 1px solid white;
-  border-right: 1px solid white;
+  border-bottom: 1px solid rgba(161, 193, 59, 0.13);
+  border-right: 1px solid rgba(161, 193, 59, 0.13);
 }
 
 .md-typeset .arcs-results th:last-child,
@@ -2362,19 +2362,19 @@ body {
 
 .md-typeset .arcs-results th {
   position: static;
-  color: #4a5e1a;
+  color: #dceab4;
   font-weight: 600;
-  background: #c7dc74;
+  background: #394827;
 }
 
 .md-typeset .arcs-results td {
-  color: #3d4f14;
-  background: #e4f4b1;
+  color: #cbd2c5;
+  background: #394827;
 }
 
 .md-typeset .arcs-results tbody tr:hover td {
-  color: #3d4f14;
-  background: #d4e89a;
+  color: var(--tf-text);
+  background: #263326;
 }
 
 .md-typeset .arcs-results tbody tr:last-child td {

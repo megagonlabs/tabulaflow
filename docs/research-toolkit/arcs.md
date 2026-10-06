@@ -29,15 +29,15 @@ title: "ARCS: Ambiguity Resolution Corpus for SQL"
 
 <div class="arcs-introduction" markdown="1">
 
-As text-to-SQL systems move beyond demonstrations toward real-world deployment,
-ambiguity in user questions becomes a primary source of errors. These ambiguities
-are often subtle, domain- or data-specific, and can silently cause system outputs
-to deviate from the user's true intent.
-
 ARCS (**A**mbiguity **R**esolution **C**orpus for **S**QL) is a text-to-SQL
 benchmark featuring naturally occurring, unconstrained ambiguities over
 real-world databases, with complete annotations of valid ambiguity points,
 interpretations, and SQL queries.
+
+As text-to-SQL systems move beyond demonstrations toward real-world deployment,
+ambiguity in user questions becomes a primary source of errors. These ambiguities
+are often subtle, domain- or data-specific, and can silently cause system outputs
+to deviate from the user's true intent.
 
 </div>
 
