@@ -60,7 +60,7 @@ Save and restore the result, including its DataFrame and execution metadata:
 --8<-- "tabulaflow/examples/working_with_data.py:serialize"
 ```
 
-After [installing TabulaFlow](index.md#try-it-yourself), run the complete
+After [installing TabulaFlow](quick-start.md#try-it-yourself), run the complete
 example without a database server or API key:
 
 ```bash

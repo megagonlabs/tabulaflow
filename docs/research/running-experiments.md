@@ -9,7 +9,7 @@ tabulaflow benchmark run bird-sql --split dev --sample-size 5
 ```
 
 See [benchmarks](benchmarks.md) for setup and commands for each dataset, or
-complete the [Python quick start](index.md) before building a custom run.
+complete the [Python quick start](quick-start.md) before building a custom run.
 
 ## Save and restore a run
 

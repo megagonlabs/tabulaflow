@@ -94,4 +94,4 @@ research code:
 - [Running experiments](running-experiments.md): scale, save, and compare runs.
 - [Evaluation and analysis](evaluation.md): choose metrics and inspect results.
 - [Extend the toolkit](extending.md): use your own agents, datasets, and metrics.
-- [API reference](api/index.md): look up contracts, fields, and signatures.
+- [API reference](api-reference.md): look up contracts, fields, and signatures.

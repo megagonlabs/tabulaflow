@@ -11,7 +11,7 @@
 | [CypherBench](#cypherbench) <span class="benchmark-tag benchmark-tag--official">official</span> | Text-to-Cypher | Neo4j | `test`, `train` |
 | [ARCS](#arcs) <span class="benchmark-tag benchmark-tag--official">official</span> <span class="benchmark-tag benchmark-tag--new">new</span> | Ambiguous text-to-SQL | SQLite | `test`, `base` |
 
-Run the setup commands after [installing the TabulaFlow tool](index.md#try-it-yourself).
+Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try-it-yourself).
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
 with `tabulaflow benchmark list`.
 
@@ -712,4 +712,4 @@ for a deterministic sample. Filtering precedes sampling.
 
 `dataset.tasks` contains typed tasks. `dataset.db_connectors` maps each selected
 database name to a live connector. Close them in a `finally` block, as shown in
-the [quick start](index.md#example-evaluate-a-full-schema-agent).
+the [quick start](quick-start.md#example-evaluate-a-full-schema-agent).

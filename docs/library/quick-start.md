@@ -29,7 +29,7 @@ building blocks you need:
 
 These building blocks are fully typed and organized into four layers:
 `core <- data <- output <- agents`. See the
-[API reference](api/index.md) for how they fit together.
+[API reference](api-reference.md) for how they fit together.
 
 ## Example: Chat with two data sources
 

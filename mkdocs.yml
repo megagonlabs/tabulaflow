@@ -39,20 +39,20 @@ nav:
   - Connect data: app/connecting-data.md
   - Configuration: app/configuration.md
   - TabulaFlow as a Python Library:
-      - Quick start: library/index.md
+      - Quick start: library/quick-start.md
       - Data connectors: library/data-connectors.md
       - Extraction and enrichment: library/extraction-and-enrichment.md
       - Chat sessions: library/chat-sessions.md
       - Structured outputs: library/structured-outputs.md
       - Custom agents: library/custom-agents.md
       - API reference:
-          - Overview: library/api/index.md
+          - Overview: library/api-reference.md
           - Core: library/api/core.md
           - Data: library/api/data.md
           - Output: library/api/output.md
           - Agents: library/api/agents.md
   - TabulaFlow for Researchers:
-      - Quick start: research/index.md
+      - Quick start: research/quick-start.md
       - Benchmarks: research/benchmarks.md
       - "ARCS: Ambiguous Text-to-SQL": research/arcs.md
       - Agents: research/agents.md
@@ -60,7 +60,7 @@ nav:
       - Evaluation and analysis: research/evaluation.md
       - Extend the toolkit: research/extending.md
       - API reference:
-          - Overview: research/api/index.md
+          - Overview: research/api-reference.md
           - Tasks and runs: research/api/types.md
           - Benchmarks: research/api/benchmarks.md
           - Agents and tools: research/api/agents.md
@@ -73,27 +73,31 @@ plugins:
   - redirects:
       redirect_maps:
         app/index.md: index.md
+        library/index.md: library/quick-start.md
+        library/api/index.md: library/api-reference.md
+        research/index.md: research/quick-start.md
+        research/api/index.md: research/api-reference.md
         data-agent/configuration.md: app/configuration.md
         data-agent/connecting-data.md: app/connecting-data.md
-        python-library/quick-start.md: library/index.md
+        python-library/quick-start.md: library/quick-start.md
         python-library/data-connectors.md: library/data-connectors.md
         python-library/extraction-and-enrichment.md: library/extraction-and-enrichment.md
         python-library/chat-sessions.md: library/chat-sessions.md
         python-library/structured-outputs.md: library/structured-outputs.md
         python-library/custom-agents.md: library/custom-agents.md
-        python-library/api-reference.md: library/api/index.md
+        python-library/api-reference.md: library/api-reference.md
         python-library/api/core.md: library/api/core.md
         python-library/api/data.md: library/api/data.md
         python-library/api/output.md: library/api/output.md
         python-library/api/agents.md: library/api/agents.md
-        research-toolkit/quick-start.md: research/index.md
+        research-toolkit/quick-start.md: research/quick-start.md
         research-toolkit/benchmarks.md: research/benchmarks.md
         research-toolkit/arcs.md: research/arcs.md
         research-toolkit/agents.md: research/agents.md
         research-toolkit/running-experiments.md: research/running-experiments.md
         research-toolkit/evaluation.md: research/evaluation.md
         research-toolkit/extending.md: research/extending.md
-        research-toolkit/api-reference.md: research/api/index.md
+        research-toolkit/api-reference.md: research/api-reference.md
         research-toolkit/api/types.md: research/api/types.md
         research-toolkit/api/benchmarks.md: research/api/benchmarks.md
         research-toolkit/api/agents.md: research/api/agents.md

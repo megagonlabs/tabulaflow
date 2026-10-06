@@ -52,7 +52,7 @@ Inspect the completed turn's token usage and estimated API cost:
 --8<-- "tabulaflow/examples/chat_sessions.py:usage"
 ```
 
-Set [`OPENAI_API_KEY`](index.md#try-it-yourself), then run both turns:
+Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run both turns:
 
 ```bash
 tabulaflow examples run chat-sessions

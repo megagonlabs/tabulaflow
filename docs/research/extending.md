@@ -22,7 +22,7 @@ The same pipeline accepts your agent class directly:
 --8<-- "tabulaflow/examples/table_linking_agent.py:integration"
 ```
 
-After [setting up BIRD-SQL and your API key](index.md#try-it-yourself),
+After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
 run directly:
 
 ```bash

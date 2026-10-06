@@ -102,7 +102,7 @@ building blocks you need:
 
 These building blocks are fully typed and organized into four layers:
 `core <- data <- output <- agents`. See the
-[API reference](https://megagonlabs.github.io/tabulaflow/library/api/) for how they fit together.
+[API reference](https://megagonlabs.github.io/tabulaflow/library/api-reference/) for how they fit together.
 
 ### Quick start
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-[Python library guide](https://megagonlabs.github.io/tabulaflow/library/)
+[Python library guide](https://megagonlabs.github.io/tabulaflow/library/quick-start/)
 
 ## TabulaFlow for Researchers
 
@@ -336,7 +336,7 @@ runs/full-schema/
 Inspect queries, scores, agent trajectories, token usage, and latency without
 rerunning the agent.
 
-[Research toolkit guide](https://megagonlabs.github.io/tabulaflow/research/)
+[Research toolkit guide](https://megagonlabs.github.io/tabulaflow/research/quick-start/)
 
 ## Disclosures
 
