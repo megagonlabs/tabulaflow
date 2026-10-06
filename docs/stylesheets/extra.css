@@ -1810,7 +1810,7 @@ body {
   gap: 0.35rem;
   align-items: center;
   color: white;
-  background: #a1c13b;
+  background: #91ad35;
 }
 
 .md-typeset .arcs-schema-card__header svg {
@@ -2323,7 +2323,7 @@ body {
 .md-typeset .arcs-results-panel .arcs-sample-panel__header {
   padding: 0.3rem 0.45rem;
   color: white;
-  background: #a1c13b;
+  background: #91ad35;
   border-bottom-color: #8aad2f;
 }
 
