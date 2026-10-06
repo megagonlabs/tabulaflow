@@ -1,11 +1,13 @@
 import asyncio
 import importlib
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
 import pydantic_ai
 from pytest import MonkeyPatch
+from rich.console import Console
 from rich.highlighter import NullHighlighter
 from rich.text import Text
 from typer import rich_utils
@@ -18,7 +20,7 @@ from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
 from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol
-from tabulaflow.research.cli import _selected_runtime_databases, console
+from tabulaflow.research.cli import _print_evaluation_summary, _selected_runtime_databases, console
 
 
 def _plain(output: str) -> str:
@@ -303,6 +305,41 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
     )
 
 
+def test_benchmark_summary_compacts_ambiguity_metrics_and_dims_gold_metrics(monkeypatch: MonkeyPatch) -> None:
+    metrics = [
+        "simple_ex",
+        "gold_executable",
+        "ambig_point_stats",
+        "gold_ambig_point_stats",
+        "found_one",
+    ]
+    aggregated = {
+        "simple_ex": {"avg": 0.6},
+        "gold_executable": {"avg": 1.0},
+        "perfect_disambiguation_r": {"avg": 0.8},
+        "perfect_disambiguation_f1": {"avg": 0.4},
+        "gold_num_ambig_points": {"avg": 1.8},
+        "gold_num_interpretation_comb": {"avg": 4.2},
+        "found_one": {"avg": 0.7},
+    }
+
+    output_stream = StringIO()
+    output_console = Console(file=output_stream, force_terminal=True, color_system="standard", highlighter=None)
+    monkeypatch.setattr("tabulaflow.research.cli.console", output_console)
+
+    _print_evaluation_summary(metrics, aggregated)
+
+    output = output_stream.getvalue()
+    plain = _plain(output)
+    assert plain.index("found_one") < plain.index("gold_executable")
+    assert "perfect_disambiguation_r: 0.8" in plain
+    assert "perfect_disambiguation_f1: 0.4" in plain
+    assert "… more metrics in result.json" in plain
+    assert "gold_num_ambig_points: 1.8" in plain
+    assert "ambig_point_stats: N/A" not in plain
+    assert "\x1b[2m" in output
+
+
 def test_benchmark_runtime_databases_are_inferred_from_selected_qids() -> None:
     tasks = [
         SimpleNamespace(qid="movie-1", db="movie"),
@@ -316,9 +353,7 @@ def test_benchmark_runtime_databases_are_inferred_from_selected_qids() -> None:
 
     loader = cast(DatasetLoaderProtocol, SimpleNamespace(get_tasks_async=get_tasks_async))
 
-    selected = asyncio.run(
-        _selected_runtime_databases(loader, "test", None, ["movie-2", "geo-1"], None)
-    )
+    selected = asyncio.run(_selected_runtime_databases(loader, "test", None, ["movie-2", "geo-1"], None))
 
     assert selected == ["movie", "geography"]
 

@@ -1,9 +1,10 @@
 """Command-line interface for research benchmarks."""
 
 import asyncio
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import httpx
 import typer
@@ -30,6 +31,29 @@ _DEFAULT_AGENTS = {
     "spider2-dbt": "dbt_agent",
 }
 _DEFAULT_AGENT = "full_schema"
+
+
+@dataclass(frozen=True)
+class _MetricSummary:
+    keys: tuple[str, ...]
+    has_more: bool = False
+
+
+_COMPOSITE_METRIC_SUMMARIES = {
+    "ambig_point_stats": _MetricSummary(
+        keys=(
+            "perfect_disambiguation_r",
+            "perfect_disambiguation_f1",
+        ),
+        has_more=True,
+    ),
+    "gold_ambig_point_stats": _MetricSummary(
+        keys=(
+            "gold_num_ambig_points",
+            "gold_num_interpretation_comb",
+        ),
+    ),
+}
 
 
 def _get_benchmark(name: str) -> type[DatasetLoaderProtocol]:
@@ -60,6 +84,26 @@ def _print_runtime_endpoints(runtime: BenchmarkRuntime, split: str | None, datab
     console.print(table)
     if runtime.authentication:
         console.print(f"Authentication: {runtime.authentication}")
+
+
+def _print_evaluation_summary(metric_names: list[str], aggregated_metrics: dict[str, Any]) -> None:
+    ordered_names = [name for name in metric_names if not name.startswith("gold_")]
+    ordered_names.extend(name for name in metric_names if name.startswith("gold_"))
+
+    for name in ordered_names:
+        style = "dim" if name.startswith("gold_") else None
+        summary = _COMPOSITE_METRIC_SUMMARIES.get(name)
+        if summary is None:
+            score = aggregated_metrics.get(name, {}).get("avg")
+            console.print(f"{name}: {score if score is not None else 'N/A'}", style=style)
+            continue
+
+        console.print(f"{name}:", style=style)
+        for key in summary.keys:
+            score = aggregated_metrics.get(key, {}).get("avg")
+            console.print(f"  {key}: {score if score is not None else 'N/A'}", style=style)
+        if summary.has_more:
+            console.print("  … more metrics in result.json", style="dim")
 
 
 async def _selected_runtime_databases(
@@ -144,9 +188,7 @@ async def _run_benchmark_async(
 
         console.print()
         console.print(f"[green]Evaluated:[/green] {len(result.tasks)} tasks")
-        for metric in metrics:
-            score = result.aggregated_eval_metrics.get(metric.name, {}).get("avg")
-            console.print(f"{metric.name}: {score if score is not None else 'N/A'}")
+        _print_evaluation_summary([metric.name for metric in metrics], result.aggregated_eval_metrics)
         console.print(f"Saved: {destination}")
         return destination
     finally:
