@@ -29,6 +29,7 @@ with `tabulaflow benchmark list`.
 Text-to-SQL questions with supporting evidence and column descriptions over
 SQLite databases. The download includes tasks and databases for all splits;
 `dev` uses the June 2024 release, while `dev_20251106` uses updated annotations.
+Download all splits (approximately 32 GB):
 
 ```bash
 tabulaflow benchmark download bird-sql
@@ -94,7 +95,7 @@ Run five tasks with a
 </div>
 
 Text-to-SQL tasks over Snowflake databases. Download the tasks, schema metadata,
-and reference results:
+and reference results (approximately 0.8 GB):
 
 ```bash
 tabulaflow benchmark download spider2-snow
@@ -169,7 +170,7 @@ Run five tasks with a
 </div>
 
 Text-to-SQL tasks spanning BigQuery, Snowflake, and SQLite. The download includes
-task assets and the local SQLite databases:
+task assets and the local SQLite databases (approximately 2.7 GB):
 
 ```bash
 tabulaflow benchmark download spider2-lite
@@ -271,7 +272,7 @@ Run five tasks against a local SQLite database with a
 </div>
 
 Data transformation tasks in dbt projects backed by DuckDB. The download includes
-the projects and their starting and reference databases:
+the projects and their starting and reference databases (approximately 4 GB):
 
 ```bash
 tabulaflow benchmark download spider2-dbt
@@ -340,7 +341,7 @@ Run five tasks with a
 
 Beaver contains enterprise text-to-SQL tasks over MySQL databases. Ensure that
 [Docker is installed](https://docs.docker.com/get-started/get-docker/) and running,
-then download the benchmark and start its databases:
+then download the benchmark (approximately 4.2 GB) and start its databases:
 
 ```bash
 tabulaflow benchmark download beaver
@@ -420,6 +421,8 @@ tabulaflow benchmark stop beaver
 
 Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 
+Download the benchmark (approximately 0.1 GB):
+
 ```bash
 tabulaflow benchmark download ambrosia-s
 ```
@@ -487,7 +490,7 @@ CypherBench evaluates text-to-Cypher translation with more than 10,000
 question–Cypher pairs across 11 large-scale Neo4j property graphs transformed
 from Wikidata, totaling 7.8 million entities. Ensure that [Docker is
 installed](https://docs.docker.com/get-started/get-docker/) and running, then
-download the benchmark:
+download the benchmark (approximately 5 GB):
 
 ```bash
 tabulaflow benchmark download cypherbench
@@ -629,7 +632,7 @@ real-world databases, with complete annotations of valid ambiguity points,
 interpretations, and SQL queries. The `test` split has 311 end-to-end
 instances with intended resolution; `base` contains the 101 unique questions before sampling the resolution.
 
-Download the tasks and six SQLite databases (about 9 GB):
+Download the tasks and six SQLite databases (approximately 9 GB):
 
 ```bash
 tabulaflow benchmark download arcs
