@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.research.benchmarks import installation
-from tabulaflow.research.benchmarks import ambrosia_s, beaver, bird_sql, spider2_dbt
+from tabulaflow.research.benchmarks import ambrosia_s, arcs, beaver, bird_sql, spider2_dbt
 from tabulaflow.research.benchmarks import cypherbench
 from tabulaflow.research.benchmarks.installation import (
     BenchmarkInstallation,
@@ -143,12 +143,31 @@ async def test_cypherbench_uses_a_flat_installation_layout(tmp_path: Path, monke
     assert (tmp_path / "test.json").exists()
 
 
-def test_every_public_benchmark_has_an_automatic_installer() -> None:
-    manual = {"arcs"}
+@pytest.mark.asyncio
+async def test_arcs_downloads_the_release_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def snapshot_download(**kwargs: object) -> None:
+        assert kwargs["local_dir"] == tmp_path
+        assert kwargs["revision"] == arcs.ARCS_DATA_REVISION
+        assert kwargs["allow_patterns"] == (
+            "tasks/base_tasks.json",
+            "tasks/intended_query_ids.json",
+            "databases/column_meanings.json",
+            "databases/sqlite/*.sqlite",
+        )
+        (tmp_path / "tasks").mkdir()
+        (tmp_path / "tasks/base_tasks.json").write_text("[]")
 
+    monkeypatch.setattr(arcs, "snapshot_download", snapshot_download)
+
+    await arcs._fetch_arcs(tmp_path, lambda _: None)
+
+    assert (tmp_path / "tasks/base_tasks.json").exists()
+
+
+def test_every_public_benchmark_has_an_automatic_installer() -> None:
     for name in dataset_registry.list_names():
         benchmark = dataset_registry.get_class(name).installation
-        assert (benchmark.fetch is None) == (name in manual)
+        assert benchmark.fetch is not None
         assert benchmark.directory.name == name
 
 

@@ -1,12 +1,58 @@
-import os
 import asyncio
-import json
 import copy
+import json
+import os
+from functools import partial
+from pathlib import Path
 from typing import ClassVar
-from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
+
+from huggingface_hub import snapshot_download
+
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import BenchmarkInstallation
+from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
+
+ARCS_DATA_REVISION = "7fabdb9df6ec18c51ed42519b03f9dea8dee20d3"
+ARCS_DATABASES = (
+    "retails",
+    "professional_basketball",
+    "github_repos",
+    "financial",
+    "codebase_community",
+    "student_club",
+)
+
+
+async def _fetch_arcs(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading benchmark data")
+    download = partial(
+        snapshot_download,
+        repo_id="megagonlabs/arcs",
+        repo_type="dataset",
+        revision=ARCS_DATA_REVISION,
+        local_dir=destination,
+        allow_patterns=(
+            "tasks/base_tasks.json",
+            "tasks/intended_query_ids.json",
+            "databases/column_meanings.json",
+            "databases/sqlite/*.sqlite",
+        ),
+    )
+    await asyncio.to_thread(download)
+
+
+ARCS_INSTALLATION = BenchmarkInstallation(
+    name="arcs",
+    required_paths=(
+        "tasks/base_tasks.json",
+        "tasks/intended_query_ids.json",
+        "databases/column_meanings.json",
+        *(f"databases/sqlite/{database}.sqlite" for database in ARCS_DATABASES),
+    ),
+    fetch=_fetch_arcs,
+)
+
 
 ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:
@@ -109,16 +155,8 @@ ARCS_TAXONOMY = """
 @dataset_registry.register
 class ARCSDatasetLoader:
     name: ClassVar[str] = "arcs"
-    splits: ClassVar[list[str]] = ["test", "test_unsampled"]
-    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
-        name=name,
-        required_paths=(
-            "tasks/tasks_unsampled.json",
-            "tasks/tasks_gold_intended_query_ids.json",
-            "databases/sqlite",
-            "databases/column_meanings.json",
-        ),
-    )
+    splits: ClassVar[list[str]] = ["test", "base"]
+    installation: ClassVar[BenchmarkInstallation] = ARCS_INSTALLATION
     default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
@@ -154,17 +192,10 @@ class ARCSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        return [
-            "retails",
-            "professional_basketball",
-            "github_repos",
-            "financial",
-            "codebase_community",
-            "student_club",
-        ]
+        return list(ARCS_DATABASES)
 
     def _upsample_tasks(self, tasks: list[AmbigNL2QTask]) -> list[AmbigNL2QTask]:
-        with open(os.path.join(self.directory, "tasks", "tasks_gold_intended_query_ids.json"), "r") as f:
+        with open(os.path.join(self.directory, "tasks", "intended_query_ids.json"), "r") as f:
             qid_to_gold_query_ids = json.load(f)
 
         res = []
@@ -190,11 +221,11 @@ class ARCSDatasetLoader:
             dataset_instructions = ARCS_DATASET_INSTRUCTIONS
 
         databases = self.get_databases(split) if databases is None else databases
-        with open(os.path.join(self.directory, "tasks", "tasks_unsampled.json"), "r") as f:
-            tasks = [
-                AmbigNL2QTask.model_validate(dict(**dic, dataset_instructions=dataset_instructions))
-                for dic in json.load(f)
-            ]
+        with open(os.path.join(self.directory, "tasks", "base_tasks.json"), "r") as f:
+            task_data = json.load(f)
+        tasks = [
+            AmbigNL2QTask.model_validate(dict(**task, dataset_instructions=dataset_instructions)) for task in task_data
+        ]
         tasks = [task for task in tasks if task.db in databases]
         if split == "test":
             tasks = self._upsample_tasks(tasks)

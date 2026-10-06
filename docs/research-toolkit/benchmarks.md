@@ -7,7 +7,7 @@
 | [Spider 2.0 Lite](#spider-20-lite) | Text-to-SQL | BigQuery, Snowflake, SQLite | `test` |
 | [Spider 2.0 dbt](#spider-20-dbt) | Data transformation | DuckDB | `test` |
 | [Beaver](#beaver) | Text-to-SQL | MySQL | `test` |
-| [ARCS](#arcs) (coming soon) | Ambiguous text-to-SQL | SQLite | `test`, `test_unsampled` |
+| [ARCS](#arcs) | Ambiguous text-to-SQL | SQLite | `test`, `base` |
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
 | [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
 
@@ -413,13 +413,20 @@ tabulaflow benchmark stop beaver
 
 <div class="benchmark-resources" aria-label="ARCS resources">
   <span class="benchmark-resource benchmark-resource--unavailable">Paper forthcoming</span>
-  <span class="benchmark-resource benchmark-resource--unavailable">Website forthcoming</span>
-  <span class="benchmark-resource benchmark-resource--unavailable">Dataset forthcoming</span>
+  <a class="benchmark-resource" href="arcs.md">Website</a>
+  <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/arcs">Dataset</a>
 </div>
 
 </div>
 
-Coming soon.
+Ambiguous text-to-SQL tasks with complete annotations of ambiguity points,
+valid interpretations, and corresponding SQL queries. The `test` split has
+311 intended-resolution instances; `base` contains the 101 original questions
+before expansion.
+
+```bash
+tabulaflow benchmark download arcs
+```
 
 <div class="benchmark-heading" markdown="1">
 
