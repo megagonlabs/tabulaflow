@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Agents
 
 Build stateful chat agents with structured results and streaming events, or

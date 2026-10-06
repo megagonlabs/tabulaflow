@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Core
 
 Shared types for describing schemas, query results, and media values, plus
