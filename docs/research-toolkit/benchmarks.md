@@ -7,9 +7,9 @@
 | [Spider 2.0 Lite](#spider-20-lite) | Text-to-SQL | BigQuery, Snowflake, SQLite | `test` |
 | [Spider 2.0 dbt](#spider-20-dbt) | Data transformation | DuckDB | `test` |
 | [Beaver](#beaver) | Text-to-SQL | MySQL | `test` |
-| [ARCS](#arcs) | Ambiguous text-to-SQL | SQLite | `test`, `base` |
+| [ARCS](#arcs) <span class="benchmark-tag benchmark-tag--official">official</span> <span class="benchmark-tag benchmark-tag--new">new</span> | Ambiguous text-to-SQL | SQLite | `test`, `base` |
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
-| [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
+| [CypherBench](#cypherbench) <span class="benchmark-tag benchmark-tag--official">official</span> | Text-to-Cypher | Neo4j | `test`, `train` |
 
 Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try-it-yourself).
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
