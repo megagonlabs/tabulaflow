@@ -73,10 +73,12 @@ def test_redact_connect_command_password_preserves_replayable_structure() -> Non
     assert shlex.split(redacted)[-2:] == ["--alias", "graph"]
 
 
-def test_redact_invalid_connect_command_hides_arguments() -> None:
-    redacted, contains_credentials = redact_command_credentials("/connect 'neo4j://alice:secret@example.com")
+def test_redact_invalid_connect_command_preserves_submitted_text() -> None:
+    command = "/connect 'neo4j://alice:secret@example.com"
 
-    assert redacted == "/connect [invalid arguments hidden]"
+    display_text, contains_credentials = redact_command_credentials(command)
+
+    assert display_text == command
     assert contains_credentials is True
 
 
