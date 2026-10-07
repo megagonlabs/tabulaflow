@@ -257,6 +257,7 @@ def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path
         "full_schema",
         None,
         None,
+        None,
         tmp_path,
     )
 
@@ -300,9 +301,36 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
         64,
         "full_schema",
         None,
+        None,
         ["bird_sql_ex", "executable"],
         tmp_path,
     )
+
+
+def test_benchmark_run_accepts_user_simulator_model(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    received: dict[str, object] = {}
+
+    async def fake_run_benchmark_async(*args: object) -> None:
+        received["args"] = args
+
+    monkeypatch.setattr("tabulaflow.research.cli._run_benchmark_async", fake_run_benchmark_async)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "benchmark",
+            "run",
+            "arcs",
+            "--user-simulator-llm",
+            "anthropic:claude-sonnet-5",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    args = cast(tuple[object, ...], received["args"])
+    assert args[-3] == "anthropic:claude-sonnet-5"
 
 
 def test_benchmark_summary_compacts_ambiguity_metrics_and_dims_gold_metrics(monkeypatch: MonkeyPatch) -> None:

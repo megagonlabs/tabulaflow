@@ -60,6 +60,7 @@ async def predict_async(
     few_shot_dataset: NL2QDataset | None = None,
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
+    user_simulator_llm: str | None = None,
 ) -> NL2QRunResult:
     """Run one agent instance per task and collect an experiment result.
 
@@ -74,6 +75,8 @@ async def predict_async(
         few_shot_dataset: Optional examples supplied to compatible agents.
         metric_aggregators: Inference-metric aggregators, or the default.
         verbose: Whether to display progress.
+        user_simulator_llm: Optional model override for simulated user responses
+            on ambiguity tasks.
 
     Returns:
         The collected task outputs, usage, and inference metrics.
@@ -106,11 +109,13 @@ async def predict_async(
                 )
 
             if task.task_type == "ambig":
-                user_simulator = UserSimulator.from_ambig_nl2q_task(
-                    task,
-                    include_history=agent_cls.name == "ambig_simple_sql_agent",
-                    answer_with_multiple_ambig_points=agent_cls.name == "ambig_flat_sql_agent",
-                )
+                simulator_kwargs: dict[str, Any] = {
+                    "include_history": agent_cls.name == "ambig_simple_sql_agent",
+                    "answer_with_multiple_ambig_points": agent_cls.name == "ambig_flat_sql_agent",
+                }
+                if user_simulator_llm is not None:
+                    simulator_kwargs["llm"] = user_simulator_llm
+                user_simulator = UserSimulator.from_ambig_nl2q_task(task, **simulator_kwargs)
                 batch_kwargs.append({"user_simulator": user_simulator})
             else:
                 batch_kwargs.append({})
