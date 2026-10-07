@@ -1,25 +1,17 @@
 # ARCS: Towards Precise Text-to-SQL via Structured Disambiguation
 
-This TabulaFlow repository is the official code repository for
-[ARCS](https://megagonlabs.github.io/tabulaflow/research/arcs/). It
-provides the reference implementation for downloading, running, and evaluating
-the benchmark.
+This TabulaFlow repository is the official code repository for the paper
+[ARCS: Towards Precise Text-to-SQL via Structured Disambiguation](https://megagonlabs.github.io/tabulaflow/research/arcs/). It
+provides the reference implementation for structured dismagiuation and evaluating
+the ARCS benchmark.
 
-## Get started
+[[Website]](https://megagonlabs.github.io/tabulaflow/research/arcs/)  [[Paper]](https://huggingface.co/datasets/megagonlabs/arcs)  [[Dataset]](https://huggingface.co/datasets/megagonlabs/arcs)
 
-Install the TabulaFlow command-line tool, download ARCS, and run a small
-experiment:
+## 🚀 Quick Start
 
-```bash
-uv tool install tabulaflow
-tabulaflow benchmark download arcs
-tabulaflow benchmark run arcs --split test --sample-size 5
-```
+See the [ARCS setup guide](https://megagonlabs.github.io/tabulaflow/research/benchmarks/#arcs).
 
-See the [ARCS setup guide](https://megagonlabs.github.io/tabulaflow/research/benchmarks/#arcs)
-for model-provider configuration and other details.
-
-## Code
+## 💻 Code
 
 - [`benchmarks/arcs.py`](benchmarks/arcs.py): dataset installation, task loading,
   and SQLite connectors
@@ -36,5 +28,8 @@ for model-provider configuration and other details.
 - [`../examples/ambiguity_aware_queries.py`](../examples/ambiguity_aware_queries.py):
   end-to-end Python example
 
-The full dataset, annotations, and SQLite databases are available from the
-[ARCS dataset repository](https://huggingface.co/datasets/megagonlabs/arcs).
+## 📚 Citation
+
+```
+Coming soon
+```
