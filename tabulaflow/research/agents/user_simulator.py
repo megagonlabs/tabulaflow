@@ -19,6 +19,8 @@ from tabulaflow.research.types import (
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.agents.llm import make_agent
 
+DEFAULT_USER_SIMULATOR_LLM = "openai:gpt-4.1-2025-04-14"
+
 CONTROL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
 The task has the following ambiguity points:
@@ -84,7 +86,7 @@ class NLAmbigPoint(BaseModel):
 class UserSimulatorConfig(BaseModel):
     task: str
     ambig_points: list[NLAmbigPoint]
-    llm: str = "openai:gpt-4.1-2025-04-14"
+    llm: str = DEFAULT_USER_SIMULATOR_LLM
     temperature: float = 0.0
     include_history: bool = True
     answer_with_multiple_ambig_points: bool = False
@@ -123,7 +125,7 @@ class UserSimulator:
     def from_ambig_nl2q_task(
         cls,
         task: AmbigNL2QTask,
-        llm: str = "openai:gpt-4.1-2025-04-14",
+        llm: str = DEFAULT_USER_SIMULATOR_LLM,
         temperature: float = 0.0,
         include_history: bool = True,
         answer_with_multiple_ambig_points: bool = False,

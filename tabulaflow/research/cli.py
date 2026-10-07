@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from tabulaflow.research.agents.user_simulator import DEFAULT_USER_SIMULATOR_LLM
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
 from tabulaflow.research.benchmarks.registry import (
     DatasetLoaderProtocol,
@@ -144,7 +145,7 @@ async def _run_benchmark_async(
     agent_cls = agent_registry.get_class(agent_name)
     config_kwargs = {"llm": llm} if llm is not None else {}
     agent_config = agent_cls.config_cls(**config_kwargs)
-    resolved_user_simulator_llm = user_simulator_llm or getattr(agent_config, "llm", None)
+    resolved_user_simulator_llm = user_simulator_llm or DEFAULT_USER_SIMULATOR_LLM
     selected_metric_names = metric_names or benchmark.default_metrics
     metrics = []
     for metric_name in selected_metric_names:
@@ -187,7 +188,7 @@ async def _run_benchmark_async(
             dataset,
             metrics,
             batch_size=batch_size,
-            user_simulator_llm=resolved_user_simulator_llm,
+            user_simulator_llm=user_simulator_llm,
         )
         result.to_directory(str(destination))
 
@@ -306,7 +307,7 @@ def run_benchmark(
     user_simulator_llm: str | None = typer.Option(
         None,
         "--user-simulator-llm",
-        help="Model for simulated ambiguity responses. Defaults to the selected agent model.",
+        help=f"Model for simulated ambiguity responses. Defaults to {DEFAULT_USER_SIMULATOR_LLM}.",
     ),
     metrics: list[str] | None = typer.Option(
         None, "--metric", help="Evaluation metric override. Repeat to select multiple metrics."

@@ -682,6 +682,7 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm anthropic:claude-sonnet-5 \
+      --user-simulator-llm anthropic:claude-sonnet-5 \
       --sample-size 5
     ```
 
@@ -693,6 +694,7 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm vllm:Qwen/Qwen3-8B \
+      --user-simulator-llm vllm:Qwen/Qwen3-8B \
       --sample-size 5
     ```
 
@@ -704,6 +706,7 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --user-simulator-llm fireworks:accounts/fireworks/models/kimi-k3 \
       --sample-size 5
     ```
 
@@ -716,9 +719,11 @@ default:
 | Conversational | `ambig_simple_sql_agent` | Asks successive clarification questions before generating SQL |
 | Flat | `ambig_flat_sql_agent` | Generates complete interpretations and asks the user to select one |
 
-Benchmark runs simulate the user from ARCS annotations. By default, the
-simulator uses the agent model; override it with `--user-simulator-llm` when
-you want a different model.
+Benchmark runs simulate clarification responses from ARCS annotations. The
+simulator uses `openai:gpt-4.1-2025-04-14` by default, matching the paper. The
+non-OpenAI examples above override it so that each requires only one model
+provider. Omit `--user-simulator-llm` to follow the paper setting; this requires
+`OPENAI_API_KEY`.
 
 === "Conversational"
 

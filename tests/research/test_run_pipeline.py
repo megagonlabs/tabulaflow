@@ -1,3 +1,4 @@
+import inspect
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, Mock
@@ -5,6 +6,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from pydantic import BaseModel
 
+from tabulaflow.research.agents.user_simulator import (
+    DEFAULT_USER_SIMULATOR_LLM,
+    UserSimulator,
+    UserSimulatorConfig,
+)
 from tabulaflow.research.metrics.registry import MetricProtocol
 from tabulaflow.research.pipelines import predict as predict_pipeline
 from tabulaflow.research.pipelines import run as run_pipeline
@@ -19,6 +25,14 @@ from tabulaflow.research.types import (
 
 class _AgentConfig(BaseModel):
     pass
+
+
+def test_user_simulator_has_stable_paper_default() -> None:
+    config = UserSimulatorConfig(task="Question", ambig_points=[])
+    factory_default = inspect.signature(UserSimulator.from_ambig_nl2q_task).parameters["llm"].default
+
+    assert config.llm == DEFAULT_USER_SIMULATOR_LLM
+    assert factory_default == DEFAULT_USER_SIMULATOR_LLM
 
 
 @pytest.mark.asyncio
