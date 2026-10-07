@@ -1,5 +1,7 @@
 # Benchmarks
 
+<div class="benchmark-summary" markdown="1">
+
 | Benchmark | Task | Database | Splits |
 | --- | --- | --- | --- |
 | [BIRD-SQL](#bird-sql) | Text-to-SQL | SQLite | `dev`, `dev_20251106`, `train` |
@@ -10,6 +12,8 @@
 | [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
 | [CypherBench](#cypherbench) <span class="benchmark-tag benchmark-tag--official">official</span> | Text-to-Cypher | Neo4j | `test`, `train` |
 | [ARCS](#arcs) <span class="benchmark-tag benchmark-tag--official">official</span> <span class="benchmark-tag benchmark-tag--new">new</span> | Ambiguous text-to-SQL | SQLite | `test`, `base` |
+
+</div>
 
 Run the setup commands after [installing the TabulaFlow tool](quick-start.md#try-it-yourself).
 Data is stored in `~/.tabulaflow/benchmarks/<name>/`. Check local installations
@@ -33,6 +37,8 @@ Each contains 1,534 questions, while `train` contains 9,428. Download all
 splits (approximately 32 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download bird-sql
 ```
 
@@ -108,6 +114,8 @@ runnable questions. Download the tasks, schema metadata, and reference results
 (approximately 0.8 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download spider2-snow
 ```
 
@@ -184,6 +192,8 @@ contains 543 runnable questions. Download the task assets and local SQLite
 databases (approximately 2.7 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download spider2-lite
 ```
 
@@ -287,6 +297,8 @@ split contains 64 runnable projects. Download the projects and their starting
 and reference databases (approximately 4 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download spider2-dbt
 ```
 
@@ -357,6 +369,8 @@ installed](https://docs.docker.com/get-started/get-docker/) and running, then
 download the benchmark (approximately 4.2 GB) and start its databases:
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download beaver
 tabulaflow benchmark start beaver
 ```
@@ -438,6 +452,8 @@ Ambiguous text-to-SQL questions covering scope, attachment, and vagueness. The
 Download the benchmark (approximately 0.1 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download ambrosia-s
 ```
 
@@ -507,6 +523,8 @@ property graphs transformed from Wikidata, totaling 7.8 million entities. The
 running, then download the benchmark (approximately 5 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download cypherbench
 ```
 
@@ -649,6 +667,8 @@ instances with intended resolution; `base` contains the 101 unique questions bef
 Download the tasks and six SQLite databases (approximately 9 GB):
 
 ```bash
+# If TabulaFlow isn't installed yet, run:
+#   uv tool install tabulaflow
 tabulaflow benchmark download arcs
 ```
 
