@@ -737,6 +737,20 @@ the corresponding agent:
       --sample-size 5
     ```
 
+To evaluate SQL generation only (EX<sub>disambiguated</sub>), provide the
+annotated ambiguity points and intended resolutions to Structured
+Disambiguation:
+
+```bash
+tabulaflow benchmark run arcs \
+  --split test \
+  --agent ambig_structured_sql_agent \
+  --use-gold-ambiguity-points \
+  --metric simple_ex \
+  --llm openai:gpt-6-luna \
+  --sample-size 5
+```
+
 ## Load in Python
 
 After setup, choose a loader from the [loader reference](api/benchmarks.md#built-in-loaders).

@@ -129,6 +129,7 @@ async def _run_benchmark_async(
     batch_size: int,
     agent_name: str,
     llm: str | None,
+    use_gold_ambiguity_points: bool,
     user_simulator_llm: str | None,
     metric_names: list[str] | None,
     output_dir: Path | None,
@@ -143,7 +144,11 @@ async def _run_benchmark_async(
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         raise ValueError(f"output path already exists and is not an empty directory: {destination}")
     agent_cls = agent_registry.get_class(agent_name)
-    config_kwargs = {"llm": llm} if llm is not None else {}
+    config_kwargs: dict[str, Any] = {}
+    if llm is not None:
+        config_kwargs["llm"] = llm
+    if use_gold_ambiguity_points:
+        config_kwargs["use_gold_ambiguity_points"] = True
     agent_config = agent_cls.config_cls(**config_kwargs)
     resolved_user_simulator_llm = user_simulator_llm or DEFAULT_USER_SIMULATOR_LLM
     selected_metric_names = metric_names or benchmark.default_metrics
@@ -171,6 +176,13 @@ async def _run_benchmark_async(
     try:
         if not dataset.tasks:
             raise ValueError("no tasks selected")
+        if getattr(agent_config, "use_gold_ambiguity_points", False):
+            unresolved = [task.qid for task in dataset.tasks if not getattr(task, "has_intended_resolution", False)]
+            if unresolved:
+                raise ValueError(
+                    "--use-gold-ambiguity-points requires tasks with intended resolutions; "
+                    f"unavailable for: {', '.join(unresolved[:5])}"
+                )
 
         console.print(f"Benchmark: {name} / {split}")
         console.print(f"Tasks: {len(dataset.tasks)}")
@@ -304,6 +316,11 @@ def run_benchmark(
     batch_size: int = typer.Option(64, "--batch-size", min=1, help="Maximum tasks processed concurrently."),
     agent: str | None = typer.Option(None, "--agent", help="Registered agent override."),
     llm: str | None = typer.Option(None, "--llm", help="Model override for the selected agent."),
+    use_gold_ambiguity_points: bool = typer.Option(
+        False,
+        "--use-gold-ambiguity-points",
+        help="Use annotated ambiguity points and intended resolutions.",
+    ),
     user_simulator_llm: str | None = typer.Option(
         None,
         "--user-simulator-llm",
@@ -329,6 +346,11 @@ def run_benchmark(
         agent_registry.get_class(agent_name)
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="agent") from None
+    if use_gold_ambiguity_points and agent_name != "ambig_structured_sql_agent":
+        raise typer.BadParameter(
+            "--use-gold-ambiguity-points requires --agent ambig_structured_sql_agent",
+            param_hint="use-gold-ambiguity-points",
+        )
     try:
         asyncio.run(
             _run_benchmark_async(
@@ -340,6 +362,7 @@ def run_benchmark(
                 batch_size,
                 agent_name,
                 llm,
+                use_gold_ambiguity_points,
                 user_simulator_llm,
                 metrics,
                 output_dir,
