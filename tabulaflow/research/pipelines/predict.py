@@ -3,13 +3,14 @@ import os
 import shutil
 import time
 from functools import reduce
-from typing import Any, cast
+from typing import Any
 import datetime
 import asyncio
 import logging
 import traceback
 from pydantic import BaseModel
 from tabulaflow.research.agents.registry import agent_registry
+from tabulaflow.research.agents.config import resolve_agent_config
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics import MetricAggregatorProtocol, SimpleInferenceMetricsAggregator
 from tabulaflow.research.pipelines.utils import pprint_dict, validate_run_schema_formatters, tqdm_gather_with_exceptions
@@ -208,7 +209,7 @@ def parse_agent_config(agent_cls: type[Any], args: argparse.Namespace) -> BaseMo
         kwargs["reasoning"] = args.reasoning
     if args.service_tier is not None:
         kwargs["service_tier"] = args.service_tier
-    return cast(BaseModel, agent_cls.config_cls(**kwargs))
+    return resolve_agent_config(agent_cls, kwargs)
 
 
 async def main_async() -> None:
