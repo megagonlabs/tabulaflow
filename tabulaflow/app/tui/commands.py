@@ -73,12 +73,12 @@ def is_registered_command(text: str) -> bool:
 
 
 def redact_command_credentials(text: str) -> tuple[str, bool]:
-    """Return safe display text and whether a command contains a URL password."""
+    """Return display text and whether a command may contain a URL password."""
     try:
         parts = shlex.split(text)
     except ValueError:
         if text.lstrip().lower().startswith("/connect"):
-            return "/connect [invalid arguments hidden]", True
+            return text, True
         return text, False
     if not parts or parts[0].lower() != "/connect":
         return text, False

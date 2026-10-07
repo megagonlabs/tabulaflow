@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,7 @@ class InputSuggestion:
     value: str
     label: str
     description: str = ""
+    continue_completion: bool = False
 
 
 class InputSuggester:
@@ -53,37 +55,104 @@ class InputSuggester:
         if not raw:
             return ()
 
-        tokens = raw.split()
-        partial = tokens[-1] if tokens else raw
-        prompt_prefix = value[: len(value) - len(partial)]
-        path = Path(partial)
-        if partial.endswith("/"):
-            parent = path
-            name_prefix = ""
-        else:
-            parent = path.parent
-            name_prefix = path.name
+        active_token = _active_shell_token(raw)
+        if active_token is None:
+            return ()
+        token_prefix, partial = active_token
+        if not partial:
+            return ()
+        prompt_prefix = f"/connect {token_prefix}"
+        separator = partial.rfind("/")
+        parent_text = partial[: separator + 1]
+        name_prefix = partial[separator + 1 :]
 
         try:
+            parent = Path(parent_text or ".").expanduser()
             entries = sorted(parent.iterdir(), key=lambda entry: entry.name.lower())
-        except OSError:
+        except (OSError, RuntimeError):
             return ()
 
-        files: list[Path] = []
-        directories: list[Path] = []
+        navigation = [
+            f"{parent_text}{name}"
+            for name in (".", "..")
+            if name_prefix in {".", ".."} and name.startswith(name_prefix)
+        ]
+        files: list[str] = []
+        directories: list[str] = []
         for entry in entries:
-            if not entry.name.startswith(name_prefix) or entry.name.startswith(".") or entry.name == name_prefix:
+            if not entry.name.startswith(name_prefix) or entry.name == name_prefix:
                 continue
+            if entry.name.startswith(".") and not name_prefix.startswith("."):
+                continue
+            candidate = f"{parent_text}{entry.name}"
             if entry.is_dir():
-                directories.append(entry)
+                directories.append(candidate)
             elif entry.suffix.lower() in _CONNECTABLE_EXTENSIONS:
-                files.append(entry)
+                files.append(candidate)
 
-        suggestions = [InputSuggestion(value=f"{prompt_prefix}{entry}", label=str(entry)) for entry in files]
+        suggestions = [_directory_suggestion(prompt_prefix, candidate) for candidate in navigation]
         suggestions.extend(
-            InputSuggestion(value=f"{prompt_prefix}{entry}/", label=f"{entry}/") for entry in directories
+            InputSuggestion(value=f"{prompt_prefix}{_encode_shell_token(candidate)}", label=candidate)
+            for candidate in files
         )
+        suggestions.extend(_directory_suggestion(prompt_prefix, candidate) for candidate in directories)
         return tuple(suggestions[:_MAX_PATH_SUGGESTIONS])
+
+
+def _active_shell_token(value: str) -> tuple[str, str] | None:
+    """Return the prefix and decoded final shell token being edited."""
+    token_start = 0
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(value):
+        if quote == "'":
+            if character == quote:
+                quote = None
+            continue
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+        elif quote is not None:
+            if character == quote:
+                quote = None
+        elif character in {'"', "'"}:
+            quote = character
+        elif character.isspace():
+            token_start = index + 1
+
+    if escaped:
+        return None
+    encoded = value[token_start:]
+    if not encoded:
+        return value, ""
+    if quote is not None:
+        encoded += quote
+    try:
+        tokens = shlex.split(encoded)
+    except ValueError:
+        return None
+    if len(tokens) != 1:
+        return None
+    return value[:token_start], tokens[0]
+
+
+def _encode_shell_token(value: str) -> str:
+    try:
+        if shlex.split(value) == [value]:
+            return value
+    except ValueError:
+        pass
+    return shlex.quote(value)
+
+
+def _directory_suggestion(prompt_prefix: str, path: str) -> InputSuggestion:
+    return InputSuggestion(
+        value=f"{prompt_prefix}{_encode_shell_token(path)}/",
+        label=f"{path}/",
+        continue_completion=True,
+    )
 
 
 class InputSuggestionMenu(Static):

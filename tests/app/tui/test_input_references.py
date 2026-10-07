@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import shlex
 
 from pydantic_ai.messages import BinaryContent
 import pytest
@@ -203,6 +204,33 @@ async def test_slash_suggestion_menu_regrows_when_filter_is_deleted(tmp_path: Pa
         assert menu.size.height == 3
 
 
+async def test_accepting_directory_continues_path_completion(tmp_path: Path) -> None:
+    directory = tmp_path / "data files"
+    directory.mkdir()
+    file_path = directory / "sales.csv"
+    file_path.touch()
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test() as pilot:
+        input_bar = app.query_one(HistoryInput)
+        menu = app.query_one(InputSuggestionMenu)
+        input_bar.focus()
+        input_bar.value = f"/connect {tmp_path}/data"
+        input_bar.cursor_position = len(input_bar.value)
+        input_bar.update_suggestion()
+        await pilot.pause()
+
+        await pilot.press("tab")
+
+        assert shlex.split(input_bar.value) == ["/connect", f"{directory}/"]
+        assert [item.label for item in menu.suggestions] == [str(file_path)]
+
+        await pilot.press("tab")
+
+        assert shlex.split(input_bar.value) == ["/connect", str(file_path)]
+        assert not menu.suggestions
+
+
 def test_connect_path_suggestions_include_supported_files_and_directories(tmp_path: Path) -> None:
     (tmp_path / "data.csv").touch()
     (tmp_path / "notes.txt").touch()
@@ -211,6 +239,101 @@ def test_connect_path_suggestions_include_supported_files_and_directories(tmp_pa
     suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/")
 
     assert [item.label for item in suggestions] == [str(tmp_path / "data.csv"), f"{tmp_path / 'nested'}/"]
+
+
+def test_connect_path_suggestions_support_paths_outside_workdir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+    (tmp_path / "data.csv").touch()
+    monkeypatch.chdir(workdir)
+
+    suggestions = InputSuggester().get_suggestions("/connect ../d")
+
+    assert [item.value for item in suggestions] == ["/connect ../data.csv"]
+
+
+def test_connect_path_suggestions_expand_home_without_rewriting_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "data.csv").touch()
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    suggestions = InputSuggester().get_suggestions("/connect ~/")
+
+    assert [item.value for item in suggestions] == ["/connect ~/data.csv"]
+
+
+def test_connect_path_suggestions_preserve_current_directory_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "data.csv").touch()
+    monkeypatch.chdir(tmp_path)
+
+    suggestions = InputSuggester().get_suggestions("/connect ./d")
+
+    assert [item.value for item in suggestions] == ["/connect ./data.csv"]
+
+
+def test_connect_path_suggestions_only_include_hidden_entries_for_explicit_prefix(tmp_path: Path) -> None:
+    (tmp_path / "data.csv").touch()
+    hidden_file = tmp_path / ".data.csv"
+    hidden_file.touch()
+    hidden_directory = tmp_path / ".dataset"
+    hidden_directory.mkdir()
+    suggester = InputSuggester()
+
+    ordinary = suggester.get_suggestions(f"/connect {tmp_path}/")
+    explicit = suggester.get_suggestions(f"/connect {tmp_path}/.d")
+
+    assert [item.label for item in ordinary] == [str(tmp_path / "data.csv")]
+    assert [item.label for item in explicit] == [str(hidden_file), f"{hidden_directory}/"]
+
+
+def test_connect_path_suggestions_complete_dot_navigation(tmp_path: Path) -> None:
+    suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/.")
+
+    assert [item.label for item in suggestions[:2]] == [f"{tmp_path}/./", f"{tmp_path}/../"]
+    assert all(item.continue_completion for item in suggestions[:2])
+
+
+def test_connect_path_suggestions_quote_paths_with_spaces(tmp_path: Path) -> None:
+    directory = tmp_path / "data files"
+    directory.mkdir()
+    (directory / "sales 2026.csv").touch()
+    suggester = InputSuggester()
+
+    directory_suggestion = suggester.get_suggestions(f"/connect {tmp_path}/data")[0]
+    file_suggestion = suggester.get_suggestions(f"{directory_suggestion.value}sa")[0]
+
+    assert directory_suggestion.label == f"{directory}/"
+    assert shlex.split(directory_suggestion.value) == ["/connect", f"{directory}/"]
+    assert file_suggestion.label == str(directory / "sales 2026.csv")
+    assert shlex.split(file_suggestion.value) == ["/connect", str(directory / "sales 2026.csv")]
+
+
+def test_connect_path_suggestions_accept_escaped_spaces(tmp_path: Path) -> None:
+    directory = tmp_path / "data files"
+    directory.mkdir()
+    file_path = directory / "sales.csv"
+    file_path.touch()
+
+    suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/data\\ files/sa")
+
+    assert [item.label for item in suggestions] == [str(file_path)]
+    assert shlex.split(suggestions[0].value) == ["/connect", str(file_path)]
+
+
+@pytest.mark.parametrize("opening_quote", ["'", '"'])
+def test_connect_path_suggestions_accept_incomplete_quoted_paths(tmp_path: Path, opening_quote: str) -> None:
+    file_path = tmp_path / "sales data.csv"
+    file_path.touch()
+
+    suggestions = InputSuggester().get_suggestions(f"/connect {opening_quote}{tmp_path}/sales ")
+
+    assert [item.label for item in suggestions] == [str(file_path)]
+    assert shlex.split(suggestions[0].value) == ["/connect", str(file_path)]
 
 
 def test_suggestion_menu_scrolls_through_a_window_of_eight() -> None:
