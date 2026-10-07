@@ -3,7 +3,7 @@
 
 [🌐 Website](https://megagonlabs.github.io/tabulaflow/research/arcs/) &nbsp;&nbsp; [📄 Paper](https://huggingface.co/datasets/megagonlabs/arcs) &nbsp;&nbsp; [🤗 Dataset](https://huggingface.co/datasets/megagonlabs/arcs)
 
-<img src="../../docs/assets/arcs/structured_disamb.png" width="80%" alt="Conversational and structured disambiguation workflows">
+<img src="../../docs/assets/arcs/structured_disamb.png" width="70%" alt="Conversational and structured disambiguation workflows">
 
 </div>
 
