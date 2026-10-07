@@ -16,6 +16,7 @@ async def run_experiment_async(
     metrics: list[MetricProtocol],
     *,
     batch_size: int = 64,
+    user_simulator_llm: str | None = None,
 ) -> NL2QRunResult:
     """Predict, execute, and evaluate one experiment.
 
@@ -28,16 +29,16 @@ async def run_experiment_async(
         dataset: Loaded tasks and their database connectors.
         metrics: Task-level metrics to compute after query execution.
         batch_size: Maximum tasks processed concurrently. Defaults to 64.
+        user_simulator_llm: Optional model override for simulated user responses
+            on ambiguity tasks.
 
     Returns:
         The predicted, executed, and evaluated run result.
     """
-    result = await predict_async(
-        agent_cls,
-        agent_config,
-        dataset,
-        batch_size=batch_size,
-    )
+    predict_kwargs: dict[str, Any] = {"batch_size": batch_size}
+    if user_simulator_llm is not None:
+        predict_kwargs["user_simulator_llm"] = user_simulator_llm
+    result = await predict_async(agent_cls, agent_config, dataset, **predict_kwargs)
     await execute_async(result, dataset, batch_size=batch_size)
     await evaluate_async(result, dataset, metrics=metrics, batch_size=batch_size)
     return result

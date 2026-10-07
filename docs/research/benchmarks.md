@@ -707,6 +707,39 @@ Run five tasks with the structured ambiguity agent and a
       --sample-size 5
     ```
 
+ARCS supports three disambiguation approaches. The structured agent is the
+default:
+
+| Approach | Agent | Behavior |
+| --- | --- | --- |
+| Structured | `ambig_structured_sql_agent` | Models individual ambiguity points and their interpretations |
+| Conversational | `ambig_simple_sql_agent` | Asks successive clarification questions before generating SQL |
+| Flat | `ambig_flat_sql_agent` | Generates complete interpretations and asks the user to select one |
+
+Benchmark runs simulate the user from ARCS annotations. By default, the
+simulator uses the agent model; override it with `--user-simulator-llm` when
+you want a different model.
+
+=== "Conversational"
+
+    ```bash
+    tabulaflow benchmark run arcs \
+      --split test \
+      --agent ambig_simple_sql_agent \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
+=== "Flat"
+
+    ```bash
+    tabulaflow benchmark run arcs \
+      --split test \
+      --agent ambig_flat_sql_agent \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
 ## Load in Python
 
 After setup, choose a loader from the [loader reference](api/benchmarks.md#built-in-loaders).
