@@ -1482,6 +1482,23 @@ body {
   border-color: rgba(240, 195, 106, 0.35);
 }
 
+.md-typeset .benchmark-summary tbody td:nth-child(2),
+.md-typeset .benchmark-summary tbody td:nth-child(3) {
+  font-size: 0.58rem;
+}
+
+.md-typeset .benchmark-summary th:nth-child(3),
+.md-typeset .benchmark-summary td:nth-child(3) {
+  width: 4rem;
+  min-width: 4rem;
+}
+
+.md-typeset .benchmark-summary th:first-child,
+.md-typeset .benchmark-summary td:first-child {
+  width: 9rem;
+  min-width: 9rem;
+}
+
 .md-typeset .benchmark-heading > h2 {
   flex: 1 1 auto;
 }
