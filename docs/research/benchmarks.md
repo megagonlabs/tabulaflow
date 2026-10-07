@@ -36,6 +36,14 @@ splits (approximately 32 GB):
 tabulaflow benchmark download bird-sql
 ```
 
+!!! tip "Explore the databases with the data agent"
+    To explore a downloaded database, [connect it directly in the TabulaFlow
+    data agent](../app/connecting-data.md#connect-directly):
+
+    ```text
+    /connect ~/.tabulaflow/benchmarks/bird-sql/dev_20240627/dev_databases/financial/financial.sqlite
+    ```
+
 Run five tasks with a
 [configured model provider](../models.md#supported-providers):
 
@@ -536,7 +544,7 @@ The start command prints the selected database URLs:
 
 The username is `neo4j` and the password is `cypherbench`.
 
-!!! tip "Explore with the data agent"
+!!! tip "Explore the graphs with the data agent"
     If you want to explore a running graph, [connect it directly in the TabulaFlow
     data agent](../app/connecting-data.md#connect-directly):
 
@@ -644,7 +652,15 @@ Download the tasks and six SQLite databases (approximately 9 GB):
 tabulaflow benchmark download arcs
 ```
 
-Run five tasks with the structured ambiguity agent and a
+!!! tip "Explore the databases with the data agent"
+    To explore a downloaded database, [connect it directly in the TabulaFlow
+    data agent](../app/connecting-data.md#connect-directly):
+
+    ```text
+    /connect ~/.tabulaflow/benchmarks/arcs/databases/sqlite/professional_basketball.sqlite
+    ```
+
+Run five tasks with Structured Disambiguation, the default ARCS method, and a
 [configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
@@ -666,6 +682,7 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm anthropic:claude-sonnet-5 \
+      --user-simulator-llm anthropic:claude-sonnet-5 \
       --sample-size 5
     ```
 
@@ -677,6 +694,7 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm vllm:Qwen/Qwen3-8B \
+      --user-simulator-llm vllm:Qwen/Qwen3-8B \
       --sample-size 5
     ```
 
@@ -688,8 +706,50 @@ Run five tasks with the structured ambiguity agent and a
     tabulaflow benchmark run arcs \
       --split test \
       --llm fireworks:accounts/fireworks/models/kimi-k3 \
+      --user-simulator-llm fireworks:accounts/fireworks/models/kimi-k3 \
       --sample-size 5
     ```
+
+Omit `--user-simulator-llm` to follow the paper setting, which uses
+`openai:gpt-4.1-2025-04-14` as the user simulator; this requires
+`OPENAI_API_KEY`.
+
+To run Conversational Disambiguation or Unstructured Disambiguation, select
+the corresponding agent:
+
+=== "Conversational Disambiguation"
+
+    ```bash
+    tabulaflow benchmark run arcs \
+      --split test \
+      --agent ambig_simple_sql_agent \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
+=== "Unstructured Disambiguation"
+
+    ```bash
+    tabulaflow benchmark run arcs \
+      --split test \
+      --agent ambig_flat_sql_agent \
+      --llm openai:gpt-6-luna \
+      --sample-size 5
+    ```
+
+To evaluate SQL generation only (EX<sub>disambiguated</sub>), provide the
+annotated ambiguity points and intended resolutions to Structured
+Disambiguation:
+
+```bash
+tabulaflow benchmark run arcs \
+  --split test \
+  --agent ambig_structured_sql_agent \
+  --use-gold-ambiguity-points \
+  --metric simple_ex \
+  --llm openai:gpt-6-luna \
+  --sample-size 5
+```
 
 ## Load in Python
 

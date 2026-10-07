@@ -313,6 +313,9 @@ class AmbigStructuredSQLAgent:
     ) -> StructuredAmbigNL2QTaskOutput:
         t0 = time.time()
 
+        if self.config.use_gold_ambiguity_points and not task.has_intended_resolution:
+            raise ValueError("gold ambiguity points require a task with an intended resolution")
+
         tools = await self._get_tools(db_connector)
 
         ctx = TaskRunContext(
@@ -329,8 +332,10 @@ class AmbigStructuredSQLAgent:
             ambiguity_points = [
                 TypeAdapter(PredAmbiguityPoint).validate_python(ap.model_dump()) for ap in task.gold_ambiguity_points
             ]
-            assert task.gold_intended_query_id is not None
-            pred_intended_query_id = task.gold_intended_query_id.replace("GQRY", "PQRY")
+            gold_intended_query_id = task.gold_intended_query_id
+            if gold_intended_query_id is None:
+                raise ValueError("gold ambiguity points require an intended query")
+            pred_intended_query_id = gold_intended_query_id.replace("GQRY", "PQRY")
         else:
             ambiguity_points = await self._disambiguate_async(ctx)
             pred_intended_query_id = await self._resolve_async(ambiguity_points, user_simulator)
