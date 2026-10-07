@@ -1,6 +1,6 @@
 # ARCS: Towards Precise Text-to-SQL via Structured Disambiguation
 
-[[🌐 Website]](https://megagonlabs.github.io/tabulaflow/research/arcs/)  [[📄 Paper]](https://huggingface.co/datasets/megagonlabs/arcs)  [[🤗 Dataset]](https://huggingface.co/datasets/megagonlabs/arcs)
+[🌐 Website](https://megagonlabs.github.io/tabulaflow/research/arcs/) &nbsp;&nbsp; [📄 Paper](https://huggingface.co/datasets/megagonlabs/arcs) &nbsp;&nbsp; [🤗 Dataset](https://huggingface.co/datasets/megagonlabs/arcs)
 
 <img src="../../docs/assets/arcs/structured_disamb.png" width="80%" alt="Conversational and structured disambiguation workflows">
 
