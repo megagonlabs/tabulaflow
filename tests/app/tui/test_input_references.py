@@ -265,6 +265,39 @@ def test_connect_path_suggestions_expand_home_without_rewriting_it(
     assert [item.value for item in suggestions] == ["/connect ~/data.csv"]
 
 
+def test_connect_path_suggestions_preserve_current_directory_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "data.csv").touch()
+    monkeypatch.chdir(tmp_path)
+
+    suggestions = InputSuggester().get_suggestions("/connect ./d")
+
+    assert [item.value for item in suggestions] == ["/connect ./data.csv"]
+
+
+def test_connect_path_suggestions_only_include_hidden_entries_for_explicit_prefix(tmp_path: Path) -> None:
+    (tmp_path / "data.csv").touch()
+    hidden_file = tmp_path / ".data.csv"
+    hidden_file.touch()
+    hidden_directory = tmp_path / ".dataset"
+    hidden_directory.mkdir()
+    suggester = InputSuggester()
+
+    ordinary = suggester.get_suggestions(f"/connect {tmp_path}/")
+    explicit = suggester.get_suggestions(f"/connect {tmp_path}/.d")
+
+    assert [item.label for item in ordinary] == [str(tmp_path / "data.csv")]
+    assert [item.label for item in explicit] == [str(hidden_file), f"{hidden_directory}/"]
+
+
+def test_connect_path_suggestions_complete_dot_navigation(tmp_path: Path) -> None:
+    suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/.")
+
+    assert [item.label for item in suggestions[:2]] == [f"{tmp_path}/./", f"{tmp_path}/../"]
+    assert all(item.continue_completion for item in suggestions[:2])
+
+
 def test_connect_path_suggestions_quote_paths_with_spaces(tmp_path: Path) -> None:
     directory = tmp_path / "data files"
     directory.mkdir()

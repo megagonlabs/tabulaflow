@@ -62,42 +62,40 @@ class InputSuggester:
         if not partial:
             return ()
         prompt_prefix = f"/connect {token_prefix}"
-        path = Path(partial)
-        if partial.endswith("/"):
-            parent = path
-            name_prefix = ""
-        else:
-            parent = path.parent
-            name_prefix = path.name
+        separator = partial.rfind("/")
+        parent_text = partial[: separator + 1]
+        name_prefix = partial[separator + 1 :]
 
         try:
-            entries = sorted(parent.expanduser().iterdir(), key=lambda entry: entry.name.lower())
+            parent = Path(parent_text or ".").expanduser()
+            entries = sorted(parent.iterdir(), key=lambda entry: entry.name.lower())
         except (OSError, RuntimeError):
             return ()
 
+        navigation = [
+            f"{parent_text}{name}"
+            for name in (".", "..")
+            if name_prefix in {".", ".."} and name.startswith(name_prefix)
+        ]
         files: list[str] = []
         directories: list[str] = []
         for entry in entries:
-            if not entry.name.startswith(name_prefix) or entry.name.startswith(".") or entry.name == name_prefix:
+            if not entry.name.startswith(name_prefix) or entry.name == name_prefix:
                 continue
-            candidate = str(parent / entry.name)
+            if entry.name.startswith(".") and not name_prefix.startswith("."):
+                continue
+            candidate = f"{parent_text}{entry.name}"
             if entry.is_dir():
                 directories.append(candidate)
             elif entry.suffix.lower() in _CONNECTABLE_EXTENSIONS:
                 files.append(candidate)
 
-        suggestions = [
+        suggestions = [_directory_suggestion(prompt_prefix, candidate) for candidate in navigation]
+        suggestions.extend(
             InputSuggestion(value=f"{prompt_prefix}{_encode_shell_token(candidate)}", label=candidate)
             for candidate in files
-        ]
-        suggestions.extend(
-            InputSuggestion(
-                value=f"{prompt_prefix}{_encode_shell_token(candidate)}/",
-                label=f"{candidate}/",
-                continue_completion=True,
-            )
-            for candidate in directories
         )
+        suggestions.extend(_directory_suggestion(prompt_prefix, candidate) for candidate in directories)
         return tuple(suggestions[:_MAX_PATH_SUGGESTIONS])
 
 
@@ -147,6 +145,14 @@ def _encode_shell_token(value: str) -> str:
     except ValueError:
         pass
     return shlex.quote(value)
+
+
+def _directory_suggestion(prompt_prefix: str, path: str) -> InputSuggestion:
+    return InputSuggestion(
+        value=f"{prompt_prefix}{_encode_shell_token(path)}/",
+        label=f"{path}/",
+        continue_completion=True,
+    )
 
 
 class InputSuggestionMenu(Static):
