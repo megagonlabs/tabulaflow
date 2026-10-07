@@ -329,7 +329,8 @@ def test_benchmark_run_accepts_user_simulator_model(monkeypatch: MonkeyPatch, tm
     )
 
     assert result.exit_code == 0
-    assert received["args"][-3] == "anthropic:claude-sonnet-5"
+    args = cast(tuple[object, ...], received["args"])
+    assert args[-3] == "anthropic:claude-sonnet-5"
 
 
 def test_benchmark_summary_compacts_ambiguity_metrics_and_dims_gold_metrics(monkeypatch: MonkeyPatch) -> None:

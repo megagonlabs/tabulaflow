@@ -91,7 +91,7 @@ async def test_predict_uses_user_simulator_model_override(monkeypatch: pytest.Mo
     )
     simulator = object()
     factory = Mock(return_value=simulator)
-    monkeypatch.setattr(predict_pipeline.UserSimulator, "from_ambig_nl2q_task", factory)
+    monkeypatch.setattr(UserSimulator, "from_ambig_nl2q_task", factory)
 
     class Agent:
         name = "ambig_structured_sql_agent"
