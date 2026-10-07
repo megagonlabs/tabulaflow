@@ -103,7 +103,7 @@ to deviate from the user's true intent.
 <div class="arcs-sample-output">
 <section class="arcs-query-panel" aria-labelledby="arcs-sample-sql-heading">
 <div class="arcs-sample-panel__header">
-<h3 id="arcs-sample-sql-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>SQL</h3>
+<h3 id="arcs-sample-sql-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>Gold SQL</h3>
 </div>
 <pre class="arcs-sql"><code data-task-sql></code></pre>
 </section>
