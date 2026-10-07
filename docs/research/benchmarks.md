@@ -36,6 +36,14 @@ splits (approximately 32 GB):
 tabulaflow benchmark download bird-sql
 ```
 
+!!! tip "Explore the databases with the data agent"
+    To explore a downloaded database, [connect it directly in the TabulaFlow
+    data agent](../app/connecting-data.md#connect-directly):
+
+    ```text
+    /connect ~/.tabulaflow/benchmarks/bird-sql/dev_20240627/dev_databases/financial/financial.sqlite
+    ```
+
 Run five tasks with a
 [configured model provider](../models.md#supported-providers):
 
@@ -536,7 +544,7 @@ The start command prints the selected database URLs:
 
 The username is `neo4j` and the password is `cypherbench`.
 
-!!! tip "Explore with the data agent"
+!!! tip "Explore the graphs with the data agent"
     If you want to explore a running graph, [connect it directly in the TabulaFlow
     data agent](../app/connecting-data.md#connect-directly):
 
@@ -643,6 +651,14 @@ Download the tasks and six SQLite databases (approximately 9 GB):
 ```bash
 tabulaflow benchmark download arcs
 ```
+
+!!! tip "Explore the databases with the data agent"
+    To explore a downloaded database, [connect it directly in the TabulaFlow
+    data agent](../app/connecting-data.md#connect-directly):
+
+    ```text
+    /connect ~/.tabulaflow/benchmarks/arcs/databases/sqlite/professional_basketball.sqlite
+    ```
 
 Run five tasks with the structured ambiguity agent and a
 [configured model provider](../models.md#supported-providers):
