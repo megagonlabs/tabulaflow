@@ -417,7 +417,10 @@ class HistoryInput(TextArea):
             suggestion = menu.selected
             self.value = suggestion.value
             self.cursor_position = len(self.value)
-            menu.dismiss()
+            if suggestion.continue_completion:
+                self.update_suggestion()
+            else:
+                menu.dismiss()
             return
         if self.text or self._empty_tab_completion is None:
             return

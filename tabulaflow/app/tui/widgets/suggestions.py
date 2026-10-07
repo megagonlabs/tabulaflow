@@ -24,6 +24,7 @@ class InputSuggestion:
     value: str
     label: str
     description: str = ""
+    continue_completion: bool = False
 
 
 class InputSuggester:
@@ -90,7 +91,11 @@ class InputSuggester:
             for candidate in files
         ]
         suggestions.extend(
-            InputSuggestion(value=f"{prompt_prefix}{_encode_shell_token(candidate)}/", label=f"{candidate}/")
+            InputSuggestion(
+                value=f"{prompt_prefix}{_encode_shell_token(candidate)}/",
+                label=f"{candidate}/",
+                continue_completion=True,
+            )
             for candidate in directories
         )
         return tuple(suggestions[:_MAX_PATH_SUGGESTIONS])

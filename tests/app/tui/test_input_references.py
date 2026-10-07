@@ -204,6 +204,33 @@ async def test_slash_suggestion_menu_regrows_when_filter_is_deleted(tmp_path: Pa
         assert menu.size.height == 3
 
 
+async def test_accepting_directory_continues_path_completion(tmp_path: Path) -> None:
+    directory = tmp_path / "data files"
+    directory.mkdir()
+    file_path = directory / "sales.csv"
+    file_path.touch()
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test() as pilot:
+        input_bar = app.query_one(HistoryInput)
+        menu = app.query_one(InputSuggestionMenu)
+        input_bar.focus()
+        input_bar.value = f"/connect {tmp_path}/data"
+        input_bar.cursor_position = len(input_bar.value)
+        input_bar.update_suggestion()
+        await pilot.pause()
+
+        await pilot.press("tab")
+
+        assert shlex.split(input_bar.value) == ["/connect", f"{directory}/"]
+        assert [item.label for item in menu.suggestions] == [str(file_path)]
+
+        await pilot.press("tab")
+
+        assert shlex.split(input_bar.value) == ["/connect", str(file_path)]
+        assert not menu.suggestions
+
+
 def test_connect_path_suggestions_include_supported_files_and_directories(tmp_path: Path) -> None:
     (tmp_path / "data.csv").touch()
     (tmp_path / "notes.txt").touch()
