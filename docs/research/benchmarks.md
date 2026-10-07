@@ -714,8 +714,8 @@ Omit `--user-simulator-llm` to follow the paper setting, which uses
 `openai:gpt-4.1-2025-04-14` as the user simulator; this requires
 `OPENAI_API_KEY`.
 
-To run Conversational Disambiguation or Unstructured Disambiguation (flat),
-select the corresponding agent:
+To run Conversational Disambiguation or Unstructured Disambiguation, select
+the corresponding agent:
 
 === "Conversational Disambiguation"
 
@@ -727,7 +727,7 @@ select the corresponding agent:
       --sample-size 5
     ```
 
-=== "Unstructured Disambiguation (flat)"
+=== "Unstructured Disambiguation"
 
     ```bash
     tabulaflow benchmark run arcs \
