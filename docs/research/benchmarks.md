@@ -660,7 +660,7 @@ tabulaflow benchmark download arcs
     /connect ~/.tabulaflow/benchmarks/arcs/databases/sqlite/professional_basketball.sqlite
     ```
 
-Run five tasks with the structured ambiguity agent and a
+Run five tasks with Structured Disambiguation, the default ARCS method, and a
 [configured model provider](../models.md#supported-providers):
 
 === "OpenAI"
@@ -710,22 +710,14 @@ Run five tasks with the structured ambiguity agent and a
       --sample-size 5
     ```
 
-ARCS supports three disambiguation approaches. The structured agent is the
-default:
-
-| Approach | Agent | Behavior |
-| --- | --- | --- |
-| Structured | `ambig_structured_sql_agent` | Models individual ambiguity points and their interpretations |
-| Conversational | `ambig_simple_sql_agent` | Asks successive clarification questions before generating SQL |
-| Flat | `ambig_flat_sql_agent` | Generates complete interpretations and asks the user to select one |
-
-Benchmark runs simulate clarification responses from ARCS annotations. The
-simulator uses `openai:gpt-4.1-2025-04-14` by default, matching the paper. The
-non-OpenAI examples above override it so that each requires only one model
-provider. Omit `--user-simulator-llm` to follow the paper setting; this requires
+Omit `--user-simulator-llm` to follow the paper setting, which uses
+`openai:gpt-4.1-2025-04-14` as the user simulator; this requires
 `OPENAI_API_KEY`.
 
-=== "Conversational"
+To run Conversational Disambiguation or Unstructured Disambiguation (flat),
+select the corresponding agent:
+
+=== "Conversational Disambiguation"
 
     ```bash
     tabulaflow benchmark run arcs \
@@ -735,7 +727,7 @@ provider. Omit `--user-simulator-llm` to follow the paper setting; this requires
       --sample-size 5
     ```
 
-=== "Flat"
+=== "Unstructured Disambiguation (flat)"
 
     ```bash
     tabulaflow benchmark run arcs \
