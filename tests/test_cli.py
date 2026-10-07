@@ -256,7 +256,7 @@ def test_benchmark_run_defaults_to_full_split(monkeypatch: MonkeyPatch, tmp_path
         64,
         "full_schema",
         None,
-        {},
+        False,
         None,
         None,
         tmp_path,
@@ -302,7 +302,7 @@ def test_benchmark_run_supports_task_database_and_metric_selection(monkeypatch: 
         64,
         "full_schema",
         None,
-        {},
+        False,
         None,
         ["bird_sql_ex", "executable"],
         tmp_path,
@@ -335,7 +335,7 @@ def test_benchmark_run_accepts_user_simulator_model(monkeypatch: MonkeyPatch, tm
     assert args[-3] == "anthropic:claude-sonnet-5"
 
 
-def test_benchmark_run_accepts_validated_agent_options(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+def test_benchmark_run_accepts_gold_ambiguity_points(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     received: dict[str, object] = {}
 
     async def fake_run_benchmark_async(*args: object) -> None:
@@ -350,10 +350,6 @@ def test_benchmark_run_accepts_validated_agent_options(monkeypatch: MonkeyPatch,
             "run",
             "arcs",
             "--use-gold-ambiguity-points",
-            "--agent-option",
-            "query_for_intended_only=false",
-            "--agent-option",
-            "use_gold_ambiguity_points=false",
             "--output-dir",
             str(tmp_path),
         ],
@@ -361,46 +357,24 @@ def test_benchmark_run_accepts_validated_agent_options(monkeypatch: MonkeyPatch,
 
     assert result.exit_code == 0
     args = cast(tuple[object, ...], received["args"])
-    assert args[-4] == {"query_for_intended_only": False, "use_gold_ambiguity_points": True}
+    assert args[-4] is True
 
 
-def test_benchmark_run_rejects_unknown_agent_option(tmp_path: Path) -> None:
+def test_benchmark_run_rejects_gold_ambiguity_points_for_other_agents(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
         [
             "benchmark",
             "run",
-            "arcs",
-            "--agent-option",
-            "use_gold_disambiguation=true",
+            "bird-sql",
+            "--use-gold-ambiguity-points",
             "--output-dir",
             str(tmp_path),
         ],
     )
 
     assert result.exit_code == 2
-    assert "unknown configuration option" in _plain(result.output)
-    assert "use_gold_ambiguity_points" in _plain(result.output)
-
-
-def test_benchmark_run_loads_agent_config_file(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-    received: dict[str, object] = {}
-
-    async def fake_run_benchmark_async(*args: object) -> None:
-        received["args"] = args
-
-    monkeypatch.setattr("tabulaflow.research.cli._run_benchmark_async", fake_run_benchmark_async)
-    config = tmp_path / "agent.json"
-    config.write_text('{"max_steps": 12, "query_for_intended_only": false}')
-
-    result = CliRunner().invoke(
-        app,
-        ["benchmark", "run", "arcs", "--agent-config", str(config), "--output-dir", str(tmp_path / "run")],
-    )
-
-    assert result.exit_code == 0
-    args = cast(tuple[object, ...], received["args"])
-    assert args[-4] == {"max_steps": 12, "query_for_intended_only": False}
+    assert "requires --agent ambig_structured_sql_agent" in _plain(result.output)
 
 
 def test_benchmark_summary_compacts_ambiguity_metrics_and_dims_gold_metrics(monkeypatch: MonkeyPatch) -> None:

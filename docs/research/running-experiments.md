@@ -11,29 +11,6 @@ tabulaflow benchmark run bird-sql --split dev --sample-size 5
 See [benchmarks](benchmarks.md) for setup and commands for each dataset, or
 complete the [Python quick start](quick-start.md) before building a custom run.
 
-## Configure an agent
-
-Common settings have dedicated options such as `--llm`. For less common
-agent-specific settings, repeat `--agent-option` with `NAME=VALUE`:
-
-```bash
-tabulaflow benchmark run arcs \
-  --agent ambig_structured_sql_agent \
-  --agent-option query_for_intended_only=false \
-  --agent-option max_steps=80
-```
-
-Values accept JSON booleans, numbers, lists, and objects. Unknown options fail
-against the selected agent's configuration model. For reusable configurations,
-put the same fields in a JSON object and pass its path:
-
-```bash
-tabulaflow benchmark run arcs --agent-config structured-agent.json
-```
-
-Dedicated command-line options override `--agent-option`, which overrides the
-configuration file.
-
 ## Save and restore a run
 
 Save predictions to inspect or evaluate them later without rerunning the agent.

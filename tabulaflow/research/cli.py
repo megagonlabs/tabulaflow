@@ -1,7 +1,6 @@
 """Command-line interface for research benchmarks."""
 
 import asyncio
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +13,6 @@ from rich.table import Table
 from rich.text import Text
 
 from tabulaflow.research.agents.user_simulator import DEFAULT_USER_SIMULATOR_LLM
-from tabulaflow.research.agents.config import resolve_agent_config
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
 from tabulaflow.research.benchmarks.registry import (
     DatasetLoaderProtocol,
@@ -34,33 +32,6 @@ _DEFAULT_AGENTS = {
     "spider2-dbt": "dbt_agent",
 }
 _DEFAULT_AGENT = "full_schema"
-
-
-def _load_agent_config(path: Path | None) -> dict[str, Any]:
-    if path is None:
-        return {}
-    try:
-        data = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"could not read agent configuration from {path}: {error}") from error
-    if not isinstance(data, dict):
-        raise ValueError(f"agent configuration in {path} must be a JSON object")
-    return data
-
-
-def _parse_agent_options(options: list[str] | None) -> dict[str, Any]:
-    values: dict[str, Any] = {}
-    for option in options or []:
-        name, separator, raw_value = option.partition("=")
-        if not separator or not name:
-            raise ValueError(f"agent option must use NAME=VALUE: {option!r}")
-        if name in values:
-            raise ValueError(f"agent option provided more than once: {name}")
-        try:
-            values[name] = json.loads(raw_value)
-        except json.JSONDecodeError:
-            values[name] = raw_value
-    return values
 
 
 @dataclass(frozen=True)
@@ -158,7 +129,7 @@ async def _run_benchmark_async(
     batch_size: int,
     agent_name: str,
     llm: str | None,
-    agent_config_overrides: dict[str, Any],
+    use_gold_ambiguity_points: bool,
     user_simulator_llm: str | None,
     metric_names: list[str] | None,
     output_dir: Path | None,
@@ -173,10 +144,12 @@ async def _run_benchmark_async(
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         raise ValueError(f"output path already exists and is not an empty directory: {destination}")
     agent_cls = agent_registry.get_class(agent_name)
-    config_kwargs = dict(agent_config_overrides)
+    config_kwargs: dict[str, Any] = {}
     if llm is not None:
         config_kwargs["llm"] = llm
-    agent_config = resolve_agent_config(agent_cls, config_kwargs)
+    if use_gold_ambiguity_points:
+        config_kwargs["use_gold_ambiguity_points"] = True
+    agent_config = agent_cls.config_cls(**config_kwargs)
     resolved_user_simulator_llm = user_simulator_llm or DEFAULT_USER_SIMULATOR_LLM
     selected_metric_names = metric_names or benchmark.default_metrics
     metrics = []
@@ -343,13 +316,9 @@ def run_benchmark(
     batch_size: int = typer.Option(64, "--batch-size", min=1, help="Maximum tasks processed concurrently."),
     agent: str | None = typer.Option(None, "--agent", help="Registered agent override."),
     llm: str | None = typer.Option(None, "--llm", help="Model override for the selected agent."),
-    agent_config: Path | None = typer.Option(None, "--agent-config", help="JSON file with agent configuration."),
-    agent_options: list[str] | None = typer.Option(
-        None, "--agent-option", help="Agent configuration as NAME=VALUE. Repeat for multiple options."
-    ),
-    use_gold_ambiguity_points: bool | None = typer.Option(
-        None,
-        "--use-gold-ambiguity-points/--no-use-gold-ambiguity-points",
+    use_gold_ambiguity_points: bool = typer.Option(
+        False,
+        "--use-gold-ambiguity-points",
         help="Use annotated ambiguity points and intended resolutions.",
     ),
     user_simulator_llm: str | None = typer.Option(
@@ -374,20 +343,14 @@ def run_benchmark(
     from tabulaflow.research.agents import agent_registry
 
     try:
-        agent_cls = agent_registry.get_class(agent_name)
+        agent_registry.get_class(agent_name)
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="agent") from None
-    try:
-        agent_config_overrides = _load_agent_config(agent_config)
-        agent_config_overrides.update(_parse_agent_options(agent_options))
-        if use_gold_ambiguity_points is not None:
-            agent_config_overrides["use_gold_ambiguity_points"] = use_gold_ambiguity_points
-        validation_values = dict(agent_config_overrides)
-        if llm is not None:
-            validation_values["llm"] = llm
-        resolve_agent_config(agent_cls, validation_values)
-    except ValueError as error:
-        raise typer.BadParameter(str(error), param_hint="agent configuration") from None
+    if use_gold_ambiguity_points and agent_name != "ambig_structured_sql_agent":
+        raise typer.BadParameter(
+            "--use-gold-ambiguity-points requires --agent ambig_structured_sql_agent",
+            param_hint="use-gold-ambiguity-points",
+        )
     try:
         asyncio.run(
             _run_benchmark_async(
@@ -399,7 +362,7 @@ def run_benchmark(
                 batch_size,
                 agent_name,
                 llm,
-                agent_config_overrides,
+                use_gold_ambiguity_points,
                 user_simulator_llm,
                 metrics,
                 output_dir,
