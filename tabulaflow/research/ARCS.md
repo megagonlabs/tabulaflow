@@ -1,11 +1,16 @@
-# ARCS: Towards Precise Text-to-SQL via Structured Disambiguation
+<div align="center">
+<h1 align="center">ARCS: Towards Precise Text-to-SQL via Structured Disambiguation</h1>
+
+[🌐 Website](https://megagonlabs.github.io/tabulaflow/research/arcs/) &nbsp;&nbsp; [📄 Paper](https://arxiv.org/pdf/2610.09396) &nbsp;&nbsp; [🤗 Dataset](https://huggingface.co/datasets/megagonlabs/arcs)
+
+<img src="../../docs/assets/arcs/structured_disamb.png" width="70%" alt="Conversational and structured disambiguation workflows">
+
+</div>
 
 This TabulaFlow repository is the official code repository for the paper
 [ARCS: Towards Precise Text-to-SQL via Structured Disambiguation](https://megagonlabs.github.io/tabulaflow/research/arcs/). It
 provides the reference implementation for structured dismagiuation and evaluating
 the ARCS benchmark.
-
-[[Website]](https://megagonlabs.github.io/tabulaflow/research/arcs/)  [[Paper]](https://arxiv.org/pdf/2610.09396)  [[Dataset]](https://huggingface.co/datasets/megagonlabs/arcs)
 
 ## 🚀 Quick Start
 
