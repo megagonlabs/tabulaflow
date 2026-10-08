@@ -1,7 +1,7 @@
 # ARCS: Towards Precise Text-to-SQL via Structured Disambiguation
 
 This TabulaFlow repository is the official code repository for the paper
-[ARCS: Towards Precise Text-to-SQL via Structured Disambiguation](https://arxiv.org/pdf/2610.09396). It
+[ARCS: Towards Precise Text-to-SQL via Structured Disambiguation](https://megagonlabs.github.io/tabulaflow/research/arcs/). It
 provides the reference implementation for structured dismagiuation and evaluating
 the ARCS benchmark.
 
