@@ -71,6 +71,7 @@ editing files — like Claude Code does, though data work is what you lead with.
     parameter.
   - "Costco" can mean in-store purchase only or include purchases through third-party platforms like Instacart.
   Ambiguities are data- and domain- specific. Ground them using the database context when identifying ambiguities.
+  Skip ambiguities that are trivial or have one overwhelmingly conventional interpretation.
 
 ## How-to guides
 
