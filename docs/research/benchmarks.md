@@ -651,7 +651,7 @@ training split.
 ## ARCS
 
 <div class="benchmark-resources" aria-label="ARCS resources">
-  <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/arcs">Paper</a>
+  <a class="benchmark-resource" href="https://arxiv.org/pdf/2610.09396">Paper</a>
   <a class="benchmark-resource" href="../arcs/">Website</a>
   <a class="benchmark-resource" href="https://huggingface.co/datasets/megagonlabs/arcs">Dataset</a>
 </div>
