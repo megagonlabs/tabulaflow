@@ -558,76 +558,76 @@ body {
   content: none;
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .c,
-.md-typeset :is(.highlight, .arcs-sql) .ch,
-.md-typeset :is(.highlight, .arcs-sql) .cm,
-.md-typeset :is(.highlight, .arcs-sql) .cp,
-.md-typeset :is(.highlight, .arcs-sql) .cpf,
-.md-typeset :is(.highlight, .arcs-sql) .c1,
-.md-typeset :is(.highlight, .arcs-sql) .cs {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .c,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .ch,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .cm,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .cp,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .cpf,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .c1,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .cs {
   color: var(--tf-code-comment);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .k,
-.md-typeset :is(.highlight, .arcs-sql) .kc,
-.md-typeset :is(.highlight, .arcs-sql) .kd,
-.md-typeset :is(.highlight, .arcs-sql) .kn,
-.md-typeset :is(.highlight, .arcs-sql) .kp,
-.md-typeset :is(.highlight, .arcs-sql) .kr,
-.md-typeset :is(.highlight, .arcs-sql) .kt,
-.md-typeset :is(.highlight, .arcs-sql) .ow {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .k,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kc,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kd,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kn,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kp,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kr,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .kt,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .ow {
   color: var(--tf-code-keyword);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .s,
-.md-typeset :is(.highlight, .arcs-sql) .sa,
-.md-typeset :is(.highlight, .arcs-sql) .sb,
-.md-typeset :is(.highlight, .arcs-sql) .sc,
-.md-typeset :is(.highlight, .arcs-sql) .dl,
-.md-typeset :is(.highlight, .arcs-sql) .sd,
-.md-typeset :is(.highlight, .arcs-sql) .s1,
-.md-typeset :is(.highlight, .arcs-sql) .s2,
-.md-typeset :is(.highlight, .arcs-sql) .se,
-.md-typeset :is(.highlight, .arcs-sql) .sh,
-.md-typeset :is(.highlight, .arcs-sql) .si,
-.md-typeset :is(.highlight, .arcs-sql) .sr,
-.md-typeset :is(.highlight, .arcs-sql) .ss,
-.md-typeset :is(.highlight, .arcs-sql) .sx {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .s,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sa,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sb,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sc,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .dl,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sd,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .s1,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .s2,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .se,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sh,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .si,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sr,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .ss,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .sx {
   color: var(--tf-code-string);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .m,
-.md-typeset :is(.highlight, .arcs-sql) .mb,
-.md-typeset :is(.highlight, .arcs-sql) .mf,
-.md-typeset :is(.highlight, .arcs-sql) .mh,
-.md-typeset :is(.highlight, .arcs-sql) .mi,
-.md-typeset :is(.highlight, .arcs-sql) .mo,
-.md-typeset :is(.highlight, .arcs-sql) .il {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .m,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .mb,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .mf,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .mh,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .mi,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .mo,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .il {
   color: var(--tf-code-number);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .nf,
-.md-typeset :is(.highlight, .arcs-sql) .fm {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nf,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .fm {
   color: var(--tf-code-function);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .nb,
-.md-typeset :is(.highlight, .arcs-sql) .nc {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nb,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nc {
   color: var(--tf-code-type);
 }
 
-.md-typeset :is(.highlight, .arcs-sql) .n,
-.md-typeset :is(.highlight, .arcs-sql) .na,
-.md-typeset :is(.highlight, .arcs-sql) .nd,
-.md-typeset :is(.highlight, .arcs-sql) .ne,
-.md-typeset :is(.highlight, .arcs-sql) .ni,
-.md-typeset :is(.highlight, .arcs-sql) .nl,
-.md-typeset :is(.highlight, .arcs-sql) .nn,
-.md-typeset :is(.highlight, .arcs-sql) .no,
-.md-typeset :is(.highlight, .arcs-sql) .nt,
-.md-typeset :is(.highlight, .arcs-sql) .nv,
-.md-typeset :is(.highlight, .arcs-sql) .o,
-.md-typeset :is(.highlight, .arcs-sql) .p {
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .n,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .na,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nd,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .ne,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .ni,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nl,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nn,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .no,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nt,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .nv,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .o,
+.md-typeset :is(.highlight, .arcs-sql, .trajectory-code) .p {
   color: var(--tf-code-text);
 }
 
@@ -911,11 +911,18 @@ body {
 }
 
 .md-typeset .trajectory-call .trajectory-code {
+  --tf-code-text: #bdc0c4;
+  --tf-code-comment: #7f8286;
+  --tf-code-keyword: #659cc5;
+  --tf-code-function: #7dbfca;
+  --tf-code-string: #84b695;
+  --tf-code-number: #b491c2;
+  --tf-code-type: #d7b291;
   max-height: 13rem;
   margin: 0;
   overflow: auto;
   padding: 0.5rem;
-  color: var(--tf-text-dim);
+  color: var(--tf-code-text);
   font-size: 0.43rem;
   line-height: 1.55;
   background: transparent;
@@ -943,6 +950,13 @@ body {
 
 .md-typeset .trajectory-call--patch .trajectory-code {
   max-height: 26rem;
+}
+
+.md-typeset .trajectory-added {
+  display: inline-block;
+  width: 100%;
+  color: var(--tf-code-string);
+  background: rgba(95, 175, 135, 0.095);
 }
 
 .md-typeset .trajectory-call .md-code__button {
