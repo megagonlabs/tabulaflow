@@ -168,14 +168,14 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-card trajectory-card--tabulaflow" markdown="1">
 
-### TabulaFlow <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">189 tokens</span>
+<div class="trajectory-harness-label">TabulaFlow <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">189 tokens</span></div>
 
 <div class="trajectory-call trajectory-call--source" markdown="1">
 
-<div class="trajectory-call__header"><span>01</span><code>create_parameterized_source</code></div>
+<div class="trajectory-call__header"><code>create_parameterized_source</code></div>
 
 <pre class="trajectory-code no-copy"><code>parameters: <span class="p">[{</span><span class="nt">"kind"</span><span class="p">:</span><span class="s2">"choice"</span><span class="p">,</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"nyc_scope"</span><span class="p">,</span><span class="nt">"label"</span><span class="p">:</span><span class="s2">"Borough scope"</span><span class="p">,</span><span class="nt">"choices"</span><span class="p">:[{</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"all"</span><span class="p">,</span><span class="nt">"label"</span><span class="p">:</span><span class="s2">"All boroughs"</span><span class="p">},{</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"manhattan"</span><span class="p">,</span><span class="nt">"label"</span><span class="p">:</span><span class="s2">"Manhattan only"</span><span class="p">}]},{</span><span class="nt">"kind"</span><span class="p">:</span><span class="s2">"number"</span><span class="p">,</span><span class="nt">"id"</span><span class="p">:</span><span class="s2">"nyc_min_area"</span><span class="p">,</span><span class="nt">"label"</span><span class="p">:</span><span class="s2">"Minimum zone area (×10⁻⁶ source units)"</span><span class="p">,</span><span class="nt">"min"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">"max"</span><span class="p">:</span><span class="mi">1000</span><span class="p">,</span><span class="nt">"step"</span><span class="p">:</span><span class="mi">25</span><span class="p">,</span><span class="nt">"default"</span><span class="p">:</span><span class="mi">0</span><span class="p">}]</span>
-
+---
 <span class="k">SELECT</span><span class="w"> </span><span class="n">borough</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nyc_taxi_zones</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">shape_area</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000000</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="err">{{</span><span class="w"> </span><span class="n">nyc_min_area</span><span class="w"> </span><span class="err">}}</span>
@@ -187,7 +187,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><span>02</span><code>render_chart</code><span class="trajectory-call__filename">source=S1</span></div>
+<div class="trajectory-call__header"><code>render_chart</code><span class="trajectory-call__filename">source=S1</span></div>
 
 <pre class="trajectory-code no-copy"><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="p">,</span>
@@ -203,11 +203,14 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-card trajectory-card--codex" markdown="1">
 
-### Codex <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">2,768 tokens</span>
+<div class="trajectory-harness-label">Codex <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">2,768 tokens</span></div>
+
+<details class="trajectory-preparation" markdown="1">
+<summary><span class="trajectory-preparation__show">Show 2 tool calls</span><span class="trajectory-preparation__hide">Hide 2 tool calls</span></summary>
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><span>01</span><code>exec_command</code></div>
+<div class="trajectory-call__header"><code>exec_command</code></div>
 
 <pre class="trajectory-code no-copy"><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">'upload/sample(1).sqlite'</span><span class="p">)</span>
@@ -220,7 +223,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><span>02</span><code>exec_command</code></div>
+<div class="trajectory-call__header"><code>exec_command</code></div>
 
 <pre class="trajectory-code no-copy"><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">'upload/sample(1).sqlite'</span><span class="p">)</span>
@@ -229,9 +232,11 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 </div>
 
+</details>
+
 <div class="trajectory-call trajectory-call--patch" markdown="1">
 
-<div class="trajectory-call__header"><span>03</span><code>apply_patch</code><span class="trajectory-call__filename">taxi-zone-borough-counts.html</span></div>
+<div class="trajectory-call__header"><code>apply_patch</code><span class="trajectory-call__filename">taxi-zone-borough-counts.html</span></div>
 
 <pre class="trajectory-code no-copy"><code>*** Begin Patch
 *** Add File: taxi-zone-borough-counts.html

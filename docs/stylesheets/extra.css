@@ -864,9 +864,10 @@ body {
   font-size: 0.62rem;
 }
 
-.md-typeset .trajectory-card h3 {
+.md-typeset .trajectory-harness-label {
   margin: 0 0 0.65rem;
   font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .md-typeset .trajectory-token-count {
@@ -874,6 +875,47 @@ body {
   color: var(--tf-text-muted);
   font-size: 0.65rem;
   font-weight: 400;
+}
+
+.md-typeset details.trajectory-preparation {
+  margin: 0 0 0.3rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.md-typeset details.trajectory-preparation > summary {
+  margin: 0;
+  padding: 0;
+  color: var(--tf-text-muted);
+  background: transparent;
+  font-size: 0.5rem;
+  display: list-item;
+  list-style: disclosure-closed inside;
+  cursor: pointer;
+}
+
+.md-typeset details.trajectory-preparation[open] > summary {
+  list-style-type: disclosure-open;
+}
+
+.md-typeset .trajectory-preparation__hide,
+.md-typeset .trajectory-preparation[open] .trajectory-preparation__show {
+  display: none;
+}
+
+.md-typeset .trajectory-preparation[open] .trajectory-preparation__hide {
+  display: inline;
+}
+
+.md-typeset details.trajectory-preparation > summary::before,
+.md-typeset details.trajectory-preparation > summary::after {
+  display: none;
+}
+
+.md-typeset .trajectory-preparation .trajectory-call {
+  margin: 0.3rem 0;
 }
 
 .md-typeset .trajectory-call {
