@@ -64,7 +64,7 @@ const initializeDemoGallery = gallery => {
   if (tab) selectDemo(gallery, tab)
 }
 
-window.addEventListener("hashchange", () => {
+location$.subscribe(() => {
   const anchor = document.getElementById(location.hash.slice(1))
   const gallery = anchor?.closest(".demo-gallery")
   const tab = gallery ? tabForDemoHash(gallery) : null
