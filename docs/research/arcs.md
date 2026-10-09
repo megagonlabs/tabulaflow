@@ -23,6 +23,10 @@ title: "ARCS: Ambiguity Resolution Corpus for SQL"
         <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
         Dataset
       </a>
+      <a class="arcs-resource" href="../../#demo-disambiguation">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 4 20 12 6 20"></polygon></svg>
+        Demo
+      </a>
       <a class="arcs-resource" href="../benchmarks/#arcs">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="10 8 14 12 10 16"></polyline></svg>
         Get Started

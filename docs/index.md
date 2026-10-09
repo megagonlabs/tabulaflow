@@ -24,46 +24,52 @@ Like a general-purpose coding agent, TabulaFlow can also write code, run shell
 commands, and browse the web.
 
 <div class="demo-gallery" id="demo-gallery">
+  <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
   <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
   <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
   <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
   <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-tab-research" aria-selected="true" data-anchor-id="demo-research"
+    <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" data-anchor-id="demo-disambiguation"
+      data-title="Get Precise Data via Interactive Disambiguation"
+      data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
+      data-type="Structured disambiguation"
+      data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
+    <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" data-anchor-id="demo-research"
       data-title="Build a Research Paper Database"
       data-description="Build a comprehensive, structured database of conference papers on a research topic."
       data-type="Research workflow"
       data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
-    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
-      data-title="Ask Your Database Anything"
-      data-description="Connect a database and ask TabulaFlow to introduce and explore it."
-      data-type="Database workflow"
-      data-video-src="assets/demos/chat-to-a-database.mp4">Ask Your Database Anything</button>
     <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" data-anchor-id="demo-travel"
       data-title="Plan a trip on a map"
       data-description="Find museums, add neighborhood boundaries, and map a walking route."
       data-type="Mapping workflow"
       data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
-    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
-      data-title="Explore a multimodal Hugging Face dataset"
-      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-      data-type="Data browsing workflow"
-      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
+    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
+      data-title="Chat to a Bioinformatics MySQL db"
+      data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
+      data-type="Database workflow"
+      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
     <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" data-anchor-id="demo-wikidata"
       data-title="Query and Visualize Graphs"
       data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
       data-type="Knowledge graph workflow"
       data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
+    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
+      data-title="Explore a multimodal Hugging Face dataset"
+      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+      data-type="Data browsing workflow"
+      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
   </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-research">
+  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
     <video class="demo-gallery__video" controls preload="metadata"
-      src="assets/demos/find-research-papers.mp4" aria-label="TabulaFlow research papers demo"></video>
+      src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
     <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
       <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Research workflow</span>
-        <strong>Build a Research Paper Database</strong>
-        <span>Build a comprehensive, structured database of conference papers on a research topic.</span>
+        <span class="media-placeholder__type">Structured disambiguation</span>
+        <strong>Get Precise Data via Interactive Disambiguation</strong>
+        <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
       </div>
       <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
     </figure>
@@ -99,30 +105,52 @@ databases with DBeaver or Neo4j Browser, work with Hugging Face datasets or
 Wikidata, or conduct deep research with structured
 datasets.
 
-- **Interactive visualization.** Create charts, maps, and relationship graphs
+<ul>
+<li><strong>Interactive visualization.</strong> Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-  [Map demo](#demo-travel){ .inline-cta } ·
-  [Graph demo](#demo-wikidata){ .inline-cta } ·
-  [Research papers demo](#demo-research){ .inline-cta } ·
-  [Database demo](#demo-database){ .inline-cta }
-- **Multimodal data browsing.** Browse databases or Hugging Face datasets
+  <div class="demo-links">
+    <a class="demo-cta" href="#demo-disambiguation">Disambiguation demo</a>
+    <a class="demo-cta" href="#demo-travel">Map demo</a>
+    <a class="demo-cta" href="#demo-wikidata">Graph demo</a>
+    <a class="demo-cta" href="#demo-research">Research papers demo</a>
+    <a class="demo-cta" href="#demo-database">MySQL demo</a>
+  </div>
+</li>
+<li><strong>Structured disambiguation for precise answer.</strong> Get precise data and answer when there is
+  ambiguity via interactive structured disambiguation proposed in the
+  <a href="research/arcs/">ARCS paper</a>.
+  <div class="demo-links">
+    <a class="demo-cta" href="#demo-disambiguation">Disambiguation demo</a>
+  </div>
+</li>
+<li><strong>Multimodal data browsing.</strong> Browse databases or Hugging Face datasets
   directly (no LLM needed). View images, PDFs, and other media directly inside
   tables, or ask an agent to analyze them.
-  [Hugging Face demo](#demo-hugging-face){ .inline-cta }
-- **Cross-source analysis.** Combine files and databases in a local workspace
-  without changing the original sources.
-- **Large-scale dataset construction.** Combine multiple sources and turn
+  <div class="demo-links">
+    <a class="demo-cta" href="#demo-hugging-face">Hugging Face demo</a>
+  </div>
+</li>
+<li><strong>Cross-source analysis.</strong> Combine files and databases in a local workspace
+  without changing the original sources.</li>
+<li><strong>Large-scale dataset construction.</strong> Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
-  [Research paper database demo](#demo-research){ .inline-cta }
-- **Agentic data enrichment.** Enrich each row with an agent that can browse
+  <div class="demo-links">
+    <a class="demo-cta" href="#demo-research">Research paper database demo</a>
+  </div>
+</li>
+<li><strong>Agentic data enrichment.</strong> Enrich each row with an agent that can browse
   the web, query connected databases, and return typed results. Process many
   rows concurrently.
-  [Research paper database demo](#demo-research){ .inline-cta } ·
-  [Map demo](#demo-travel){ .inline-cta }
-- **Parallel browser use.** TabulaFlow's browser harness lets agents interact
+  <div class="demo-links">
+    <a class="demo-cta" href="#demo-research">Research paper database demo</a>
+    <a class="demo-cta" href="#demo-travel">Map demo</a>
+  </div>
+</li>
+<li><strong>Parallel browser use.</strong> TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
-  pages that require clicks and forms.
+  pages that require clicks and forms.</li>
+</ul>
 
 
 ## How does TabulaFlow work?
