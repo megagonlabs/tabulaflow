@@ -13,6 +13,7 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
   visualization specifications. TabulaFlow handles data resolution and
   rendering, so the agent never wastes tokens embedding data values or writing HTML
   to create visual artifacts.
+  [See the comparison](#how-does-tabulaflow-work){ .inline-cta }
 - **Human ergonomics.** Data provenance is automatically tracked: each
   visualization exposes its underlying data table, and each table exposes the
   query that produced it.
@@ -157,7 +158,7 @@ datasets.
 
 TabulaFlow's agent harness is optimized for data tasks. It handles data resolution, styling, and provenance tracking
 automatically so the agent doesn't need to. It also does not require shell or filesystem access. The comparison below
-shows how it creates an interactive chart alongside a typical coding-agent
+shows how it creates an [interactive chart](#demo-disambiguation) alongside a typical coding-agent
 harness:
 
 <div class="trajectory-comparison" markdown="1">
