@@ -21,7 +21,7 @@ from textual.widget import Widget
 from textual.worker import Worker
 from textual.widgets import Button, Static
 
-from tabulaflow.agents.llm import model_label, provider_label
+from tabulaflow.agents.llm import model_label
 from tabulaflow.app.tui.commands import (
     CommandResult,
     HuggingFaceSubsetSelection,
@@ -192,21 +192,28 @@ def _is_model_request_failure(chain: tuple[BaseException, ...]) -> bool:
     return any(type(error).__module__.partition(".")[0] in provider_modules for error in chain)
 
 
+def _model_provider_suffix(model: str | None) -> str:
+    if model is None:
+        return ""
+    provider, separator, _ = model.partition(":")
+    return f" ({provider})" if separator else ""
+
+
 def _format_agent_turn_failure(error: Exception, *, model: str | None = None) -> str:
     """Return a safe, actionable turn failure message."""
     chain = _exception_chain(error)
-    provider = provider_label(model) if model is not None else "Model provider"
+    provider_suffix = _model_provider_suffix(model)
     is_model_failure = _is_model_request_failure(chain)
     status_code = _http_status_code(chain) if is_model_failure else None
     if status_code is not None:
-        return f"{provider} request failed (HTTP {status_code}): {_http_failure_detail(status_code)}"
+        return f"Model provider{provider_suffix} request failed (HTTP {status_code}): {_http_failure_detail(status_code)}"
 
     names = {type(item).__name__ for item in chain}
     is_timeout = any(isinstance(item, TimeoutError) for item in chain) or bool(
         names.intersection({"APITimeoutError", "ConnectTimeout", "ReadTimeout", "TimeoutException", "WriteTimeout"})
     )
     if is_model_failure and is_timeout:
-        return f"{provider} request timed out after retries. Try again."
+        return f"Model provider{provider_suffix} request timed out after retries. Try again."
     connection_error_names = {
         "APIConnectionError",
         "ClientConnectionError",
@@ -220,12 +227,15 @@ def _format_agent_turn_failure(error: Exception, *, model: str | None = None) ->
         names.intersection(connection_error_names)
     )
     if is_model_failure and is_connection_error:
-        return f"Couldn’t connect to {provider}. Check your network, proxy, and provider endpoint, then retry."
+        return (
+            f"Couldn’t connect to model provider{provider_suffix}. "
+            "Check your network, proxy, and provider endpoint, then retry."
+        )
 
     message = _sanitize_exception_message(error)
     if model is not None and is_model_failure:
         detail = message or f"{type(error).__name__}."
-        return f"{provider} request failed: {detail}"
+        return f"Model provider{provider_suffix} request failed: {detail}"
     if message:
         return message
     return f"{type(error).__name__}."

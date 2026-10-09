@@ -44,7 +44,6 @@ __all__ = [
     "make_agent",
     "make_model_settings",
     "model_label",
-    "provider_label",
     "uses_openai_responses",
 ]
 
@@ -66,38 +65,6 @@ def model_label(model: str) -> str:
     _, separator, name = model.partition(":")
     label = (name if separator else model).rsplit("/", 1)[-1]
     return re.sub(r"-(?:\d{4}-\d{2}-\d{2}|\d{8})$", "", label)
-
-
-_PROVIDER_LABELS = {
-    "anthropic": "Anthropic",
-    "azure": "Azure OpenAI",
-    "bedrock": "AWS Bedrock",
-    "bedrock-mantle": "AWS Bedrock",
-    "deepseek": "DeepSeek",
-    "fireworks": "Fireworks AI",
-    "google": "Google AI",
-    "google-cloud": "Google Vertex AI",
-    "google-gla": "Google AI",
-    "google-vertex": "Google Vertex AI",
-    "huggingface": "Hugging Face",
-    "ollama": "Ollama",
-    "openai": "OpenAI",
-    "openai-responses": "OpenAI",
-    "openrouter": "OpenRouter",
-    "together": "Together AI",
-    "vllm": "vLLM",
-    "xai": "xAI",
-}
-
-
-def provider_label(model: str) -> str:
-    """Return a display label for the provider namespace in a model identifier."""
-    provider, separator, _ = model.partition(":")
-    if not separator:
-        return "Model provider"
-    if label := _PROVIDER_LABELS.get(provider):
-        return label
-    return provider.replace("-", " ").title()
 
 
 def uses_openai_responses(model: str) -> bool:
