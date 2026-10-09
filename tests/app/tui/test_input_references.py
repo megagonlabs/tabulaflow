@@ -34,6 +34,27 @@ def test_build_chat_input_preserves_text_and_image_order(tmp_path: Path) -> None
     assert input_bar.build_chat_input("old [Image #2]") == "old [Image #2]"
 
 
+def test_build_display_text_expands_paste_and_keeps_image_marker(tmp_path: Path) -> None:
+    input_bar = HistoryInput(tmp_path / "history.jsonl")
+    paste_id = input_bar._register_paste("pasted\ntext")
+    image = BinaryContent(b"image", media_type="image/png")
+    input_bar._active_images[3] = image
+
+    display = input_bar.build_display_text(f"before [Image #3] after [Pasted text #{paste_id} +2 lines]")
+
+    assert display == "before [Image #3] after pasted\ntext"
+
+
+def test_build_display_text_caps_large_pastes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(input_module, "_MAX_PASTE_DISPLAY_CHARS", 10)
+    input_bar = HistoryInput(tmp_path / "history.jsonl")
+    paste_id = input_bar._register_paste("x" * 30)
+
+    display = input_bar.build_display_text(f"[Pasted text #{paste_id} +1 lines]")
+
+    assert display == "x" * 10 + "\n\n... (truncated to 10 of 30 chars)"
+
+
 def test_input_cursor_is_steady(tmp_path: Path) -> None:
     assert not HistoryInput(tmp_path / "history.jsonl").cursor_blink
 
