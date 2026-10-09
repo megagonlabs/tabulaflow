@@ -145,9 +145,97 @@ def _sanitize_exception_message(error: Exception) -> str:
     return message
 
 
-def _format_agent_turn_failure(error: Exception) -> str:
-    """Return a sanitized turn failure message, falling back to its type."""
+def _exception_chain(error: Exception) -> tuple[BaseException, ...]:
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        chain.append(current)
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return tuple(chain)
+
+
+def _http_status_code(chain: tuple[BaseException, ...]) -> int | None:
+    for error in chain:
+        status_code = getattr(error, "status_code", None)
+        if isinstance(status_code, int) and not isinstance(status_code, bool) and 100 <= status_code <= 599:
+            return status_code
+    return None
+
+
+def _http_failure_detail(status_code: int) -> str:
+    details = {
+        400: "The request was rejected. Check the model and request settings.",
+        401: "Authentication failed. Check your credentials.",
+        403: "Access was denied. Check your account and model permissions.",
+        404: "The model or endpoint was not found. Check your configuration.",
+        408: "The request timed out. Try again.",
+        409: "The request conflicted with the provider state. Try again.",
+        413: "The request was too large. Reduce its size and try again.",
+        422: "The request was invalid. Check the model and request settings.",
+        429: "Rate limit exceeded. Wait and retry.",
+    }
+    if detail := details.get(status_code):
+        return detail
+    if status_code >= 500:
+        return "The service is temporarily unavailable. Try again shortly."
+    return "The request failed."
+
+
+def _is_model_request_failure(chain: tuple[BaseException, ...]) -> bool:
+    from pydantic_ai.exceptions import ModelAPIError
+
+    if any(isinstance(error, ModelAPIError) for error in chain):
+        return True
+    provider_modules = {"anthropic", "botocore", "google", "openai"}
+    return any(type(error).__module__.partition(".")[0] in provider_modules for error in chain)
+
+
+def _model_provider_suffix(model: str | None) -> str:
+    if model is None:
+        return ""
+    provider, separator, _ = model.partition(":")
+    return f" ({provider})" if separator else ""
+
+
+def _format_agent_turn_failure(error: Exception, *, model: str | None = None) -> str:
+    """Return a safe, actionable turn failure message."""
+    chain = _exception_chain(error)
+    provider_suffix = _model_provider_suffix(model)
+    is_model_failure = _is_model_request_failure(chain)
+    status_code = _http_status_code(chain) if is_model_failure else None
+    if status_code is not None:
+        return f"Model provider{provider_suffix} request failed (HTTP {status_code}): {_http_failure_detail(status_code)}"
+
+    names = {type(item).__name__ for item in chain}
+    is_timeout = any(isinstance(item, TimeoutError) for item in chain) or bool(
+        names.intersection({"APITimeoutError", "ConnectTimeout", "ReadTimeout", "TimeoutException", "WriteTimeout"})
+    )
+    if is_model_failure and is_timeout:
+        return f"Model provider{provider_suffix} request timed out after retries. Try again."
+    connection_error_names = {
+        "APIConnectionError",
+        "ClientConnectionError",
+        "ConnectError",
+        "NetworkError",
+        "ProxyError",
+        "ServerDisconnectedError",
+        "gaierror",
+    }
+    is_connection_error = any(isinstance(item, ConnectionError) for item in chain) or bool(
+        names.intersection(connection_error_names)
+    )
+    if is_model_failure and is_connection_error:
+        return (
+            f"Couldn’t connect to model provider{provider_suffix}. "
+            "Check your network, proxy, and provider endpoint, then retry."
+        )
+
     message = _sanitize_exception_message(error)
+    if model is not None and is_model_failure:
+        detail = message or f"{type(error).__name__}."
+        return f"Model provider{provider_suffix} request failed: {detail}"
     if message:
         return message
     return f"{type(error).__name__}."
@@ -1318,7 +1406,8 @@ class TabulaflowApp(App[None]):
             # Build the detail as plain text (not interpolated into markup) so a
             # ``[...]`` in the exception message can't be parsed as a markup tag.
             error_text = Text.from_markup(f"[{ERROR}]Agent turn failed:[/] ")
-            error_text.append(_format_agent_turn_failure(e))
+            config = self._llm_config.config
+            error_text.append(_format_agent_turn_failure(e, model=config.main.model if config is not None else None))
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.follow_new_content()
