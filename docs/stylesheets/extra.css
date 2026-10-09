@@ -855,9 +855,9 @@ body {
 }
 
 .md-typeset .trajectory-question__icon {
-  flex: 0 0 0.8rem;
-  width: 0.8rem;
-  height: 0.8rem;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
   margin-top: 0.1rem;
   fill: none;
   stroke: var(--tf-text-muted);
@@ -970,6 +970,17 @@ body {
   color: inherit;
   background: transparent;
   font-size: inherit;
+}
+
+.md-typeset .trajectory-agent-icon {
+  flex: 0 0 0.7rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  fill: none;
+  stroke: var(--tf-text-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .md-typeset .trajectory-call__filename {

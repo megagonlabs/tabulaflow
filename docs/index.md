@@ -174,7 +174,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call trajectory-call--source" markdown="1">
 
-<div class="trajectory-call__header"><code>create_parameterized_source</code><span class="trajectory-call__filename">→ S1</span></div>
+<div class="trajectory-call__header"><svg class="trajectory-agent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg><code>create_parameterized_source</code><span class="trajectory-call__filename">→ S1</span></div>
 
 <pre class="trajectory-code no-copy"><code><span class="k">SELECT</span><span class="w"> </span><span class="n">borough</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nyc_taxi_zones</span>
@@ -191,7 +191,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><code>render_chart</code><span class="trajectory-call__filename">source=S1</span></div>
+<div class="trajectory-call__header"><svg class="trajectory-agent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg><code>render_chart</code><span class="trajectory-call__filename">source=S1</span></div>
 
 <pre class="trajectory-code no-copy"><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"mark"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="p">,</span>
@@ -214,7 +214,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><code>exec_command</code></div>
+<div class="trajectory-call__header"><svg class="trajectory-agent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg><code>exec_command</code></div>
 
 <pre class="trajectory-code no-copy"><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">'upload/sample(1).sqlite'</span><span class="p">)</span>
@@ -227,7 +227,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><code>exec_command</code></div>
+<div class="trajectory-call__header"><svg class="trajectory-agent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg><code>exec_command</code></div>
 
 <pre class="trajectory-code no-copy"><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">'upload/sample(1).sqlite'</span><span class="p">)</span>
@@ -240,7 +240,7 @@ all/Manhattan-only choice control and a minimum-zone-area slider.
 
 <div class="trajectory-call trajectory-call--patch" markdown="1">
 
-<div class="trajectory-call__header"><code>apply_patch</code><span class="trajectory-call__filename">taxi-zone-borough-counts.html</span></div>
+<div class="trajectory-call__header"><svg class="trajectory-agent-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg><code>apply_patch</code><span class="trajectory-call__filename">taxi-zone-borough-counts.html</span></div>
 
 <pre class="trajectory-code no-copy"><code>*** Begin Patch
 *** Add File: taxi-zone-borough-counts.html
