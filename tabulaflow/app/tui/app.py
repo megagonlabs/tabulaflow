@@ -1145,6 +1145,8 @@ class TabulaflowApp(App[None]):
         chat_log = self.query_one("#chat-log", ChatLog)
         is_command = isinstance(question, str) and is_registered_command(question)
         visible_text = redact_command_credentials(display_text)[0] if is_command else display_text
+        if input_bar is not None:
+            visible_text = input_bar.build_display_text(visible_text)
         user_msg = UserMessage(visible_text)
         interrupted = False
         if input_bar is not None:

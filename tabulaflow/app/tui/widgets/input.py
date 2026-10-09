@@ -35,6 +35,7 @@ _HISTORY_COMPACTION_RATIO = 0.8
 _HISTORY_LOCK_TIMEOUT_SECONDS = 1
 _MAX_INLINE_PASTE_LINES = 5
 _MAX_INLINE_PASTE_CHARS = 1000
+_MAX_PASTE_DISPLAY_CHARS = 20_000
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,15 @@ def _should_collapse_paste(text: str) -> bool:
     logical_text = text.rstrip("\n")
     line_count = logical_text.count("\n") + 1
     return line_count > _MAX_INLINE_PASTE_LINES or len(text) > _MAX_INLINE_PASTE_CHARS
+
+
+def _cap_paste_display(text: str) -> str:
+    if len(text) <= _MAX_PASTE_DISPLAY_CHARS:
+        return text
+    return (
+        text[:_MAX_PASTE_DISPLAY_CHARS]
+        + f"\n\n... (truncated to {_MAX_PASTE_DISPLAY_CHARS:,} of {len(text):,} chars)"
+    )
 
 
 class HistoryInput(TextArea):
@@ -581,6 +591,27 @@ class HistoryInput(TextArea):
             if any(isinstance(item, BinaryContent) for item in content)
             else "".join(item for item in content if isinstance(item, str))
         )
+
+    def build_display_text(self, text: str) -> str:
+        """Expand paste references into their payloads for the transcript.
+
+        Image markers are kept as-is so the transcript shows the attachment
+        marker rather than binary content. Paste payloads beyond
+        ``_MAX_PASTE_DISPLAY_CHARS`` are truncated with a footer, keeping the
+        record self-contained without rendering an unbounded blob.
+        """
+        parts: list[str] = []
+        position = 0
+        for match in _REFERENCE_PATTERN.finditer(text):
+            parts.append(text[position : match.start()])
+            if paste_id := match.group("paste_id"):
+                record = self._pasted_contents.get(int(paste_id))
+                parts.append(_cap_paste_display(record["content"]) if record is not None else match.group(0))
+            elif match.group("image_id"):
+                parts.append(match.group(0))
+            position = match.end()
+        parts.append(text[position:])
+        return "".join(parts)
 
     def release_submission_images(self, text: str) -> None:
         """Forget images referenced by a completed submission."""
