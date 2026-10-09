@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual import work
 from textual.screen import Screen
 from textual.widgets import Static
 
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.data.registry import DataConnectorRegistry
     from tabulaflow.data.protocols import DataConnector
+    from tabulaflow.core import SQLTableSchema
 
 
 class _NodeData:
@@ -87,11 +89,12 @@ class ExplorerState:
     a missing entry.
     """
 
-    __slots__ = ("expansion", "cursor")
+    __slots__ = ("expansion", "cursor", "row_counts")
 
     def __init__(self) -> None:
         self.expansion: dict[_NodePath, bool] = {}
         self.cursor: _NodePath | None = None
+        self.row_counts: dict[_NodePath, tuple[SQLTableSchema, int]] = {}
 
 
 class SchemaBrowserScreen(Screen[None]):
@@ -178,6 +181,7 @@ class SchemaBrowserScreen(Screen[None]):
         Binding("right", "expand_node", "Expand", show=False, priority=True),
         Binding("enter", "open_preview", "Preview table", show=False, priority=True),
         Binding("r", "refresh_schema", "Refresh", show=True),
+        Binding("c", "count_rows", "Count rows", show=False, priority=True),
     ]
 
     _PREVIEW_ROW_CAP = 50
@@ -194,6 +198,8 @@ class SchemaBrowserScreen(Screen[None]):
         self._filter_alias = alias
         self._state = state if state is not None else ExplorerState()
         self._refreshing = False
+        self._counting: _NodePath | None = None
+        self._count_error: tuple[_NodePath, str] | None = None
         self._status = Static(classes="schema-browser-status")
         self._gap = Static(classes="schema-browser-gap")
         self._hint = Static(id="browse-hint")
@@ -349,7 +355,7 @@ class SchemaBrowserScreen(Screen[None]):
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
-        from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema, SQLTableSchema
+        from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
 
@@ -556,10 +562,7 @@ class SchemaBrowserScreen(Screen[None]):
         assert isinstance(table, SQLTableSchema)
         parent_node: Any = parent
 
-        t_label = Text()
-        t_label.append(table.name)
-        if table.is_view:
-            t_label.append("  view", style="dim")
+        t_label = self._table_label(alias, table)
 
         table_node = parent_node.add(
             t_label,
@@ -594,14 +597,62 @@ class SchemaBrowserScreen(Screen[None]):
                 ),
             )
 
-    async def action_open_preview(self) -> None:
-        """Open DataBrowserScreen for the table under the cursor.
+    def _row_count(self, alias: str, table: SQLTableSchema) -> int | None:
+        path = (alias, table.schema_name, table.name, None)
+        cached = self._state.row_counts.get(path)
+        if cached is not None:
+            if cached[0] is table:
+                return cached[1]
+            self._state.row_counts.pop(path)
+        return table.num_rows
 
-        For writable SQL connectors (``read_only=False``), runs a live
-        ``SELECT * ... LIMIT 10`` so the preview reflects the current
-        source state. For read-only or non-SQL connectors, falls back
-        to the cached ``sampled_df``.
-        """
+    def _table_label(self, alias: str, table: SQLTableSchema) -> Text:
+        label = Text(table.name)
+        if table.is_view:
+            label.append("  view", style="dim")
+        count = self._row_count(alias, table)
+        if count is not None:
+            label.append(f"  {count:,} rows", style="dim")
+        return label
+
+    @work(group="row-count", exclusive=True)
+    async def action_count_rows(self) -> None:
+        """Count the selected relation without collecting column statistics."""
+        from textual.widgets import Tree
+
+        from tabulaflow.core import SQLSchema
+        from tabulaflow.data.sql import SQLConnector
+
+        tree = self.query_one("#browse-tree", Tree)
+        node = tree.cursor_node
+        if node is None or node.data is None or node.data.kind != _NODE_KIND_TABLE:
+            return
+        data = node.data
+        connector = self._registry.get(data.alias)
+        assert isinstance(connector, SQLConnector)
+        schema = connector.schema
+        if not isinstance(schema, SQLSchema):
+            return
+        table = next(t for t in schema.tables if t.name == data.table_name and t.schema_name == data.schema_name)
+        path = (data.alias, table.schema_name, table.name, None)
+        self._counting = path
+        self._count_error = None
+        self._update_status()
+        try:
+            result = await connector.count_rows_async(table.name, schema_name=table.schema_name, timeout=30)
+            if result.error is not None:
+                self._count_error = (path, result.error.message.replace("\n", " ").strip())
+            elif connector.schema is schema:
+                assert result.df is not None
+                count = int(result.df.iloc[0, 0])
+                self._state.row_counts[path] = (table, count)
+                node.set_label(self._table_label(data.alias, table))
+        finally:
+            self._counting = None
+        self._update_status()
+
+    async def action_open_preview(self) -> None:
+        """Open a live, capped preview of the selected table or view."""
         from textual.widgets import Tree
 
         from tabulaflow.core import SQLSchema
@@ -649,13 +700,18 @@ class SchemaBrowserScreen(Screen[None]):
         self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()
 
-        suffix = f"(first {self._PREVIEW_ROW_CAP} rows)"
+        count = self._row_count(node_data.alias, table)
+        suffix = f"(Preview: {len(df):,} rows · total unknown)"
+        if count is not None:
+            suffix = f"(Preview: {len(df):,} of {count:,} rows · last counted)"
+        if df.empty:
+            suffix = f"(No rows returned · {'total unknown' if count is None else f'{count:,} rows last counted'})"
         title = (
             f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} {suffix}"
             if node_data.schema_name
             else f"{node_data.alias}: {node_data.table_name} {suffix}"
         )
-        self.app.push_screen(DataBrowserScreen(title=title, df=df))
+        self.app.push_screen(DataBrowserScreen(title=title, df=df, is_preview=True))
 
     def action_close_browser(self) -> None:
         self.dismiss()
@@ -736,7 +792,7 @@ class SchemaBrowserScreen(Screen[None]):
         self._update_hint()
 
     def _cursor_has_preview(self) -> bool:
-        """Return True if the cursor is on a table node with sampled_df."""
+        """Return True if the cursor is on a SQL relation."""
         from textual.widgets import Tree
 
         from tabulaflow.core import SQLSchema
@@ -757,7 +813,7 @@ class SchemaBrowserScreen(Screen[None]):
             (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
             None,
         )
-        return table is not None and table.sampled_df is not None and not table.sampled_df.empty
+        return table is not None
 
     def _update_status(self) -> None:
         """Update the status bar with table/column/row counts for the highlighted scope."""
@@ -812,8 +868,13 @@ class SchemaBrowserScreen(Screen[None]):
                     path = f"{node_data.alias} > {node_data.table_name}"
                 parts.append(path)
                 parts.append(f"{len(table.columns):,} columns")
-                if table.num_rows is not None:
-                    parts.append(f"{table.num_rows:,} rows")
+                count = self._row_count(node_data.alias, table)
+                parts.append("Rows: unknown" if count is None else f"{count:,} rows (last counted)")
+                table_path = (node_data.alias, table.schema_name, table.name, None)
+                if self._counting == table_path:
+                    parts.append("Counting rows...")
+                if self._count_error is not None and self._count_error[0] == table_path:
+                    parts.append(f"Count failed: {self._count_error[1]}")
 
         if parts:
             self._status.update(Text("  |  ".join(parts), style="dim"))
@@ -829,6 +890,8 @@ class SchemaBrowserScreen(Screen[None]):
             hint.append("    ", style=hint_fg)
             hint.append("↵", style=KEY_HINT)
             hint.append(" Preview table", style=hint_fg)
+            hint.append("    C", style=KEY_HINT)
+            hint.append(" Count rows", style=hint_fg)
         hint.append("    ", style=hint_fg)
         hint.append("R", style=KEY_HINT)
         hint.append(" Refresh", style=hint_fg)

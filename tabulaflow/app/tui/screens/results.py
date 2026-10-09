@@ -129,10 +129,11 @@ class DataBrowserScreen(Screen[None]):
         Binding("b", "send_table_to_browser_pane", "Send table to browser pane", show=True, priority=True),
     ]
 
-    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
+    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50, is_preview: bool = False) -> None:
         super().__init__()
         self._title = title
         self._df = df
+        self._is_preview = is_preview
         self._page_size = max(1, page_size)
         self._page_index = 0
         self._sorted_column: str | None = None
@@ -300,8 +301,8 @@ class DataBrowserScreen(Screen[None]):
 
         parts = [
             self._title,
-            f"{self._num_rows:,} rows x {len(self._df.columns)} cols",
-            f"Rows {shown_range} of {self._num_rows:,}",
+            f"{self._num_rows:,} {'preview rows' if self._is_preview else 'rows'} x {len(self._df.columns)} cols",
+            f"{'Preview rows' if self._is_preview else 'Rows'} {shown_range} of {self._num_rows:,}",
             f"Page {self._page_index + 1}/{total_pages}",
         ]
 

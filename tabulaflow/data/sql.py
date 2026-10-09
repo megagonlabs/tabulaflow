@@ -2797,6 +2797,23 @@ class SQLConnector:
         except Exception as e:
             return ExecResult(error=ErrorInfo(exc_type=type(e).__name__, message=str(e)))
 
+    async def count_rows_async(
+        self, table_name: str, *, schema_name: str | None = None, timeout: int = 30
+    ) -> ExecResult:
+        """Count a live table or view without query caching or column profiling.
+
+        Args:
+            table_name: Relation to count.
+            schema_name: Optional namespace containing the relation.
+            timeout: Maximum execution time in seconds.
+
+        Returns:
+            A single-row count result, or execution error details.
+        """
+        self._check_open()
+        statement = select(func.count()).select_from(sqlalchemy.table(table_name, schema=schema_name))
+        return await self._execute_query_async(statement, (), timeout)
+
     async def run_query_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
