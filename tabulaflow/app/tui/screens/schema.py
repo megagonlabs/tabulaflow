@@ -846,7 +846,7 @@ class SchemaBrowserScreen(Screen[None]):
                 parts.append(f"{len(table.columns):,} columns")
                 count = self._row_count(node_data.alias, table)
                 if count is not None:
-                    parts.append(f"{count:,} rows (last counted)")
+                    parts.append(f"{count:,} rows")
 
         if parts:
             self._status.update(Text("  |  ".join(parts), style="dim"))

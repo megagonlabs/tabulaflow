@@ -74,7 +74,8 @@ async def test_count_starts_on_preview_and_is_cached_across_reopening(connector:
             await app.workers.wait_for_complete()
             await pilot.press("escape")
             assert node.label.plain == "items  75 rows"
-            assert "75 rows (last counted)" in str(screen._status.render())
+            assert "75 rows" in str(screen._status.render())
+            assert "last counted" not in str(screen._status.render())
             assert connector.schema.tables[0].num_rows is None
             await screen.action_open_preview()
             await app.workers.wait_for_complete()
@@ -117,14 +118,19 @@ async def test_preview_distinguishes_sample_and_total(connector: SQLConnector, t
         assert isinstance(preview, DataBrowserScreen)
         assert preview._title == "data: main.items"
         status = str(preview._status.render())
-        assert f"{75 if total is None else total} total rows" in status
         if total == 0:
             assert "No rows returned" in status
+            assert "0 rows" not in status
         elif total == 3:
-            assert "3 preview rows" in status
+            assert "Showing 3 of 3 rows · 1 column" in status
         else:
-            assert "50 preview rows" in status
-        assert "Preview rows" in status
+            assert "Showing 50 of 75 rows · 1 column" in status
+        assert "Page" not in status
+        assert "Preview rows" not in status
+        assert "last counted" not in status
+        hint = str(preview._hint.render())
+        assert "Prev/Next page" not in hint
+        assert "Open in browser" in hint
 
 
 async def test_cached_total_does_not_trigger_count(connector: SQLConnector) -> None:
@@ -138,7 +144,7 @@ async def test_cached_total_does_not_trigger_count(connector: SQLConnector) -> N
             await app.workers.wait_for_complete()
             preview = app.screen
             assert isinstance(preview, DataBrowserScreen)
-            assert "75 total rows" in str(preview._status.render())
+            assert "Showing 50 of 75 rows" in str(preview._status.render())
             count.assert_not_called()
 
 
@@ -153,7 +159,7 @@ async def test_count_failure_keeps_preview_usable(connector: SQLConnector) -> No
             await app.workers.wait_for_complete()
             preview = app.screen
             assert isinstance(preview, DataBrowserScreen)
-            assert "Total unavailable" in str(preview._status.render())
+            assert "Showing 50 rows · 1 column · total unavailable" in str(preview._status.render())
             assert len(preview._df) == 50
             await pilot.press("escape")
             assert table_node(screen).label.plain == "items"
@@ -181,7 +187,7 @@ async def test_count_does_not_block_preview_and_cancels_on_close(connector: SQLC
             await asyncio.wait_for(started.wait(), 5)
             preview = app.screen
             assert isinstance(preview, DataBrowserScreen)
-            assert "Counting total" in str(preview._status.render())
+            assert "Showing 50 rows · 1 column · counting…" in str(preview._status.render())
             await pilot.press("down")
             assert preview._table.cursor_coordinate.row == 1
             await pilot.press("escape")
@@ -241,5 +247,42 @@ async def test_regular_result_browser_keeps_result_row_wording() -> None:
     async with app.run_test() as pilot:
         app.push_screen(screen)
         await pilot.pause()
-        assert "Rows 1-1 of 1" in str(screen._status.render())
+        assert "1 row · 1 column" in str(screen._status.render())
+        assert "Page" not in str(screen._status.render())
+        assert "Prev/Next page" not in str(screen._hint.render())
         assert "Preview rows" not in str(screen._status.render())
+
+
+@pytest.mark.parametrize("is_preview", [False, True])
+async def test_pagination_only_appears_for_multiple_pages(is_preview: bool) -> None:
+    screen = DataBrowserScreen(
+        title="Result",
+        df=pd.DataFrame({"value": range(75)}),
+        is_preview=is_preview,
+        total_rows=100 if is_preview else None,
+    )
+    app: App[None] = App()
+    async with app.run_test() as pilot:
+        await app.push_screen(screen)
+        row_label = "Preview rows" if is_preview else "Rows"
+        assert f"{row_label} 1–50 of 75" in str(screen._status.render())
+        assert "Page 1/2" in str(screen._status.render())
+        assert "Prev/Next page" in str(screen._hint.render())
+        if is_preview:
+            assert "Showing 75 of 100 rows" in str(screen._status.render())
+        await pilot.press("]")
+        assert f"{row_label} 51–75 of 75" in str(screen._status.render())
+        assert "Page 2/2" in str(screen._status.render())
+
+
+@pytest.mark.parametrize("total", [None, 0])
+async def test_empty_preview_has_one_clear_empty_state(total: int | None) -> None:
+    screen = DataBrowserScreen(title="Empty", df=pd.DataFrame(columns=["value"]), is_preview=True, total_rows=total)
+    app: App[None] = App()
+    async with app.run_test():
+        await app.push_screen(screen)
+        status = str(screen._status.render())
+        assert "No rows returned · 1 column" in status
+        assert "0 rows" not in status
+        assert "0–0" not in status
+        assert "Page" not in status
