@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import re
 from typing import TYPE_CHECKING, cast
+from collections.abc import Awaitable, Callable
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -126,13 +128,26 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "Inspect cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
-        Binding("b", "send_table_to_browser_pane", "Send table to browser pane", show=True, priority=True),
+        Binding("b", "send_table_to_browser_pane", "Open in browser", show=True, priority=True),
     ]
 
-    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
+    def __init__(
+        self,
+        *,
+        title: str,
+        df: "pd.DataFrame",
+        page_size: int = 50,
+        is_preview: bool = False,
+        total_rows: int | None = None,
+        count_rows: Callable[[], Awaitable[int | None]] | None = None,
+    ) -> None:
         super().__init__()
         self._title = title
         self._df = df
+        self._is_preview = is_preview
+        self._total_rows = total_rows
+        self._count_rows = count_rows
+        self._counting = count_rows is not None
         self._page_size = max(1, page_size)
         self._page_index = 0
         self._sorted_column: str | None = None
@@ -160,6 +175,15 @@ class DataBrowserScreen(Screen[None]):
     def on_mount(self) -> None:
         self._table.focus()
         self._render_page()
+        if self._count_rows is not None:
+            self._load_total_rows()
+
+    @work
+    async def _load_total_rows(self) -> None:
+        assert self._count_rows is not None
+        self._total_rows = await self._count_rows()
+        self._counting = False
+        self._update_status()
 
     def action_close_browser(self) -> None:
         self.dismiss()
@@ -293,17 +317,22 @@ class DataBrowserScreen(Screen[None]):
         self._update_hint()
 
     def _update_status(self) -> None:
-        total_pages = self._max_page_index + 1
-        start = self._page_index * self._page_size
-        end = min(start + self._page_size, self._num_rows)
-        shown_range = "0-0" if self._num_rows == 0 else f"{start + 1}-{end}"
+        summary = self._row_summary()
+        num_columns = len(self._df.columns)
+        summary += f" · {num_columns} {'column' if num_columns == 1 else 'columns'}"
+        if self._is_preview:
+            if self._counting:
+                summary += " · counting…"
+            elif self._total_rows is None:
+                summary += " · total unavailable"
 
-        parts = [
-            self._title,
-            f"{self._num_rows:,} rows x {len(self._df.columns)} cols",
-            f"Rows {shown_range} of {self._num_rows:,}",
-            f"Page {self._page_index + 1}/{total_pages}",
-        ]
+        parts = [self._title, summary]
+        if self._max_page_index > 0:
+            start = self._page_index * self._page_size
+            end = min(start + self._page_size, self._num_rows)
+            row_label = "Preview rows" if self._is_preview else "Rows"
+            parts.append(f"{row_label} {start + 1:,}–{end:,} of {self._num_rows:,}")
+            parts.append(f"Page {self._page_index + 1}/{self._max_page_index + 1}")
 
         col_index = self._table.cursor_coordinate.column - 1
         if 0 <= col_index < len(self._df.columns):
@@ -313,6 +342,17 @@ class DataBrowserScreen(Screen[None]):
 
         self._status.update(Text("  |  ".join(parts), style="dim"))
 
+    def _row_summary(self) -> str:
+        if self._num_rows == 0:
+            return "No rows returned"
+        row_label = "row" if self._num_rows == 1 else "rows"
+        if not self._is_preview:
+            return f"{self._num_rows:,} {row_label}"
+        if self._total_rows is None:
+            return f"Showing {self._num_rows:,} {row_label}"
+        total_label = "row" if self._total_rows == 1 else "rows"
+        return f"Showing {self._num_rows:,} of {self._total_rows:,} {total_label}"
+
     def _update_hint(self) -> None:
         hint_fg = "dim"
         hint_segments: list[tuple[str, str]] = [
@@ -320,13 +360,17 @@ class DataBrowserScreen(Screen[None]):
             (" Back    ", hint_fg),
             ("↵", KEY_HINT),
             (" Inspect cell    ", hint_fg),
-            ("[", KEY_HINT),
-            ("/", hint_fg),
-            ("]", KEY_HINT),
-            (" Prev/Next page    ", hint_fg),
-            ("B", KEY_HINT),
-            (" Send table to browser pane", hint_fg),
         ]
+        if self._max_page_index > 0:
+            hint_segments.extend(
+                [
+                    ("[", KEY_HINT),
+                    ("/", hint_fg),
+                    ("]", KEY_HINT),
+                    (" Prev/Next page    ", hint_fg),
+                ]
+            )
+        hint_segments.extend([("B", KEY_HINT), (" Open in browser", hint_fg)])
         hint = Text()
         for text, style in hint_segments:
             hint.append(text, style=style)
