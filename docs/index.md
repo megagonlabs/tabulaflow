@@ -159,8 +159,8 @@ datasets.
 
 <div class="trajectory-question" markdown="1">
 
-“Show NYC taxi-zone counts by borough, with an all/Manhattan-only dropdown
-and a minimum-zone-area slider.”
+Show an interactive chart of NYC taxi-zone counts by borough, with an
+all/Manhattan-only choice control and a minimum-zone-area slider.
 
 </div>
 
@@ -168,40 +168,15 @@ and a minimum-zone-area slider.”
 
 <div class="trajectory-card trajectory-card--tabulaflow" markdown="1">
 
-### TabulaFlow
+### TabulaFlow <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">189 tokens</span>
 
-<div class="trajectory-call" markdown="1">
+<div class="trajectory-call trajectory-call--source" markdown="1">
 
 <div class="trajectory-call__header"><span>01</span><code>create_parameterized_source</code></div>
 
-<pre class="trajectory-code no-copy"><code>[
-  {
-    &quot;kind&quot;: &quot;choice&quot;,
-    &quot;id&quot;: &quot;nyc_scope&quot;,
-    &quot;label&quot;: &quot;Borough scope&quot;,
-    &quot;choices&quot;: [
-      {
-        &quot;id&quot;: &quot;all&quot;,
-        &quot;label&quot;: &quot;All boroughs&quot;
-      },
-      {
-        &quot;id&quot;: &quot;manhattan&quot;,
-        &quot;label&quot;: &quot;Manhattan only&quot;
-      }
-    ]
-  },
-  {
-    &quot;kind&quot;: &quot;number&quot;,
-    &quot;id&quot;: &quot;nyc_min_area&quot;,
-    &quot;label&quot;: &quot;Minimum zone area (×10⁻⁶ source units)&quot;,
-    &quot;min&quot;: 0,
-    &quot;max&quot;: 1000,
-    &quot;step&quot;: 25,
-    &quot;default&quot;: 0
-  }
-]</code></pre>
+<pre class="trajectory-code no-copy"><code>parameters: [{&quot;kind&quot;:&quot;choice&quot;,&quot;id&quot;:&quot;nyc_scope&quot;,&quot;label&quot;:&quot;Borough scope&quot;,&quot;choices&quot;:[{&quot;id&quot;:&quot;all&quot;,&quot;label&quot;:&quot;All boroughs&quot;},{&quot;id&quot;:&quot;manhattan&quot;,&quot;label&quot;:&quot;Manhattan only&quot;}]},{&quot;kind&quot;:&quot;number&quot;,&quot;id&quot;:&quot;nyc_min_area&quot;,&quot;label&quot;:&quot;Minimum zone area (×10⁻⁶ source units)&quot;,&quot;min&quot;:0,&quot;max&quot;:1000,&quot;step&quot;:25,&quot;default&quot;:0}]
 
-<pre class="trajectory-code no-copy"><code>SELECT borough
+SELECT borough
 FROM nyc_taxi_zones
 WHERE shape_area * 1000000 &gt;= {{ nyc_min_area }}
 {% if nyc_scope == &#x27;manhattan&#x27; %}
@@ -212,7 +187,7 @@ WHERE shape_area * 1000000 &gt;= {{ nyc_min_area }}
 
 <div class="trajectory-call" markdown="1">
 
-<div class="trajectory-call__header"><span>02</span><code>render_chart</code></div>
+<div class="trajectory-call__header"><span>02</span><code>render_chart</code><span class="trajectory-call__filename">source=S1</span></div>
 
 <pre class="trajectory-code no-copy"><code>{
   &quot;mark&quot;: &quot;bar&quot;,
@@ -228,7 +203,7 @@ WHERE shape_area * 1000000 &gt;= {{ nyc_min_area }}
 
 <div class="trajectory-card trajectory-card--codex" markdown="1">
 
-### Codex
+### Codex <span class="trajectory-token-count" title="Displayed code payloads, o200k_base tokenizer">2,768 tokens</span>
 
 <div class="trajectory-call" markdown="1">
 
@@ -256,7 +231,7 @@ print(json.dumps(d, separators=(&#x27;,&#x27;, &#x27;:&#x27;)))</code></pre>
 
 <div class="trajectory-call trajectory-call--patch" markdown="1">
 
-<div class="trajectory-call__header"><span>03</span><code>apply_patch</code></div>
+<div class="trajectory-call__header"><span>03</span><code>apply_patch</code><span class="trajectory-call__filename">taxi-zone-borough-counts.html</span></div>
 
 <pre class="trajectory-code no-copy"><code>*** Begin Patch
 *** Add File: taxi-zone-borough-counts.html

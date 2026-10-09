@@ -836,12 +836,19 @@ body {
 }
 
 .md-typeset .trajectory-question {
+  width: fit-content;
+  max-width: min(720px, 78%);
+  margin-left: auto;
+  padding: 0.65rem 0.85rem;
   font-size: 0.72rem;
-  color: var(--tf-text-muted);
+  color: var(--tf-text);
+  background: var(--tf-card);
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .md-typeset .trajectory-question p {
-  margin: 0.3rem 0;
+  margin: 0;
 }
 
 .md-typeset .trajectory-columns {
@@ -860,6 +867,13 @@ body {
 .md-typeset .trajectory-card h3 {
   margin: 0 0 0.65rem;
   font-size: 0.82rem;
+}
+
+.md-typeset .trajectory-token-count {
+  margin-left: 0.35rem;
+  color: var(--tf-text-muted);
+  font-size: 0.65rem;
+  font-weight: 400;
 }
 
 .md-typeset .trajectory-call {
@@ -888,6 +902,14 @@ body {
   font-size: inherit;
 }
 
+.md-typeset .trajectory-call__filename {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--tf-text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .md-typeset .trajectory-call .trajectory-code {
   max-height: 13rem;
   margin: 0;
@@ -909,6 +931,16 @@ body {
   white-space: pre;
 }
 
+.md-typeset .trajectory-card--codex .trajectory-code code,
+.md-typeset .trajectory-call--source .trajectory-code code {
+  display: block;
+  width: 100ch;
+  min-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
 .md-typeset .trajectory-call--patch .trajectory-code {
   max-height: 26rem;
 }
@@ -922,6 +954,12 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+}
+
+@media screen and (max-width: 40em) {
+  .md-typeset .trajectory-question {
+    max-width: 92%;
+  }
 }
 
 .md-typeset .data-pipeline {
