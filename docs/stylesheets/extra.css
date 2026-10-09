@@ -836,11 +836,14 @@ body {
 }
 
 .md-typeset .trajectory-question {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
   width: fit-content;
-  max-width: min(720px, 78%);
+  max-width: min(600px, 70%);
   margin-left: auto;
-  padding: 0.65rem 0.85rem;
-  font-size: 0.72rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.62rem;
   color: var(--tf-text);
   background: var(--tf-card);
   border-radius: 16px 16px 4px 16px;
@@ -851,9 +854,21 @@ body {
   margin: 0;
 }
 
+.md-typeset .trajectory-question__icon {
+  flex: 0 0 0.8rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: 0.1rem;
+  fill: none;
+  stroke: var(--tf-text-muted);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .md-typeset .trajectory-columns {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 11fr) minmax(0, 19fr);
   gap: 1rem;
   margin-top: 0.75rem;
 }

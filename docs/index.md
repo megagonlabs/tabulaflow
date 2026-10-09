@@ -159,6 +159,8 @@ datasets.
 
 <div class="trajectory-question" markdown="1">
 
+<svg class="trajectory-question__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+
 Show an interactive chart of NYC taxi-zone counts by borough, with an
 all/Manhattan-only choice control and a minimum-zone-area slider.
 
