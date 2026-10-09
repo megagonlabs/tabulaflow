@@ -831,6 +831,99 @@ body {
   margin: 1.25rem 0 0.75rem;
 }
 
+.md-typeset .trajectory-comparison {
+  margin: 1.25rem 0;
+}
+
+.md-typeset .trajectory-question {
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+
+.md-typeset .trajectory-question p {
+  margin: 0.3rem 0;
+}
+
+.md-typeset .trajectory-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.md-typeset .trajectory-card {
+  min-width: 0;
+  padding: 0;
+  font-size: 0.62rem;
+}
+
+.md-typeset .trajectory-card h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+}
+
+.md-typeset .trajectory-call {
+  margin-bottom: 0.65rem;
+  overflow: hidden;
+  background: var(--tf-code-bg);
+  border: 1px solid var(--tf-border);
+  border-radius: 8px;
+}
+
+.md-typeset .trajectory-call__header {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.3rem 0.45rem;
+  color: var(--tf-text);
+  border-bottom: 1px solid var(--tf-border);
+  font-size: 0.5rem;
+}
+
+.md-typeset .trajectory-call__header code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+}
+
+.md-typeset .trajectory-call .trajectory-code {
+  max-height: 13rem;
+  margin: 0;
+  overflow: auto;
+  padding: 0.5rem;
+  color: var(--tf-text-dim);
+  font-size: 0.43rem;
+  line-height: 1.55;
+  background: transparent;
+  border-radius: 0;
+}
+
+.md-typeset .trajectory-code code {
+  padding: 0;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  background: transparent;
+  white-space: pre;
+}
+
+.md-typeset .trajectory-call--patch .trajectory-code {
+  max-height: 26rem;
+}
+
+.md-typeset .trajectory-call .md-code__button {
+  display: none;
+}
+
+@media screen and (max-width: 56.25em) {
+  .md-typeset .trajectory-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
 .md-typeset .data-pipeline {
   display: flex;
   flex-direction: column;

@@ -155,66 +155,181 @@ datasets.
 
 ## How does TabulaFlow work?
 
-The diagram below shows a simple chat-to-database workflow. You can register
-data sources with `/connect`, or the agent can connect them through a tool call.
-The agent runs queries to produce tables, attaches visualization specifications
-to create visual artifacts (e.g., charts), and references one or more artifacts in
-its answer.
+<div class="trajectory-comparison" markdown="1">
 
-<figure class="process-diagram">
-  <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool counts orders by channel to create a result table, and render_chart creates a donut chart artifact using channel and order count.">
-    <div class="flow-stage source-stage">
-      <span class="flow-label">Data connector registry</span>
-      <div class="connector-list" aria-hidden="true">
-        <div class="connector-entry">
-          <svg class="connector-icon" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M8.5 11h7M8.5 14.5h7M8.5 18h7M11 11v7"></path></svg>
-          <span class="connector-copy"><strong>merchants</strong><code>project/merchants.csv</code></span>
-        </div>
-        <div class="connector-entry">
-          <svg class="connector-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"></ellipse><path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path><path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path></svg>
-          <span class="connector-copy"><strong>orders</strong><code>sqlite:///orders.sqlite</code></span>
-        </div>
-        <div class="connector-entry">
-          <svg class="connector-icon" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"></circle><path d="M9.5 9h.01M14.5 9h.01M9.5 12c1.4 1.3 3.6 1.3 5 0M7.3 14c-2.2-.8-4.3.3-5.3 2.3M16.7 14c2.2-.8 4.3.3 5.3 2.3M2 16.3l3.2 3M22 16.3l-3.2 3M5.2 19.3l2.6-2.1M18.8 19.3l-2.6-2.1"></path></svg>
-          <span class="connector-copy"><strong>reviews</strong><code>https://huggingface.co/datasets/yelp</code></span>
-        </div>
-        <span class="connector-more">•••</span>
-      </div>
-    </div>
-    <div class="flow-link flow-link--down">
-      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M40 14V62H92"></path></svg></span>
-      <div class="flow-call" aria-hidden="true">
-        <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
-        <code><strong>run_query</strong><span><span class="syntax-keyword">SELECT</span> channel,</span><span class="sql-line"><span class="syntax-function">COUNT</span>(*) <span class="syntax-keyword">AS</span> orders</span><span><span class="syntax-keyword">FROM</span> <span class="syntax-name">orders</span></span><span><span class="syntax-keyword">GROUP BY</span> channel</span></code>
-      </div>
-    </div>
-    <div class="flow-stage table-stage">
-      <span class="flow-label">Result table</span>
-      <div class="table-preview" aria-hidden="true">
-        <strong>channel</strong><strong>orders</strong>
-        <span>Online</span><span>1,240</span>
-        <span>In-store</span><span>860</span>
-        <span>Partner</span><span>530</span>
-      </div>
-    </div>
-    <div class="flow-link flow-link--up">
-      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 62H60V14"></path></svg></span>
-      <div class="flow-call" aria-hidden="true">
-        <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
-        <code><strong>render_chart</strong><span>{</span><span class="json-line"><span class="syntax-key">"mark"</span>: <span class="syntax-string">"arc"</span>,</span><span class="json-line"><span class="syntax-key">"theta"</span>: <span class="syntax-string">"orders"</span>,</span><span class="json-line"><span class="syntax-key">"color"</span>: <span class="syntax-string">"channel"</span></span><span>}</span></code>
-      </div>
-    </div>
-    <div class="flow-stage chart-stage">
-      <span class="flow-label">Artifact</span>
-      <div class="artifact-chart" aria-hidden="true">
-        <div class="donut-plot">
-          <svg viewBox="0 0 42 42"><circle class="donut-track" cx="21" cy="21" r="16"></circle><circle class="donut-segment donut-segment--online" cx="21" cy="21" r="16" pathLength="100"></circle><circle class="donut-segment donut-segment--store" cx="21" cy="21" r="16" pathLength="100"></circle><circle class="donut-segment donut-segment--partner" cx="21" cy="21" r="16" pathLength="100"></circle><line class="donut-separator" x1="33.5" y1="21" x2="40.5" y2="21"></line><line class="donut-separator" x1="8.7" y1="23.3" x2="1.8" y2="24.5"></line><line class="donut-separator" x1="24.7" y1="9.1" x2="26.8" y2="2.4"></line></svg>
-        </div>
-        <div class="donut-legend"><span><i class="donut-swatch donut-swatch--online"></i>Online</span><span><i class="donut-swatch donut-swatch--store"></i>In-store</span><span><i class="donut-swatch donut-swatch--partner"></i>Partner</span></div>
-      </div>
-    </div>
-  </div>
-</figure>
+<div class="trajectory-question" markdown="1">
+
+“Show NYC taxi-zone counts by borough, with an all/Manhattan-only dropdown
+and a minimum-zone-area slider.”
+
+</div>
+
+<div class="trajectory-columns" markdown="1">
+
+<div class="trajectory-card trajectory-card--tabulaflow" markdown="1">
+
+### TabulaFlow
+
+<div class="trajectory-call" markdown="1">
+
+<div class="trajectory-call__header"><span>01</span><code>create_parameterized_source</code></div>
+
+<pre class="trajectory-code no-copy"><code>[
+  {
+    &quot;kind&quot;: &quot;choice&quot;,
+    &quot;id&quot;: &quot;nyc_scope&quot;,
+    &quot;label&quot;: &quot;Borough scope&quot;,
+    &quot;choices&quot;: [
+      {
+        &quot;id&quot;: &quot;all&quot;,
+        &quot;label&quot;: &quot;All boroughs&quot;
+      },
+      {
+        &quot;id&quot;: &quot;manhattan&quot;,
+        &quot;label&quot;: &quot;Manhattan only&quot;
+      }
+    ]
+  },
+  {
+    &quot;kind&quot;: &quot;number&quot;,
+    &quot;id&quot;: &quot;nyc_min_area&quot;,
+    &quot;label&quot;: &quot;Minimum zone area (×10⁻⁶ source units)&quot;,
+    &quot;min&quot;: 0,
+    &quot;max&quot;: 1000,
+    &quot;step&quot;: 25,
+    &quot;default&quot;: 0
+  }
+]</code></pre>
+
+<pre class="trajectory-code no-copy"><code>SELECT borough
+FROM nyc_taxi_zones
+WHERE shape_area * 1000000 &gt;= {{ nyc_min_area }}
+{% if nyc_scope == &#x27;manhattan&#x27; %}
+  AND borough = &#x27;Manhattan&#x27;
+{% endif %}</code></pre>
+
+</div>
+
+<div class="trajectory-call" markdown="1">
+
+<div class="trajectory-call__header"><span>02</span><code>render_chart</code></div>
+
+<pre class="trajectory-code no-copy"><code>{
+  &quot;mark&quot;: &quot;bar&quot;,
+  &quot;encoding&quot;: {
+    &quot;x&quot;: {&quot;field&quot;: &quot;borough&quot;, &quot;type&quot;: &quot;nominal&quot;},
+    &quot;y&quot;: {&quot;aggregate&quot;: &quot;count&quot;, &quot;type&quot;: &quot;quantitative&quot;}
+  }
+}</code></pre>
+
+</div>
+
+</div>
+
+<div class="trajectory-card trajectory-card--codex" markdown="1">
+
+### Codex
+
+<div class="trajectory-call" markdown="1">
+
+<div class="trajectory-call__header"><span>01</span><code>exec_command</code></div>
+
+<pre class="trajectory-code no-copy"><code>import sqlite3, json
+c = sqlite3.connect(&#x27;upload/sample(1).sqlite&#x27;)
+rows = c.execute(&#x27;SELECT borough, shape_area FROM nyc_taxi_zones WHERE borough IS NOT NULL AND shape_area IS NOT NULL&#x27;).fetchall()
+print(len(rows))
+print(json.dumps(rows))
+print(c.execute(&#x27;SELECT borough, COUNT(*), MIN(shape_area), MAX(shape_area) FROM nyc_taxi_zones GROUP BY borough&#x27;).fetchall())</code></pre>
+
+</div>
+
+<div class="trajectory-call" markdown="1">
+
+<div class="trajectory-call__header"><span>02</span><code>exec_command</code></div>
+
+<pre class="trajectory-code no-copy"><code>import sqlite3, json
+c = sqlite3.connect(&#x27;upload/sample(1).sqlite&#x27;)
+d = {b: [round(a * 1000000, 1) for a, in c.execute(&#x27;SELECT shape_area FROM nyc_taxi_zones WHERE borough=? ORDER BY shape_area&#x27;, (b,))] for b in [&#x27;Bronx&#x27;, &#x27;Brooklyn&#x27;, &#x27;EWR&#x27;, &#x27;Manhattan&#x27;, &#x27;Queens&#x27;, &#x27;Staten Island&#x27;]}
+print(json.dumps(d, separators=(&#x27;,&#x27;, &#x27;:&#x27;)))</code></pre>
+
+</div>
+
+<div class="trajectory-call trajectory-call--patch" markdown="1">
+
+<div class="trajectory-call__header"><span>03</span><code>apply_patch</code></div>
+
+<pre class="trajectory-code no-copy"><code>*** Begin Patch
+*** Add File: taxi-zone-borough-counts.html
++&lt;div id=&quot;taxi-zone-borough-counts&quot; aria-labelledby=&quot;taxi-chart-title&quot;&gt;
++  &lt;style&gt;
++    #taxi-zone-borough-counts { color: var(--foreground); font-family: inherit; }
++    #taxi-zone-borough-counts .chart-wrap { margin-top: 1rem; width: 100%; }
++    #taxi-zone-borough-counts svg { display: block; width: 100%; height: auto; }
++    #taxi-zone-borough-counts .grid, #taxi-zone-borough-counts .axis { stroke: var(--border); stroke-width: 1; }
++    #taxi-zone-borough-counts .axis { stroke: var(--foreground); }
++    #taxi-zone-borough-counts .bar { fill: var(--viz-series-1); transition: height 180ms ease, y 180ms ease, opacity 180ms ease; }
++    #taxi-zone-borough-counts .bar-label { fill: var(--foreground); font-size: 12px; font-weight: 500; }
++    #taxi-zone-borough-counts .tick, #taxi-zone-borough-counts .axis-title { fill: var(--muted-foreground); font-size: 12px; }
++    #taxi-zone-borough-counts .status { margin-top: .5rem; color: var(--muted-foreground); }
++    #taxi-zone-borough-counts .control-value { color: var(--foreground); font-weight: 500; }
++  &lt;/style&gt;
++  &lt;h2 id=&quot;taxi-chart-title&quot;&gt;NYC taxi zones by borough&lt;/h2&gt;
++  &lt;div class=&quot;viz-controls&quot; aria-label=&quot;Taxi zone filters&quot;&gt;
++    &lt;div&gt;
++      &lt;label class=&quot;form-label&quot; for=&quot;borough-scope&quot;&gt;Borough scope&lt;/label&gt;
++      &lt;select id=&quot;borough-scope&quot; class=&quot;form-select&quot;&gt;
++        &lt;option value=&quot;all&quot;&gt;All boroughs&lt;/option&gt;
++        &lt;option value=&quot;Manhattan&quot;&gt;Manhattan only&lt;/option&gt;
++      &lt;/select&gt;
++    &lt;/div&gt;
++    &lt;div&gt;
++      &lt;label class=&quot;form-label&quot; for=&quot;min-area&quot;&gt;Minimum zone area &lt;span id=&quot;area-value&quot; class=&quot;control-value&quot;&gt;0&lt;/span&gt;&lt;/label&gt;
++      &lt;input id=&quot;min-area&quot; class=&quot;form-range&quot; type=&quot;range&quot; min=&quot;0&quot; max=&quot;1000&quot; value=&quot;0&quot; step=&quot;25&quot; aria-describedby=&quot;area-value&quot;&gt;
++    &lt;/div&gt;
++  &lt;/div&gt;
++  &lt;div class=&quot;chart-wrap&quot;&gt;
++    &lt;svg id=&quot;taxi-zone-chart&quot; role=&quot;img&quot; aria-labelledby=&quot;taxi-chart-title taxi-chart-desc&quot; viewBox=&quot;0 0 740 390&quot;&gt;
++      &lt;desc id=&quot;taxi-chart-desc&quot;&gt;Bar chart showing the count of taxi zones by borough after applying a borough and minimum-area filter.&lt;/desc&gt;
++    &lt;/svg&gt;
++  &lt;/div&gt;
++  &lt;div id=&quot;taxi-status&quot; class=&quot;status tabular-nums&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
++  &lt;script&gt;
++    (() =&gt; {
++      const root = document.getElementById(&#x27;taxi-zone-borough-counts&#x27;);
++      const scope = root.querySelector(&#x27;#borough-scope&#x27;);
++      const minArea = root.querySelector(&#x27;#min-area&#x27;);
++      const areaValue = root.querySelector(&#x27;#area-value&#x27;);
++      const svg = root.querySelector(&#x27;#taxi-zone-chart&#x27;);
++      const status = root.querySelector(&#x27;#taxi-status&#x27;);
++      const areas = {&quot;Bronx&quot;:[62.6,62.9,91.1,95.2,106.4,134.5,146,148.5,148.9,149.6,150.9,155.9,161.3,161.8,163.2,167.5,171.2,185.8,191.1,199.1,205,205.6,212.8,228.5,241,254.7,288.7,313,314.4,334,360,360.1,394.6,395.8,399.6,547.1,703.3,722.1,744.6,904.1,926.4,1988.8,2020.3],&quot;Brooklyn&quot;:[45.2,81.8,101.4,108.4,108.9,113.6,114.7,124.2,130.3,132.5,138.9,143.6,147.4,157.2,158.2,163.3,168.6,172.3,173.9,175.8,191.9,198.9,201.7,203.2,208.7,247.7,264.5,268.3,270.6,270.9,296.4,306.9,310.8,313,323,323.5,323.8,332.6,352.9,353.2,354,380.3,382.6,394.3,407.3,447.5,452.1,453.2,462.1,472.1,510.8,534,537.3,736.3,801.7,868.3,900.3,993.4,1266.6,1381.8,1789.7],&quot;EWR&quot;:[782.3],&quot;Manhattan&quot;:[6.3,11.9,32.5,34.3,37.1,37.5,38.9,39.7,40.9,41.5,47,47.5,47.9,55.3,55.6,56.1,57.3,58,60.7,65.8,67.2,69.7,71.9,72.2,73.1,74.3,74.6,75.7,76.4,76.7,91.4,93.1,94.3,94.7,96,98.5,102.9,106.2,107.9,111.1,111.9,114.2,116.2,116.5,122.3,128.8,143.1,146.6,149.4,151.1,163.2,166.9,173.2,184.8,185.6,204.7,207.4,216,240.6,255.3,260.4,263.9,273.5,281.3,295,359.7,368.6,379.7,438.4],&quot;Queens&quot;:[18,26.6,44.7,78.3,104.6,145.6,145.9,178.3,180.9,183.9,195.5,197.5,202.4,217.5,226.6,247.7,281.3,291.2,291.8,296.6,323.6,327.4,338.4,346.6,354.4,366.2,373.8,374.9,384.6,389.8,395.6,422.3,423.7,428.2,435.8,446.7,452.3,467.9,468.3,474,485.8,499.8,504.7,504.9,520.1,536.8,546.7,547.6,571.2,572.8,594.3,615.1,619.4,623.3,688.5,754.8,761.9,764.4,766.2,816.1,871.9,904.3,925.2,947.5,1025.3,1057.9,1340.9,2038.3,4866.3],&quot;Staten Island&quot;:[373.2,421.2,466.2,498,525.7,606.5,625.8,641.4,657.8,658.4,812,890.1,944.4,1052.1,1169.6,1210.2,1826.9,1944.7,2073.8,2195.6]};
++      const order = [&#x27;Bronx&#x27;,&#x27;Brooklyn&#x27;,&#x27;Manhattan&#x27;,&#x27;Queens&#x27;,&#x27;Staten Island&#x27;,&#x27;EWR&#x27;];
++      const ns = &#x27;http://www.w3.org/2000/svg&#x27;;
++      const el = (tag, attrs = {}, text = &#x27;&#x27;) =&gt; { const n = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k,v]) =&gt; n.setAttribute(k,v)); n.textContent = text; return n; };
++      function draw() {
++        const threshold = Number(minArea.value); areaValue.textContent = \`\${threshold} × 10⁻⁶ area units\`;
++        const rows = order.map(b =&gt; ({borough:b,count:(scope.value === &#x27;all&#x27; || scope.value === b) ? areas[b].filter(a =&gt; a &gt;= threshold).length : 0,visible:scope.value === &#x27;all&#x27; || scope.value === b}));
++        const max = Math.max(1, ...rows.map(x =&gt; x.count)); const W=740,H=390,L=64,R=24,T=40,B=76, pw=W-L-R, ph=H-T-B;
++        svg.replaceChildren();
++        [0,Math.ceil(max/2),max].filter((x,i,a)=&gt;a.indexOf(x)===i).forEach(t=&gt;{const y=T+ph-(t/max)*ph;svg.append(el(&#x27;line&#x27;,{class:&#x27;grid&#x27;,x1:L,x2:W-R,y1:y,y2:y}));svg.append(el(&#x27;text&#x27;,{class:&#x27;tick&#x27;,x:L-9,y:y+4,&#x27;text-anchor&#x27;:&#x27;end&#x27;},String(t)));});
++        svg.append(el(&#x27;line&#x27;,{class:&#x27;axis&#x27;,x1:L,x2:L,y1:T,y2:T+ph}));svg.append(el(&#x27;line&#x27;,{class:&#x27;axis&#x27;,x1:L,x2:W-R,y1:T+ph,y2:T+ph}));
++        svg.append(el(&#x27;text&#x27;,{class:&#x27;axis-title&#x27;,x:18,y:T+ph/2,transform:\`rotate(-90 18 \${T+ph/2})\`,&#x27;text-anchor&#x27;:&#x27;middle&#x27;},&#x27;Zone count&#x27;));
++        const slot=pw/rows.length,bw=Math.min(72,slot*.58);
++        rows.forEach((row,i)=&gt;{const x=L+i*slot+(slot-bw)/2,h=(row.count/max)*ph,y=T+ph-h;const bar=el(&#x27;rect&#x27;,{class:&#x27;bar&#x27;,x,y,width:bw,height:h,rx:2,tabindex:0,role:&#x27;img&#x27;,&#x27;aria-label&#x27;:\`\${row.borough}: \${row.count} zones\`,opacity:row.visible?1:.18});bar.setAttribute(&#x27;data-tooltip&#x27;,\`\${row.borough}: \${row.count} zones\`);svg.append(bar);if(row.visible)svg.append(el(&#x27;text&#x27;,{class:&#x27;bar-label&#x27;,x:x+bw/2,y:Math.max(T+14,y-8),&#x27;text-anchor&#x27;:&#x27;middle&#x27;},String(row.count)));svg.append(el(&#x27;text&#x27;,{class:&#x27;tick&#x27;,x:x+bw/2,y:T+ph+26,&#x27;text-anchor&#x27;:&#x27;middle&#x27;},row.borough));});
++        const total=rows.reduce((s,x)=&gt;s+x.count,0); status.textContent = \`\${total} matching taxi zone\${total===1?&#x27;&#x27;:&#x27;s&#x27;}.\`;
++      }
++      scope.addEventListener(&#x27;change&#x27;,draw); minArea.addEventListener(&#x27;input&#x27;,draw); draw();
++    })();
++  &lt;/script&gt;
++&lt;/div&gt;
+*** End Patch</code></pre>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
 
 Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
