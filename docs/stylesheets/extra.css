@@ -977,7 +977,8 @@ body {
   --tf-code-type: #d7b291;
   max-height: 13rem;
   margin: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0.5rem;
   color: var(--tf-code-text);
   font-size: 0.43rem;
@@ -987,26 +988,21 @@ body {
 }
 
 .md-typeset .trajectory-code code {
+  display: block;
+  width: auto;
+  min-width: 0;
   padding: 0;
   overflow: visible;
   color: inherit;
   font-size: inherit;
   background: transparent;
-  white-space: pre;
-}
-
-.md-typeset .trajectory-card--codex .trajectory-code code,
-.md-typeset .trajectory-call--source .trajectory-code code {
-  display: block;
-  width: 100ch;
-  min-width: 100%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: normal;
 }
 
 .md-typeset .trajectory-call--patch .trajectory-code {
-  max-height: 26rem;
+  max-height: 34rem;
 }
 
 .md-typeset .trajectory-added {
