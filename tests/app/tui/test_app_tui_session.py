@@ -1197,7 +1197,7 @@ async def test_unknown_slash_prefixed_submission_reaches_agent(monkeypatch: pyte
     assert captured == [(["/summarize [Image #1]", image], "/summarize [Image #1]")]
 
 
-async def test_submission_displays_compact_paste_reference(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_submission_expands_paste_reference_in_transcript(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
 
     class _EmptyRegistry:
@@ -1217,10 +1217,11 @@ async def test_submission_displays_compact_paste_reference(monkeypatch: pytest.M
     async with app.run_test():
         input_bar = app.query_one("#input-bar", HistoryInput)
         display_text = "inspect [Pasted text #1 +2 lines]"
+        input_bar._pasted_contents[1] = {"id": 1, "type": "text", "content": "pasted\ntext"}
         await app._run_submission("inspect pasted\ntext", display_text, input_bar)
 
         user_message = app.query_one(UserMessage)
-        assert str(user_message.render()) == display_text
+        assert str(user_message.render()) == "inspect pasted\ntext"
 
 
 async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
