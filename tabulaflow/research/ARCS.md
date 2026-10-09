@@ -1,7 +1,7 @@
 <div align="center">
 <h1 align="center">ARCS: Towards Precise Text-to-SQL via Structured Disambiguation</h1>
 
-[🌐 Website](https://megagonlabs.github.io/tabulaflow/research/arcs/) &nbsp;&nbsp; [📄 Paper](https://arxiv.org/pdf/2610.09396) &nbsp;&nbsp; [🤗 Dataset](https://huggingface.co/datasets/megagonlabs/arcs)
+[🌐 Website](https://megagonlabs.github.io/tabulaflow/research/arcs/) &nbsp;&nbsp; [📄 Paper](https://arxiv.org/pdf/2610.09396) &nbsp;&nbsp; [🤗 Dataset](https://huggingface.co/datasets/megagonlabs/arcs) &nbsp;&nbsp; [🎬 Demo](https://megagonlabs.github.io/tabulaflow/#demo-disambiguation)
 
 <img src="../../docs/assets/arcs/structured_disamb.png" width="70%" alt="Conversational and structured disambiguation workflows">
 
