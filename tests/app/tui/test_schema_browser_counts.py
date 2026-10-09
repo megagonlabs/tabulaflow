@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 from textual.app import App, ComposeResult
-from textual.widgets import Tree
+from textual.widgets import Static, Tree
 
 from tabulaflow.app.tui.screens.results import DataBrowserScreen
 from tabulaflow.app.tui.screens.schema import ExplorerState, SchemaBrowserScreen
@@ -210,3 +210,29 @@ async def test_regular_result_browser_keeps_result_row_wording() -> None:
         await pilot.pause()
         assert "Rows 1-1 of 1" in str(screen._status.render())
         assert "Preview rows" not in str(screen._status.render())
+
+
+@pytest.mark.parametrize("size", [(80, 24), (160, 40)])
+async def test_explorer_is_a_right_side_drawer(connector: SQLConnector, size: tuple[int, int]) -> None:
+    registry = DataConnectorRegistry()
+    registry.register("data", connector)
+
+    class ChatApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield Static("Chat stays visible", id="chat")
+
+    app = ChatApp()
+    async with app.run_test(size=size) as pilot:
+        chat_screen = app.screen
+        explorer = SchemaBrowserScreen(registry=registry)
+        await app.push_screen(explorer)
+        await pilot.pause()
+        drawer = explorer.query_one("#explorer-drawer")
+        assert 0 < drawer.region.x < size[0]
+        assert drawer.region.right == size[0]
+        assert drawer.region.width <= 100
+        assert drawer.region.height == size[1]
+        assert explorer.query_one(Tree).region.x >= drawer.region.x
+        assert chat_screen.query_one("#chat").is_mounted
+        await pilot.press("escape")
+        assert app.screen is chat_screen
