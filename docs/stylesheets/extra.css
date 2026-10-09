@@ -885,11 +885,24 @@ body {
   font-weight: 600;
 }
 
+.md-typeset .trajectory-card--tabulaflow .trajectory-harness-label {
+  color: var(--tf-accent);
+}
+
+.md-typeset .trajectory-card--tabulaflow .trajectory-call {
+  border-width: 1px;
+  border-color: rgba(95, 175, 135, 0.45);
+}
+
 .md-typeset .trajectory-token-count {
   margin-left: 0.35rem;
   color: var(--tf-text-muted);
   font-size: 0.65rem;
   font-weight: 400;
+}
+
+.md-typeset .trajectory-card--tabulaflow .trajectory-token-count {
+  color: #8fb5a0;
 }
 
 .md-typeset details.trajectory-preparation {
