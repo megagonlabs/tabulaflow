@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from tabulaflow.app.tui.app import LLM_UNAVAILABLE_MESSAGE
+from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError
+
+from tabulaflow.app.tui.app import LLM_UNAVAILABLE_MESSAGE, _format_agent_turn_failure
 from tabulaflow.agents.llm import model_label
 
 
@@ -18,3 +20,39 @@ def test_model_label_removes_provider_namespaces_and_release_date() -> None:
     assert model_label("fireworks:accounts/fireworks/models/kimi-k3") == "kimi-k3"
     assert model_label("together:owner/model") == "model"
     assert model_label("test") == "test"
+
+
+def test_agent_turn_failure_shows_provider_and_http_status() -> None:
+    error = ModelHTTPError(429, "gpt-5", {"error": "sensitive provider body"})
+
+    assert _format_agent_turn_failure(error, model="openai-responses:gpt-5") == (
+        "Model provider (openai-responses) request failed (HTTP 429): Rate limit exceeded. Wait and retry."
+    )
+
+
+def test_agent_turn_failure_classifies_chained_connection_error() -> None:
+    class APIConnectionError(Exception):
+        pass
+
+    error = ModelAPIError("claude-sonnet", "Connection error.")
+    error.__cause__ = APIConnectionError("DNS lookup included internal details")
+
+    assert _format_agent_turn_failure(error, model="anthropic:claude-sonnet") == (
+        "Couldn’t connect to model provider (anthropic). "
+        "Check your network, proxy, and provider endpoint, then retry."
+    )
+
+
+def test_agent_turn_failure_classifies_chained_timeout() -> None:
+    error = ModelAPIError("gemini", "Request failed.")
+    error.__cause__ = TimeoutError("internal timeout detail")
+
+    assert _format_agent_turn_failure(error, model="google-cloud:gemini") == (
+        "Model provider (google-cloud) request timed out after retries. Try again."
+    )
+
+
+def test_agent_turn_failure_preserves_non_model_error() -> None:
+    assert _format_agent_turn_failure(RuntimeError("agent failure detail"), model="openai:gpt-5") == (
+        "agent failure detail."
+    )
