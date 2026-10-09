@@ -36,5 +36,10 @@ See the [ARCS setup guide](https://megagonlabs.github.io/tabulaflow/research/ben
 ## 📚 Citation
 
 ```
-Coming soon
+@article{hu2026arcs,
+  title={ARCS: Towards Precise Text-to-SQL via Structured Disambiguation},
+  author={Hu, Yihao and Feng, Yanlin and Otani, Naoki and Bhutani, Nikita},
+  journal={arXiv preprint arXiv:2610.09396},
+  year={2026}
+}
 ```
