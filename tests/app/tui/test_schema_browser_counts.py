@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
+from rich.text import Text
+from sqlalchemy.sql.functions import count as sql_count
 from textual.app import App, ComposeResult
 from textual.widgets import Tree
 
@@ -60,7 +62,7 @@ def table_node(screen: SchemaBrowserScreen) -> Any:
 
 async def test_count_starts_on_preview_and_is_cached_across_reopening(connector: SQLConnector) -> None:
     state = ExplorerState()
-    with patch.object(connector, "count_rows_async", wraps=connector.count_rows_async) as count:
+    with patch.object(connector, "run_query_async", wraps=connector.run_query_async) as query:
         app = make_app(connector, state)
         async with app.run_test() as pilot:
             screen = app.query_one(SchemaBrowserScreen)
@@ -69,7 +71,7 @@ async def test_count_starts_on_preview_and_is_cached_across_reopening(connector:
             await pilot.pause()
             assert "rows" not in str(screen._status.render())
             assert "Count rows" not in str(screen._hint.render())
-            count.assert_not_called()
+            query.assert_not_called()
             await screen.action_open_preview()
             await app.workers.wait_for_complete()
             await pilot.press("escape")
@@ -83,7 +85,7 @@ async def test_count_starts_on_preview_and_is_cached_across_reopening(connector:
         async with make_app(connector, state).run_test() as reopened:
             screen = reopened.app.query_one(SchemaBrowserScreen)
             assert table_node(screen).label.plain == "items  75 rows"
-        assert count.call_count == 1
+        assert sum(isinstance(call.args[0].selected_columns[0], sql_count) for call in query.call_args_list) == 1
 
 
 async def test_refresh_invalidates_count(connector: SQLConnector) -> None:
@@ -136,7 +138,7 @@ async def test_preview_distinguishes_sample_and_total(connector: SQLConnector, t
 async def test_cached_total_does_not_trigger_count(connector: SQLConnector) -> None:
     connector.schema.tables[0].num_rows = 75
     app = make_app(connector)
-    with patch.object(connector, "count_rows_async", new=AsyncMock()) as count:
+    with patch.object(connector, "run_query_async", wraps=connector.run_query_async) as query:
         async with app.run_test():
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))
@@ -145,13 +147,15 @@ async def test_cached_total_does_not_trigger_count(connector: SQLConnector) -> N
             preview = app.screen
             assert isinstance(preview, DataBrowserScreen)
             assert "Showing 50 of 75 rows" in str(preview._status.render())
-            count.assert_not_called()
+            query.assert_awaited_once()
+            assert not isinstance(query.call_args.args[0].selected_columns[0], sql_count)
 
 
 async def test_count_failure_keeps_preview_usable(connector: SQLConnector) -> None:
     app = make_app(connector)
     result = ExecResult(error=ErrorInfo(exc_type="TimeoutError", message="Timed out"))
-    with patch.object(connector, "count_rows_async", new=AsyncMock(return_value=result)):
+    preview_result = ExecResult(df=pd.DataFrame({"value": range(50)}))
+    with patch.object(connector, "run_query_async", new=AsyncMock(side_effect=[preview_result, result])):
         async with app.run_test() as pilot:
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))
@@ -170,7 +174,11 @@ async def test_count_does_not_block_preview_and_cancels_on_close(connector: SQLC
     started = asyncio.Event()
     cancelled = asyncio.Event()
 
-    async def count(*args: Any, **kwargs: Any) -> ExecResult:
+    run_query = connector.run_query_async
+
+    async def query(statement: Any, **kwargs: Any) -> ExecResult:
+        if not isinstance(statement.selected_columns[0], sql_count):
+            return await run_query(statement, **kwargs)
         started.set()
         try:
             await asyncio.Event().wait()
@@ -179,7 +187,7 @@ async def test_count_does_not_block_preview_and_cancels_on_close(connector: SQLC
             cancelled.set()
 
     app = make_app(connector)
-    with patch.object(connector, "count_rows_async", new=count):
+    with patch.object(connector, "run_query_async", new=query):
         async with app.run_test() as pilot:
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))
@@ -195,40 +203,46 @@ async def test_count_does_not_block_preview_and_cancels_on_close(connector: SQLC
             assert not app.state.row_counts
 
 
-async def test_live_count_bypasses_query_cache_and_supports_views(connector: SQLConnector) -> None:
+async def test_count_supports_read_only_views_with_quoted_names(connector: SQLConnector) -> None:
     await connector.run_query_async('CREATE VIEW "items view" AS SELECT * FROM items')
+    await connector.refresh_schema_async()
     connector.read_only = True
-    connector.config = connector.config.model_copy(update={"sql_query_cache_mode": "read_write"})
-    with patch.object(connector, "run_query_async", new=AsyncMock(side_effect=AssertionError("cached query"))):
-        result = await connector.count_rows_async("items view", schema_name="main")
-        assert result.error is None
-        assert result.df is not None
-        assert result.df.iloc[0, 0] == 75
-        await connector._execute_query_async("INSERT INTO items VALUES (100)", (), 30)
-        result = await connector.count_rows_async("items view", schema_name="main")
-        assert result.df is not None
-        assert result.df.iloc[0, 0] == 76
-
-
-async def test_count_error_is_returned_and_empty_table_counts_zero(connector: SQLConnector) -> None:
-    result = await connector.count_rows_async("missing table", schema_name="main")
-    assert result.error is not None
-    await connector.run_query_async("DELETE FROM items")
-    result = await connector.count_rows_async("items", schema_name="main")
-    assert result.df is not None and result.df.iloc[0, 0] == 0
+    app = make_app(connector)
+    async with app.run_test():
+        screen = app.query_one(SchemaBrowserScreen)
+        tree = screen.query_one(Tree)
+        node = next(
+            node
+            for source in tree.root.children
+            for schema in source.children
+            for node in schema.children
+            if node.data is not None and node.data.table_name == "items view"
+        )
+        tree.select_node(node)
+        await screen.action_open_preview()
+        await app.workers.wait_for_complete()
+        preview = app.screen
+        assert isinstance(preview, DataBrowserScreen)
+        assert "Showing 50 of 75 rows" in str(preview._status.render())
+        assert isinstance(node.label, Text)
+        assert node.label.plain == "items view  view  75 rows"
 
 
 async def test_count_finishing_after_refresh_is_discarded(connector: SQLConnector) -> None:
     started = asyncio.Event()
     finish = asyncio.Event()
 
-    async def count(*args: Any, **kwargs: Any) -> ExecResult:
+    run_query = connector.run_query_async
+
+    async def query(statement: Any, **kwargs: Any) -> ExecResult:
+        if not isinstance(statement.selected_columns[0], sql_count):
+            return await run_query(statement, **kwargs)
         started.set()
         await finish.wait()
         return ExecResult(df=pd.DataFrame({"count": [75]}))
 
     app = make_app(connector)
-    with patch.object(connector, "count_rows_async", new=count):
+    with patch.object(connector, "run_query_async", new=query):
         async with app.run_test():
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))

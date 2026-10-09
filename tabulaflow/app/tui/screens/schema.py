@@ -668,7 +668,8 @@ class SchemaBrowserScreen(Screen[None]):
         )
 
         async def count_rows() -> int | None:
-            result = await connector.count_rows_async(table.name, schema_name=table.schema_name, timeout=30)
+            statement = sqlalchemy.select(sqlalchemy.func.count()).select_from(tbl)
+            result = await connector.run_query_async(statement, timeout=30)
             if result.error is not None or connector.schema is not schema:
                 return None
             assert result.df is not None
