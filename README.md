@@ -43,8 +43,9 @@ https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
 
 
 **More demos:**
+[Get Precise Data via Interactive Disambiguation](https://megagonlabs.github.io/tabulaflow/#demo-disambiguation) ·
 [Build a Research Paper Database](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
-[Ask Your Database Anything](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
+[Chat to a Bioinformatics MySQL db](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
 [Explore a Multimodal Hugging Face Dataset](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face) ·
 [Query and Visualize Graphs](https://megagonlabs.github.io/tabulaflow/#demo-wikidata)
 
