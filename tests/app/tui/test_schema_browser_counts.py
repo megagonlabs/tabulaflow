@@ -58,7 +58,7 @@ def table_node(screen: SchemaBrowserScreen) -> Any:
     )
 
 
-async def test_count_is_explicit_and_cached_across_reopening(connector: SQLConnector) -> None:
+async def test_count_starts_on_preview_and_is_cached_across_reopening(connector: SQLConnector) -> None:
     state = ExplorerState()
     with patch.object(connector, "count_rows_async", wraps=connector.count_rows_async) as count:
         app = make_app(connector, state)
@@ -67,12 +67,18 @@ async def test_count_is_explicit_and_cached_across_reopening(connector: SQLConne
             node = table_node(screen)
             screen.query_one(Tree).select_node(node)
             await pilot.pause()
-            assert "unknown" in str(screen._status.render())
+            assert "rows" not in str(screen._status.render())
+            assert "Count rows" not in str(screen._hint.render())
             count.assert_not_called()
-            await screen.action_count_rows().wait()
+            await screen.action_open_preview()
+            await app.workers.wait_for_complete()
+            await pilot.press("escape")
             assert node.label.plain == "items  75 rows"
             assert "75 rows (last counted)" in str(screen._status.render())
             assert connector.schema.tables[0].num_rows is None
+            await screen.action_open_preview()
+            await app.workers.wait_for_complete()
+            await pilot.press("escape")
         async with make_app(connector, state).run_test() as reopened:
             screen = reopened.app.query_one(SchemaBrowserScreen)
             assert table_node(screen).label.plain == "items  75 rows"
@@ -81,10 +87,12 @@ async def test_count_is_explicit_and_cached_across_reopening(connector: SQLConne
 
 async def test_refresh_invalidates_count(connector: SQLConnector) -> None:
     app = make_app(connector)
-    async with app.run_test():
+    async with app.run_test() as pilot:
         screen = app.query_one(SchemaBrowserScreen)
         screen.query_one(Tree).select_node(table_node(screen))
-        await screen.action_count_rows().wait()
+        await screen.action_open_preview()
+        await app.workers.wait_for_complete()
+        await pilot.press("escape")
         await screen.action_refresh_schema()
         assert table_node(screen).label.plain == "items"
 
@@ -103,35 +111,56 @@ async def test_preview_distinguishes_sample_and_total(connector: SQLConnector, t
         await pilot.pause()
         assert "Preview table" in str(screen._hint.render())
         await screen.action_open_preview()
+        await app.workers.wait_for_complete()
         await pilot.pause()
         preview = app.screen
         assert isinstance(preview, DataBrowserScreen)
-        if total is None:
-            assert "Preview: 50 rows · total unknown" in preview._title
-        elif total == 0:
-            assert "No rows returned" in preview._title
+        assert preview._title == "data: main.items"
+        status = str(preview._status.render())
+        assert f"{75 if total is None else total} total rows" in status
+        if total == 0:
+            assert "No rows returned" in status
         elif total == 3:
-            assert "Preview: 3 of 3 rows" in preview._title
+            assert "3 preview rows" in status
         else:
-            assert "Preview: 50 of 75 rows" in preview._title
-        assert "Preview rows" in str(preview._status.render())
+            assert "50 preview rows" in status
+        assert "Preview rows" in status
 
 
-async def test_count_failure_preserves_previous_count(connector: SQLConnector) -> None:
+async def test_cached_total_does_not_trigger_count(connector: SQLConnector) -> None:
+    connector.schema.tables[0].num_rows = 75
     app = make_app(connector)
-    async with app.run_test():
-        screen = app.query_one(SchemaBrowserScreen)
-        node = table_node(screen)
-        screen.query_one(Tree).select_node(node)
-        await screen.action_count_rows().wait()
-        result = ExecResult(error=ErrorInfo(exc_type="TimeoutError", message="Timed out"))
-        with patch.object(connector, "count_rows_async", new=AsyncMock(return_value=result)):
-            await screen.action_count_rows().wait()
-        assert node.label.plain == "items  75 rows"
-        assert "Count failed: Timed out" in str(screen._status.render())
+    with patch.object(connector, "count_rows_async", new=AsyncMock()) as count:
+        async with app.run_test():
+            screen = app.query_one(SchemaBrowserScreen)
+            screen.query_one(Tree).select_node(table_node(screen))
+            await screen.action_open_preview()
+            await app.workers.wait_for_complete()
+            preview = app.screen
+            assert isinstance(preview, DataBrowserScreen)
+            assert "75 total rows" in str(preview._status.render())
+            count.assert_not_called()
 
 
-async def test_count_does_not_block_navigation_and_cancels_on_close(connector: SQLConnector) -> None:
+async def test_count_failure_keeps_preview_usable(connector: SQLConnector) -> None:
+    app = make_app(connector)
+    result = ExecResult(error=ErrorInfo(exc_type="TimeoutError", message="Timed out"))
+    with patch.object(connector, "count_rows_async", new=AsyncMock(return_value=result)):
+        async with app.run_test() as pilot:
+            screen = app.query_one(SchemaBrowserScreen)
+            screen.query_one(Tree).select_node(table_node(screen))
+            await screen.action_open_preview()
+            await app.workers.wait_for_complete()
+            preview = app.screen
+            assert isinstance(preview, DataBrowserScreen)
+            assert "Total unavailable" in str(preview._status.render())
+            assert len(preview._df) == 50
+            await pilot.press("escape")
+            assert table_node(screen).label.plain == "items"
+            assert "rows" not in str(screen._status.render())
+
+
+async def test_count_does_not_block_preview_and_cancels_on_close(connector: SQLConnector) -> None:
     started = asyncio.Event()
     cancelled = asyncio.Event()
 
@@ -148,12 +177,16 @@ async def test_count_does_not_block_navigation_and_cancels_on_close(connector: S
         async with app.run_test() as pilot:
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))
-            await pilot.press("c")
+            await screen.action_open_preview()
             await asyncio.wait_for(started.wait(), 5)
-            await pilot.press("up")
-            node = screen.query_one(Tree).cursor_node
-            assert node is not None and node.data is not None and node.data.kind != "table"
-        await asyncio.wait_for(cancelled.wait(), 5)
+            preview = app.screen
+            assert isinstance(preview, DataBrowserScreen)
+            assert "Counting total" in str(preview._status.render())
+            await pilot.press("down")
+            assert preview._table.cursor_coordinate.row == 1
+            await pilot.press("escape")
+            await asyncio.wait_for(cancelled.wait(), 5)
+            assert not app.state.row_counts
 
 
 async def test_live_count_bypasses_query_cache_and_supports_views(connector: SQLConnector) -> None:
@@ -193,11 +226,11 @@ async def test_count_finishing_after_refresh_is_discarded(connector: SQLConnecto
         async with app.run_test():
             screen = app.query_one(SchemaBrowserScreen)
             screen.query_one(Tree).select_node(table_node(screen))
-            worker = screen.action_count_rows()
+            await screen.action_open_preview()
             await asyncio.wait_for(started.wait(), 5)
             await screen.action_refresh_schema()
             finish.set()
-            await worker.wait()
+            await app.workers.wait_for_complete()
             assert table_node(screen).label.plain == "items"
             assert not app.state.row_counts
 

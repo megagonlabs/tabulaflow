@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual import work
 from textual.screen import Screen
 from textual.widgets import Static
 
@@ -181,7 +180,6 @@ class SchemaBrowserScreen(Screen[None]):
         Binding("right", "expand_node", "Expand", show=False, priority=True),
         Binding("enter", "open_preview", "Preview table", show=False, priority=True),
         Binding("r", "refresh_schema", "Refresh", show=True),
-        Binding("c", "count_rows", "Count rows", show=False, priority=True),
     ]
 
     _PREVIEW_ROW_CAP = 50
@@ -198,8 +196,6 @@ class SchemaBrowserScreen(Screen[None]):
         self._filter_alias = alias
         self._state = state if state is not None else ExplorerState()
         self._refreshing = False
-        self._counting: _NodePath | None = None
-        self._count_error: tuple[_NodePath, str] | None = None
         self._status = Static(classes="schema-browser-status")
         self._gap = Static(classes="schema-browser-gap")
         self._hint = Static(id="browse-hint")
@@ -615,42 +611,6 @@ class SchemaBrowserScreen(Screen[None]):
             label.append(f"  {count:,} rows", style="dim")
         return label
 
-    @work(group="row-count", exclusive=True)
-    async def action_count_rows(self) -> None:
-        """Count the selected relation without collecting column statistics."""
-        from textual.widgets import Tree
-
-        from tabulaflow.core import SQLSchema
-        from tabulaflow.data.sql import SQLConnector
-
-        tree = self.query_one("#browse-tree", Tree)
-        node = tree.cursor_node
-        if node is None or node.data is None or node.data.kind != _NODE_KIND_TABLE:
-            return
-        data = node.data
-        connector = self._registry.get(data.alias)
-        assert isinstance(connector, SQLConnector)
-        schema = connector.schema
-        if not isinstance(schema, SQLSchema):
-            return
-        table = next(t for t in schema.tables if t.name == data.table_name and t.schema_name == data.schema_name)
-        path = (data.alias, table.schema_name, table.name, None)
-        self._counting = path
-        self._count_error = None
-        self._update_status()
-        try:
-            result = await connector.count_rows_async(table.name, schema_name=table.schema_name, timeout=30)
-            if result.error is not None:
-                self._count_error = (path, result.error.message.replace("\n", " ").strip())
-            elif connector.schema is schema:
-                assert result.df is not None
-                count = int(result.df.iloc[0, 0])
-                self._state.row_counts[path] = (table, count)
-                node.set_label(self._table_label(data.alias, table))
-        finally:
-            self._counting = None
-        self._update_status()
-
     async def action_open_preview(self) -> None:
         """Open a live, capped preview of the selected table or view."""
         from textual.widgets import Tree
@@ -701,17 +661,33 @@ class SchemaBrowserScreen(Screen[None]):
         df = result.df if result.df is not None else pd.DataFrame()
 
         count = self._row_count(node_data.alias, table)
-        suffix = f"(Preview: {len(df):,} rows · total unknown)"
-        if count is not None:
-            suffix = f"(Preview: {len(df):,} of {count:,} rows · last counted)"
-        if df.empty:
-            suffix = f"(No rows returned · {'total unknown' if count is None else f'{count:,} rows last counted'})"
         title = (
-            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} {suffix}"
+            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name}"
             if node_data.schema_name
-            else f"{node_data.alias}: {node_data.table_name} {suffix}"
+            else f"{node_data.alias}: {node_data.table_name}"
         )
-        self.app.push_screen(DataBrowserScreen(title=title, df=df, is_preview=True))
+
+        async def count_rows() -> int | None:
+            result = await connector.count_rows_async(table.name, schema_name=table.schema_name, timeout=30)
+            if result.error is not None or connector.schema is not schema:
+                return None
+            assert result.df is not None
+            total = int(result.df.iloc[0, 0])
+            path = (node_data.alias, table.schema_name, table.name, None)
+            self._state.row_counts[path] = (table, total)
+            node.set_label(self._table_label(node_data.alias, table))
+            self._update_status()
+            return total
+
+        await self.app.push_screen(
+            DataBrowserScreen(
+                title=title,
+                df=df,
+                is_preview=True,
+                total_rows=count,
+                count_rows=count_rows if count is None else None,
+            )
+        )
 
     def action_close_browser(self) -> None:
         self.dismiss()
@@ -869,12 +845,8 @@ class SchemaBrowserScreen(Screen[None]):
                 parts.append(path)
                 parts.append(f"{len(table.columns):,} columns")
                 count = self._row_count(node_data.alias, table)
-                parts.append("Rows: unknown" if count is None else f"{count:,} rows (last counted)")
-                table_path = (node_data.alias, table.schema_name, table.name, None)
-                if self._counting == table_path:
-                    parts.append("Counting rows...")
-                if self._count_error is not None and self._count_error[0] == table_path:
-                    parts.append(f"Count failed: {self._count_error[1]}")
+                if count is not None:
+                    parts.append(f"{count:,} rows (last counted)")
 
         if parts:
             self._status.update(Text("  |  ".join(parts), style="dim"))
@@ -890,8 +862,6 @@ class SchemaBrowserScreen(Screen[None]):
             hint.append("    ", style=hint_fg)
             hint.append("↵", style=KEY_HINT)
             hint.append(" Preview table", style=hint_fg)
-            hint.append("    C", style=KEY_HINT)
-            hint.append(" Count rows", style=hint_fg)
         hint.append("    ", style=hint_fg)
         hint.append("R", style=KEY_HINT)
         hint.append(" Refresh", style=hint_fg)

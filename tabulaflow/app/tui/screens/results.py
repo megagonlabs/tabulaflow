@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import re
 from typing import TYPE_CHECKING, cast
+from collections.abc import Awaitable, Callable
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -129,11 +131,23 @@ class DataBrowserScreen(Screen[None]):
         Binding("b", "send_table_to_browser_pane", "Send table to browser pane", show=True, priority=True),
     ]
 
-    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50, is_preview: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        title: str,
+        df: "pd.DataFrame",
+        page_size: int = 50,
+        is_preview: bool = False,
+        total_rows: int | None = None,
+        count_rows: Callable[[], Awaitable[int | None]] | None = None,
+    ) -> None:
         super().__init__()
         self._title = title
         self._df = df
         self._is_preview = is_preview
+        self._total_rows = total_rows
+        self._count_rows = count_rows
+        self._counting = count_rows is not None
         self._page_size = max(1, page_size)
         self._page_index = 0
         self._sorted_column: str | None = None
@@ -161,6 +175,15 @@ class DataBrowserScreen(Screen[None]):
     def on_mount(self) -> None:
         self._table.focus()
         self._render_page()
+        if self._count_rows is not None:
+            self._load_total_rows()
+
+    @work
+    async def _load_total_rows(self) -> None:
+        assert self._count_rows is not None
+        self._total_rows = await self._count_rows()
+        self._counting = False
+        self._update_status()
 
     def action_close_browser(self) -> None:
         self.dismiss()
@@ -305,6 +328,15 @@ class DataBrowserScreen(Screen[None]):
             f"{'Preview rows' if self._is_preview else 'Rows'} {shown_range} of {self._num_rows:,}",
             f"Page {self._page_index + 1}/{total_pages}",
         ]
+        if self._is_preview:
+            if self._counting:
+                parts.insert(2, "Counting total…")
+            elif self._total_rows is not None:
+                parts.insert(2, f"{self._total_rows:,} total rows (last counted)")
+            else:
+                parts.insert(2, "Total unavailable")
+            if self._num_rows == 0:
+                parts.insert(1, "No rows returned")
 
         col_index = self._table.cursor_coordinate.column - 1
         if 0 <= col_index < len(self._df.columns):
