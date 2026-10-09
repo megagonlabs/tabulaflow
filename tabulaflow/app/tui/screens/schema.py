@@ -8,8 +8,7 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual import work
-from textual.containers import Vertical
-from textual.screen import ModalScreen
+from textual.screen import Screen
 from textual.widgets import Static
 
 from tabulaflow.app.tui.theme import (
@@ -98,35 +97,18 @@ class ExplorerState:
         self.row_counts: dict[_NodePath, tuple[SQLTableSchema, int]] = {}
 
 
-class SchemaBrowserScreen(ModalScreen[None]):
-    """Right-side drawer for exploring connected data-source schemas."""
+class SchemaBrowserScreen(Screen[None]):
+    """Full-screen tree browser for exploring connected data-source schemas."""
 
     DEFAULT_CSS = """
     SchemaBrowserScreen {
-        align: right top;
-        background: transparent;
-    }
-
-    SchemaBrowserScreen #explorer-drawer {
-        width: 70%;
-        max-width: 100;
-        height: 100%;
-        background: #14171c;
-        border-left: solid #2c3038;
-    }
-
-    SchemaBrowserScreen #explorer-title {
-        height: auto;
-        padding: 1 2;
-        color: #e4e4e7;
-        text-style: bold;
-        border-bottom: solid #21262d;
+        background: $background;
     }
 
     SchemaBrowserScreen #browse-tree {
         height: 1fr;
         padding: 1 2;
-        background: #14171c;
+        background: $background;
         scrollbar-color: #666666;
         scrollbar-color-hover: #5FAF87;
         scrollbar-color-active: #5FAF87;
@@ -178,7 +160,7 @@ class SchemaBrowserScreen(ModalScreen[None]):
 
     SchemaBrowserScreen .schema-browser-status {
         padding: 0 2;
-        color: #9aa4b2;
+        color: #f5f5f5;
     }
 
     SchemaBrowserScreen .schema-browser-gap {
@@ -188,8 +170,8 @@ class SchemaBrowserScreen(ModalScreen[None]):
     SchemaBrowserScreen #browse-hint {
         dock: bottom;
         padding: 0 2;
-        color: #9aa4b2;
-        background: #1f2532;
+        color: #f5f5f5;
+        background: #2a2a2a;
     }
     """
 
@@ -230,12 +212,10 @@ class SchemaBrowserScreen(ModalScreen[None]):
         tree.guide_depth = 3
         tree.auto_expand = False
 
-        with Vertical(id="explorer-drawer"):
-            yield Static("Data explorer", id="explorer-title")
-            yield tree
-            yield self._status
-            yield self._gap
-            yield self._hint
+        yield tree
+        yield self._status
+        yield self._gap
+        yield self._hint
 
     def on_mount(self) -> None:
         # Snapshot the saved cursor before any side effects can clobber it.
