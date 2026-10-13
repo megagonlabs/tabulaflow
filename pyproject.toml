@@ -111,7 +111,7 @@ include = ["tabulaflow/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
-    "ruff>=0.11.10,<0.14",
+    "ruff>=0.11.10,<0.17",
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
     "ipython",
