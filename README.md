@@ -22,6 +22,7 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
   specifications. TabulaFlow handles data resolution and rendering, so the
   agent never wastes tokens handcrafting data values or HTML to create visual
   artifacts.
+  [See the comparison](https://megagonlabs.github.io/tabulaflow/#how-does-tabulaflow-work)
 - **Human ergonomics.** Data provenance is automatically tracked: each
   visualization exposes its underlying data table, and each table exposes the
   query that produced it.
