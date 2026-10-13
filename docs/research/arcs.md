@@ -285,7 +285,7 @@ to deviate from the user's true intent.
                                 <td class="arcs-leaderboard__model"><code>claude-opus-4.5</code> <span class="arcs-leaderboard__config">(high*)</span></td>
                                 <td class="arcs-leaderboard__score">22.51</td>
                                 <td class="arcs-leaderboard__score">8.04</td>
-                                <td class="arcs-leaderboard__score arcs-leaderboard__second-best">67.85</td>
+                                <td class="arcs-leaderboard__score">67.85</td>
                                 <td class="arcs-leaderboard__score">38.59</td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__negative">-29.26</td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__cost">0.15</td>
@@ -405,10 +405,30 @@ to deviate from the user's true intent.
                                 <td class="arcs-leaderboard__model"><code>gpt-5</code> <span class="arcs-leaderboard__config">(high)</span></td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__best">61.09</td>
                                 <td class="arcs-leaderboard__score">0.00</td>
-                                <td class="arcs-leaderboard__score arcs-leaderboard__best">68.81</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__second-best">68.81</td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__second-best">57.56</td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__negative">-11.25</td>
                                 <td class="arcs-leaderboard__score arcs-leaderboard__cost">0.16</td>
+                            </tr>
+                            <tr>
+                                <td class="arcs-leaderboard__rank"></td>
+                                <td class="arcs-leaderboard__model"><code>gpt-6-luna</code> <span class="arcs-leaderboard__config">(medium*)</span></td>
+                                <td class="arcs-leaderboard__score">31.19</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__second-best">10.61</td>
+                                <td class="arcs-leaderboard__score">68.17</td>
+                                <td class="arcs-leaderboard__score">46.30</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__negative">-21.87</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__cost">0.006</td>
+                            </tr>
+                            <tr>
+                                <td class="arcs-leaderboard__rank"></td>
+                                <td class="arcs-leaderboard__model"><code>gpt-6-sol</code> <span class="arcs-leaderboard__config">(medium*)</span></td>
+                                <td class="arcs-leaderboard__score">40.84</td>
+                                <td class="arcs-leaderboard__score">9.32</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__best">74.60</td>
+                                <td class="arcs-leaderboard__score">51.77</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__negative">-22.83</td>
+                                <td class="arcs-leaderboard__score arcs-leaderboard__cost">0.04</td>
                             </tr>
                         </tbody>
                     </table>
