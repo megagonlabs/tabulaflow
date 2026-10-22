@@ -16,9 +16,15 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+        exclude-patterns:
+          - ruff
         update-types:
           - patch
           - minor
+      ruff:
+        applies-to: version-updates
+        patterns:
+          - ruff
 
   - package-ecosystem: github-actions
     directory: /
