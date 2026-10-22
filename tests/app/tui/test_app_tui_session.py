@@ -143,9 +143,12 @@ def test_crash_console_disables_color(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
+    submission_started = asyncio.Event()
+    release_submission = asyncio.Event()
 
     async def fake_run_submission(_question: object, _display_text: str, _input_bar: HistoryInput | None) -> None:
-        return None
+        submission_started.set()
+        await release_submission.wait()
 
     _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_run_submission", fake_run_submission)
@@ -161,9 +164,12 @@ async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyP
         await pilot.press("tab")
         assert input_bar.value == "Show me a table and chart on sample data"
 
+        input_bar.focus()
         await pilot.press("enter")
+        await asyncio.wait_for(submission_started.wait(), timeout=2)
         worker = app._submission_worker
         assert worker is not None
+        release_submission.set()
         await worker.wait()
         assert input_bar.placeholder == "Ask anything or type /connect"
         await pilot.press("tab")
