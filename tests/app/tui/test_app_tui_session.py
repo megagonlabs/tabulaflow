@@ -143,17 +143,24 @@ def test_crash_console_disables_color(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
+    activation_finished = asyncio.Event()
     submission_started = asyncio.Event()
     release_submission = asyncio.Event()
+
+    async def fake_activate_llm_option(_selection: ResolvedLLMConfig) -> None:
+        app._llm_activation_in_progress = False
+        activation_finished.set()
 
     async def fake_run_submission(_question: object, _display_text: str, _input_bar: HistoryInput | None) -> None:
         submission_started.set()
         await release_submission.wait()
 
     _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_activate_llm_option", fake_activate_llm_option)
     monkeypatch.setattr(app, "_run_submission", fake_run_submission)
 
     async with app.run_test() as pilot:
+        await asyncio.wait_for(activation_finished.wait(), timeout=2)
         input_bar = app.query_one("#input-bar", HistoryInput)
         assert input_bar.placeholder == "Show me a table and chart on sample data"
 
@@ -164,8 +171,7 @@ async def test_startup_input_uses_sample_data_prompt(monkeypatch: pytest.MonkeyP
         await pilot.press("tab")
         assert input_bar.value == "Show me a table and chart on sample data"
 
-        input_bar.focus()
-        await pilot.press("enter")
+        input_bar.action_submit()
         await asyncio.wait_for(submission_started.wait(), timeout=2)
         worker = app._submission_worker
         assert worker is not None
