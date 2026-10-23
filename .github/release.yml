@@ -1,8 +1,6 @@
 changelog:
   exclude:
     labels:
-      - documentation
-      - dependencies
       - chore
 
   categories:
@@ -13,6 +11,14 @@ changelog:
     - title: Fixes
       labels:
         - bug
+
+    - title: Documentation
+      labels:
+        - documentation
+
+    - title: Dependencies
+      labels:
+        - dependencies
 
     - title: Other changes
       labels:
