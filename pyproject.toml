@@ -114,7 +114,7 @@ select = ["E4", "E7", "E9", "F"]
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
-    "ruff>=0.11.10,<0.14",
+    "ruff>=0.11.10,<0.18",
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
     "ipython",
