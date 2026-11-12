@@ -141,7 +141,7 @@ jobs:
     name: macOS / Python 3.13
     needs: classify
     if: needs.classify.outputs.docs_only != 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       UV_PYTHON: "3.13"
     steps:
