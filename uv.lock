@@ -4529,7 +4529,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "huggingface-hub", specifier = ">=0.36.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "langfuse", specifier = ">=3.0.1" },
+    { name = "langfuse", specifier = ">=5.1.0,<6" },
     { name = "markdown-it-py", specifier = ">=4.0.0" },
     { name = "neo4j", specifier = ">=5.28.0" },
     { name = "pandas", specifier = ">=2.2.3" },
