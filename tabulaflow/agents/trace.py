@@ -110,15 +110,24 @@ class Trajectory(BaseModel):
                             UserMessage(content=describe_chat_input(cast(ChatInput, part.content)))
                         )
                     elif part.part_kind == "tool-return":
-                        if not isinstance(part.content, str):
+                        is_retry_prompt = part.outcome == "retried"
+                        if not is_retry_prompt and not isinstance(part.content, str):
                             raise ValueError(f"Tool return is not a string: {part.content}")
-                        trajectory.messages.append(ToolResponse(response=part.content, tool_call_id=part.tool_call_id))
+                        trajectory.messages.append(
+                            ToolResponse(
+                                response=str(part.content),
+                                tool_call_id=part.tool_call_id,
+                                is_retry_prompt=is_retry_prompt,
+                            )
+                        )
                     elif part.part_kind == "retry-prompt":
                         trajectory.messages.append(
                             ToolResponse(
                                 response=str(part.content), tool_call_id=part.tool_call_id, is_retry_prompt=True
                             )
                         )
+                    elif part.part_kind == "model-settings-delta":
+                        continue
                     else:
                         raise ValueError(f"Unknown message part type: {part.part_kind}")
             elif msg.kind == "response":

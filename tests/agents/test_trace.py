@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import genai_prices
 import pytest
-from pydantic_ai.messages import BinaryContent, ModelRequest, UserPromptPart
+from pydantic_ai.messages import BinaryContent, ModelRequest, ModelSettingsDeltaPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.usage import RequestUsage
 
 from tabulaflow.agents.trace import Trajectory, Usage, compute_api_cost
@@ -71,3 +71,26 @@ def test_trajectory_describes_media_without_serializing_bytes() -> None:
     assert "inspect" in content
     assert "[Image: image/png" in content
     assert "secret payload" not in content
+
+
+def test_trajectory_records_retried_tool_returns_and_ignores_model_settings() -> None:
+    trajectory = Trajectory.from_pydantic_ai_messages(
+        [
+            ModelRequest(
+                parts=[
+                    ModelSettingsDeltaPart(settings={"thinking": "high"}),
+                    ToolReturnPart(
+                        "submit_answer",
+                        [{"type": "missing", "loc": ["name"], "msg": "Field required", "input": {}}],
+                        "call-1",
+                        outcome="retried",
+                    ),
+                ]
+            )
+        ]
+    )
+
+    assert len(trajectory.messages) == 1
+    response = trajectory.messages[0]
+    assert response.role == "tool"
+    assert response.is_retry_prompt

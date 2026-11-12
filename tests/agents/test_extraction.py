@@ -16,6 +16,7 @@ from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
     ToolCallPart,
+    ToolReturnPart,
     RetryPromptPart,
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -67,7 +68,12 @@ async def test_entity_extractor_preserves_schema_validation_and_returns_models()
         assert schema["required"] == ["name", "qty"]
         assert schema["properties"]["qty"]["description"] == "Units available"
         if calls == 2:
-            assert any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
+            assert any(
+                isinstance(part, RetryPromptPart)
+                or (isinstance(part, ToolReturnPart) and part.outcome == "retried")
+                for message in messages
+                for part in message.parts
+            )
         records = [
             {"name": "apple", "qty": 0 if calls == 1 else 2},
             {"name": "pear", "qty": 3, "launched": "2026-09-15"},

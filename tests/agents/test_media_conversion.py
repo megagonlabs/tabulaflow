@@ -58,7 +58,7 @@ def test_to_binary_content_rejects_unknown_values() -> None:
     with pytest.raises(ValueError, match="could not be determined"):
         to_binary_content(b"unknown")
     with pytest.raises(UnsupportedModelMediaError, match="not supported as a model attachment"):
-        to_binary_content(b"unknown", media_type="application/zip")
+        to_binary_content(b"unknown", media_type="application/x-tabulaflow-unsupported")
 
 
 def test_to_binary_content_rejects_decompression_bombs(monkeypatch: pytest.MonkeyPatch) -> None:

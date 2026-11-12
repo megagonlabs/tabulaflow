@@ -4,7 +4,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from tabulaflow.agents.tools import ExtractRowsFromDocumentsTool, RunSubagentForEachRowTool
@@ -33,7 +33,12 @@ async def test_tools_retry_invalid_enum_before_writing(tmp_path: Path, operation
             schema = schema["$defs"]["ExtractedEntity"]
         assert schema["properties"]["category"]["anyOf"][0]["enum"] == ["billing", "account", "technical"]
         if calls == 2:
-            assert any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
+            assert any(
+                isinstance(part, RetryPromptPart)
+                or (isinstance(part, ToolReturnPart) and part.outcome == "retried")
+                for message in messages
+                for part in message.parts
+            )
         category = "unknown" if calls == 1 else "billing"
         answer: dict[str, object] = (
             {"response": [{"category": category}]} if operation == "extraction" else {"category": category}
