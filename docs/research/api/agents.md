@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Agents and tools
 
 ## Registry and contracts

@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Output
 
 Define tables, charts, maps, and graphs as structured outputs, then resolve
