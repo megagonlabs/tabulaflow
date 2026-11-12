@@ -1903,7 +1903,7 @@ wheels = [
 
 [[package]]
 name = "langfuse"
-version = "3.6.1"
+version = "5.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -1913,12 +1913,12 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "packaging" },
     { name = "pydantic" },
-    { name = "requests" },
+    { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/ea/b1abad97af5e4dba0ea3135387efa139f11ac34e57da5a8b2ea14354bd95/langfuse-3.6.1.tar.gz", hash = "sha256:eac27ee5bbd8d05e7d665e822e0efb36766b20fe281930ff040f47eb22cc1b69", size = 189456, upload-time = "2025-10-02T08:33:17.363Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/83/47ed47d5404a15da9a4176dd40f53b173bfa3eebff155a13002b6a3da9d6/langfuse-5.1.0.tar.gz", hash = "sha256:364afbfdfb44b9ae40feba73d08938c8c823a0101c85f3d466dc49d09951b286", size = 371201, upload-time = "2026-10-30T16:05:28.665Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/49/4eae7cd4a1005c77808b3d8e3174412c4e198c8fb776b8847b0223a5f504/langfuse-3.6.1-py3-none-any.whl", hash = "sha256:134e0007fcfdd9fb70b491c882bb431c8095b3f5cc5e865756f46a2abd3675a2", size = 350756, upload-time = "2025-10-02T08:33:15.607Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/22/36962b043c6f2b8a1612e596670e64bb4b7137c52690aeb9f3b29dc4773d/langfuse-5.1.0-py3-none-any.whl", hash = "sha256:de947b911ead9d95c56d8592b172b7f84953789c430aa0117045f1f4b6e5a6d3", size = 641284, upload-time = "2026-10-30T16:05:26.931Z" },
 ]
 
 [[package]]
@@ -4529,7 +4529,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "huggingface-hub", specifier = ">=0.36.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "langfuse", specifier = ">=3.0.1" },
+    { name = "langfuse", specifier = ">=5.1.0,<6" },
     { name = "markdown-it-py", specifier = ">=4.0.0" },
     { name = "neo4j", specifier = ">=5.28.0" },
     { name = "pandas", specifier = ">=2.2.3" },

@@ -11,6 +11,7 @@ from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.context import Context
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON, Decision, ParentBased, Sampler, SamplingResult
 from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import AttributeValue
@@ -23,6 +24,11 @@ logger = logging.getLogger(__name__)
 _BIGQUERY_SCOPE = "google.cloud.bigquery.opentelemetry_tracing"
 _configured = False
 _configure_lock = threading.Lock()
+
+
+def _should_export_langfuse_span(span: ReadableSpan) -> bool:
+    scope = span.instrumentation_scope
+    return scope is None or scope.name != _BIGQUERY_SCOPE
 
 
 class _ResearchSampler(Sampler):
@@ -83,7 +89,7 @@ def configure_research_observability() -> None:
         if os.getenv("LANGFUSE_HOST"):
             from langfuse import Langfuse
 
-            langfuse = Langfuse(blocked_instrumentation_scopes=[_BIGQUERY_SCOPE])
+            langfuse = Langfuse(should_export_span=_should_export_langfuse_span)
             if langfuse.auth_check():
                 logger.info("Langfuse client authenticated.")
             else:

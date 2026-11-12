@@ -79,7 +79,27 @@ def test_research_observability_filters_phoenix_bigquery_spans(monkeypatch: pyte
     assert result.decision is Decision.DROP
 
 
-def test_research_observability_blocks_bigquery_scope_in_langfuse(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_langfuse_span_filter_blocks_bigquery_scope() -> None:
+    span = Mock()
+    span.instrumentation_scope.name = "google.cloud.bigquery.opentelemetry_tracing"
+
+    assert not research_observability._should_export_langfuse_span(span)
+
+
+def test_langfuse_span_filter_keeps_other_scopes() -> None:
+    span = Mock()
+    span.instrumentation_scope.name = "tabulaflow"
+
+    assert research_observability._should_export_langfuse_span(span)
+
+
+def test_langfuse_span_filter_keeps_missing_scope() -> None:
+    span = Mock(instrumentation_scope=None)
+
+    assert research_observability._should_export_langfuse_span(span)
+
+
+def test_research_observability_filters_bigquery_scope_in_langfuse(monkeypatch: pytest.MonkeyPatch) -> None:
     client = Mock()
     client.auth_check.return_value = True
     langfuse = Mock(return_value=client)
@@ -93,4 +113,4 @@ def test_research_observability_blocks_bigquery_scope_in_langfuse(monkeypatch: p
 
     research_observability.configure_research_observability()
 
-    langfuse.assert_called_once_with(blocked_instrumentation_scopes=["google.cloud.bigquery.opentelemetry_tracing"])
+    langfuse.assert_called_once_with(should_export_span=research_observability._should_export_langfuse_span)
