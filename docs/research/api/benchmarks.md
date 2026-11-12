@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Benchmarks
 
 ## Loader registry and contract

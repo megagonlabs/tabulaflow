@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Data
 
 Connect to SQL databases, Neo4j, SPARQL endpoints, files, and datasets through

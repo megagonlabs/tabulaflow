@@ -1,3 +1,8 @@
+---
+search:
+  boost: 0.25
+---
+
 # Preprocessing
 
 See [Running experiments](../running-experiments.md#configure-concurrency-and-caching)
