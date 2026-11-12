@@ -28,6 +28,7 @@ from pydantic_ai.messages import (
     BinaryContent,
     ModelMessage,
     ModelRequest,
+    ModelRequestPart,
     ModelResponse,
     TextPart,
     ToolCallPart,
@@ -215,10 +216,12 @@ def _project_execution(turn: list[ModelMessage]) -> list[ModelMessage]:
         if not isinstance(message, ModelRequest):
             compacted.append(message)
             continue
-        parts = [
-            replace(part, content=_tool_result_placeholder(part)) if isinstance(part, ToolReturnPart) else part
-            for part in message.parts
-        ]
+        parts: list[ModelRequestPart] = []
+        for part in message.parts:
+            if type(part) is ToolReturnPart:
+                tool_return = cast(ToolReturnPart, part)
+                part = replace(tool_return, content=_tool_result_placeholder(tool_return))
+            parts.append(part)
         compacted.append(replace(message, parts=parts))
     return compacted
 

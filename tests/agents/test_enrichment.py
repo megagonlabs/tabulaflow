@@ -190,7 +190,12 @@ async def test_literal_validation_retries_before_returning_a_category() -> None:
         nonlocal calls
         calls += 1
         if calls > 1:
-            assert any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
+            assert any(
+                isinstance(part, RetryPromptPart)
+                or (isinstance(part, ToolReturnPart) and part.outcome == "retried")
+                for message in messages
+                for part in message.parts
+            )
         return _answer({"mode": "invalid" if calls == 1 else "remote"})
 
     enricher = DataFrameEnricher(llm=FunctionModel(respond))
@@ -351,7 +356,12 @@ async def test_schema_constraints_defaults_aliases_and_validators_are_preserved(
         assert schema["properties"]["experience"]["description"] == "Minimum years of experience"
         # One invalid response per input row stays within the model's retry limit.
         row = int(_prompt(messages))
-        retrying = any(isinstance(part, RetryPromptPart) for message in messages for part in message.parts)
+        retrying = any(
+            isinstance(part, RetryPromptPart)
+            or (isinstance(part, ToolReturnPart) and part.outcome == "retried")
+            for message in messages
+            for part in message.parts
+        )
         calls += 1
         return _answer(answers[-1] if retrying else answers[row])
 
