@@ -2,7 +2,7 @@
 
 import sqlglot
 from sqlglot import exp
-from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 from sqlglot.optimizer.scope import Scope, build_scope
 
 _SQLGLOT_DIALECT_BY_LANGUAGE = {"postgresql": "postgres"}
@@ -21,39 +21,36 @@ def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tup
     """
     dialect = sqlglot_dialect(language)
     try:
-        parsed = sqlglot.parse_one(query, dialect=dialect)
-        qualified = qualify(parsed, dialect=dialect, validate_qualify_columns=False)
-        root = build_scope(qualified)
+        parsed = normalize_identifiers(sqlglot.parse_one(query, dialect=dialect), dialect=dialect)
+        root = build_scope(parsed)
     except Exception:
         try:
-            parsed = sqlglot.parse_one(query)
-            qualified = qualify(parsed, validate_qualify_columns=False)
-            root = build_scope(qualified)
+            root = build_scope(normalize_identifiers(sqlglot.parse_one(query)))
         except Exception:
             return []
 
     if root is None:
         return []
 
-    def collect_columns(scope: Scope, result: list[tuple[str, str]], seen: set[tuple[str, str]]) -> None:
-        for col in scope.columns:
-            source = scope.sources.get(col.table)
+    result: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for scope in root.traverse():
+        physical_sources = [source for source in scope.sources.values() if isinstance(source, exp.Table)]
+        for column in scope.find_all(exp.Column):
+            source: exp.Table | Scope | None = None
+            if column.table:
+                current: Scope | None = scope
+                while current is not None:
+                    source = current.sources.get(column.table)
+                    if source is not None:
+                        break
+                    current = current.parent
+            elif len(physical_sources) == 1:
+                source = physical_sources[0]
+
             if isinstance(source, exp.Table):
-                key = (source.name, col.name)
+                key = (source.name, column.name)
                 if key not in seen:
                     result.append(key)
                     seen.add(key)
-
-        for union_scope in scope.union_scopes:
-            collect_columns(union_scope, result, seen)
-        for cte_scope in scope.cte_scopes:
-            collect_columns(cte_scope, result, seen)
-        for subquery_scope in scope.subquery_scopes:
-            collect_columns(subquery_scope, result, seen)
-        for source in scope.sources.values():
-            if isinstance(source, Scope):
-                collect_columns(source, result, seen)
-
-    result: list[tuple[str, str]] = []
-    collect_columns(root, result, set())
     return result

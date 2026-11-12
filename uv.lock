@@ -4550,7 +4550,7 @@ requires-dist = [
     { name = "socksio", specifier = ">=1.0,<2" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.45,<2.1" },
     { name = "sqlalchemy-bigquery", specifier = ">=1.11.0" },
-    { name = "sqlglot", specifier = ">=28.6.0" },
+    { name = "sqlglot", specifier = ">=30.29.0,<31" },
     { name = "sqlparse", specifier = ">=0.6.0" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "textual", extras = ["syntax"], specifier = ">=8.2.8" },

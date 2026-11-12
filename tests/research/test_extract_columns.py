@@ -40,6 +40,14 @@ def test_join_query() -> None:
     }
 
 
+def test_ambiguous_unqualified_column_is_ignored() -> None:
+    query = "SELECT id FROM users JOIN orders ON users.id = orders.user_id"
+
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "id"), ("orders", "user_id")}
+
+
 def test_cte_query() -> None:
     """Test extracting columns from a CTE query, tracing back to source tables."""
     query = """
