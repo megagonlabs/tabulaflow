@@ -1,0 +1,883 @@
+.md-typeset .data-patterns-heading {
+  margin-bottom: 0.6rem;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.md-typeset .data-patterns-intro {
+  max-width: 65ch;
+  margin-bottom: 1rem;
+  color: var(--tf-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.tf-patterns {
+  --surface: #151a23;
+  --surface-raised: var(--tf-card);
+  --surface-soft: #202733;
+  --border: #2a323f;
+  --border-strong: #3a4656;
+  --text: var(--tf-text);
+  --muted: var(--tf-text-muted);
+  --dim: #6f7987;
+  --accent: var(--tf-accent);
+  --accent-soft: rgba(95, 175, 135, 0.12);
+  --accent-border: rgba(95, 175, 135, 0.42);
+  --diagram-outer: #465365;
+  --diagram-grid: #3f4d5e;
+  --diagram-accent-fill: #263e39;
+  --diagram-accent-header: #305046;
+  --diagram-accent-grid: #4b7565;
+  --diagram-blue-fill: #293b50;
+  --diagram-arrow: #68778a;
+  container-type: inline-size;
+  margin: 1rem 0;
+  color: var(--text);
+}
+
+.tf-patterns *,
+.tf-patterns *::before,
+.tf-patterns *::after {
+  box-sizing: border-box;
+}
+
+.tf-patterns .patterns-shell {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(21, 26, 35, 0.86);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+}
+
+.tf-patterns table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tf-patterns col.pattern-column {
+  width: 41%;
+}
+
+.tf-patterns col.flow-column {
+  width: 59%;
+}
+
+.tf-patterns thead {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.tf-patterns thead th {
+  padding: 13px 20px;
+  color: var(--dim);
+  font-size: 0.6rem;
+  font-weight: 720;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.tf-patterns tbody tr {
+  border-top: 1px solid var(--border);
+  transition: background 140ms ease;
+}
+
+.tf-patterns tbody tr:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.tf-patterns tbody th,
+.tf-patterns tbody td {
+  height: 142px;
+  padding: 16px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tf-patterns tbody th {
+  font-size: 0.9rem;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.tf-patterns .pattern-description {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.45;
+}
+
+.tf-patterns .flow {
+  display: flex;
+  min-height: 98px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.tf-patterns .flow-node {
+  display: flex;
+  min-width: 86px;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.6rem;
+  font-weight: 590;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.tf-patterns .flow-node.question-bubble {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 7px 10px;
+  border-radius: 14px;
+}
+
+.tf-patterns .question-bubble::after {
+  position: absolute;
+  bottom: -5px;
+  left: 18px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.tf-patterns .pattern-flow-arrow {
+  width: 48px;
+  height: 16px;
+  flex: 0 0 48px;
+  color: var(--diagram-arrow);
+  overflow: visible;
+}
+
+.tf-patterns .pattern-flow-arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.tf-patterns .pattern-flow-arrow--merge {
+  height: 100px;
+}
+
+.tf-patterns .connector-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  color: var(--dim);
+  font-size: 0.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.tf-patterns .control-flow-arrow {
+  width: 36px;
+  height: 104px;
+  flex: 0 0 36px;
+  color: var(--diagram-arrow);
+  overflow: visible;
+}
+
+.tf-patterns .control-flow-arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.tf-patterns .control-flow-arrow .control-flow-line {
+  stroke-dasharray: 4 4;
+}
+
+.tf-patterns .flow--enrichment {
+  gap: 4px;
+}
+
+.tf-patterns .document-stack-group {
+  display: grid;
+  gap: 2px;
+  transform: translateY(6.5px);
+}
+
+.tf-patterns .enrichment-connector {
+  position: relative;
+  width: 50px;
+  height: 100px;
+  flex: 0 0 50px;
+  margin-inline: 6px;
+}
+
+.tf-patterns .enrichment-connector .pattern-flow-arrow {
+  position: absolute;
+  top: 18px;
+  left: 6px;
+  width: 38px;
+  height: 64px;
+}
+
+.tf-patterns .flow--enrichment .delta-table {
+  height: 64px;
+}
+
+.tf-patterns .mini-table {
+  display: grid;
+  width: 88px;
+  height: 64px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 0.75fr repeat(3, 1fr);
+  overflow: hidden;
+  border: 1.5px solid var(--diagram-outer);
+  border-radius: 7px;
+  background: #171d26;
+}
+
+.tf-patterns .mini-table span {
+  border-right: 1px solid var(--diagram-grid);
+  border-bottom: 1px solid var(--diagram-grid);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.tf-patterns .mini-table span:nth-child(3n) {
+  border-right: 0;
+}
+
+.tf-patterns .mini-table span:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+
+.tf-patterns .mini-table span:nth-child(-n + 3) {
+  background: #2a3340;
+}
+
+.tf-patterns .delta-table {
+  display: block;
+  width: 88px;
+  height: 64px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #1a2029;
+}
+
+.tf-patterns .delta-table--columns {
+  width: 116px;
+}
+
+.tf-patterns .delta-output {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.tf-patterns .delta-caption {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  color: #78ad95;
+  font-size: 0.5rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.tf-patterns .delta-output--columns .delta-caption {
+  left: 87.5%;
+}
+
+.tf-patterns .delta-table .table-header {
+  fill: #2a3340;
+}
+
+.tf-patterns .delta-table .added-region {
+  fill: var(--diagram-accent-fill);
+}
+
+.tf-patterns .delta-table .added-header {
+  fill: var(--diagram-accent-header);
+}
+
+.tf-patterns .delta-table .grid-neutral {
+  stop-color: var(--diagram-grid);
+}
+
+.tf-patterns .delta-table .grid-mint {
+  stop-color: var(--diagram-accent-grid);
+}
+
+.tf-patterns .delta-table .table-grid,
+.tf-patterns .delta-table .table-outline {
+  fill: none;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.tf-patterns .delta-table .table-outline {
+  stroke: var(--diagram-outer);
+  stroke-width: 1.5;
+}
+
+.tf-patterns .delta-table .table-separator {
+  stroke: var(--diagram-accent-grid);
+}
+
+.tf-patterns .table-output {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 0.5rem;
+  font-weight: 650;
+}
+
+.tf-patterns .svg-symbols {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.tf-patterns .document-stack-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  overflow: visible;
+}
+
+.tf-patterns .document-stack-icon--small {
+  width: 27px;
+  height: 27px;
+  flex-basis: 27px;
+}
+
+.tf-patterns .dashboard-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tf-patterns .dashboard-views {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.tf-patterns .dashboard-tables {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-patterns .control-panel {
+  display: grid;
+  width: 140px;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.tf-patterns .radio-options {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.5rem;
+}
+
+.tf-patterns .radio-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tf-patterns .radio-option::before {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--dim);
+  border-radius: 50%;
+  content: "";
+}
+
+.tf-patterns .radio-option.selected {
+  color: var(--text);
+}
+
+.tf-patterns .radio-option.selected::before {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 2px, transparent 2px);
+}
+
+.tf-patterns .range-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.5rem;
+}
+
+.tf-patterns .range-label .range-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.tf-patterns .range-control {
+  position: relative;
+  height: 3px;
+  margin: 7px 3px 3px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+.tf-patterns .range-control::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 62%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  content: "";
+}
+
+.tf-patterns .range-control::after {
+  position: absolute;
+  top: 50%;
+  left: 62%;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--surface-raised);
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.tf-patterns .join-connector {
+  position: relative;
+  width: 48px;
+  height: 112px;
+  flex: 0 0 48px;
+}
+
+.tf-patterns .join-connector .pattern-flow-arrow {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 48px;
+}
+
+.tf-patterns .join-sources {
+  display: grid;
+  justify-items: center;
+  gap: 32px;
+}
+
+.tf-patterns .join-source {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  color: var(--muted);
+  font-size: 0.5rem;
+  font-weight: 590;
+}
+
+.tf-patterns .join-source > span {
+  position: absolute;
+  bottom: calc(100% + 4px);
+}
+
+.tf-patterns .join-table,
+.tf-patterns .visualization-table {
+  display: grid;
+  width: 88px;
+  height: 54px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 0.75fr repeat(2, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  border: 1.5px solid var(--diagram-outer);
+  border-radius: 6px;
+  background: var(--diagram-grid);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.tf-patterns .join-table > span,
+.tf-patterns .visualization-table > span {
+  display: grid;
+  place-items: center;
+  background: #1a2029;
+}
+
+.tf-patterns .join-table > span:nth-child(-n + 3) {
+  background: #2a3340;
+}
+
+.tf-patterns .join-table--input {
+  width: 48px;
+  height: 36px;
+  grid-template-columns: repeat(2, 1fr);
+  border-radius: 5px;
+}
+
+.tf-patterns .join-table--input > span:nth-child(3) {
+  background: #1a2029;
+}
+
+.tf-patterns .join-table > span.matched-cell {
+  background: var(--diagram-accent-fill);
+}
+
+.tf-patterns .join-table > span.matched-cell--blue {
+  background: var(--diagram-blue-fill);
+}
+
+.tf-patterns .visualization-table {
+  width: 54px;
+  height: 48px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.tf-patterns .visualization-table > span.table-header-cell {
+  background: #2a3340;
+}
+
+.tf-patterns .visualization-table--three {
+  width: 88px;
+  height: 64px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 0.75fr repeat(3, 1fr);
+}
+
+.tf-patterns .dashboard-table--narrow {
+  width: 32px;
+  height: 32px;
+  grid-template-columns: 1fr;
+  grid-template-rows: 0.75fr 1fr;
+}
+
+.tf-patterns .flow--query,
+.tf-patterns .flow--visualization {
+  gap: 10px;
+}
+
+.tf-patterns .flow--query .question-bubble,
+.tf-patterns .flow--query .table-output,
+.tf-patterns .flow--visualization .visualization-table,
+.tf-patterns .flow--visualization .view-stack {
+  transform: translateY(18px);
+}
+
+.tf-patterns .artifact-connector {
+  position: relative;
+  width: 88px;
+  height: 112px;
+  flex: 0 0 88px;
+}
+
+.tf-patterns .artifact-connector .spec-card {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tf-patterns .artifact-connector .pattern-flow-arrow {
+  position: absolute;
+  top: 66px;
+  right: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+}
+
+.tf-patterns .spec-card {
+  display: flex;
+  width: 34px;
+  flex: 0 0 34px;
+  flex-direction: column;
+  align-items: center;
+  color: var(--muted);
+}
+
+.tf-patterns .spec-sheet {
+  display: block;
+  width: 100%;
+  height: 42px;
+  flex: 0 0 42px;
+  fill: none;
+  stroke: var(--diagram-outer);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tf-patterns .spec-sheet rect {
+  fill: var(--surface-raised);
+}
+
+.tf-patterns .spec-sheet .spec-code {
+  stroke: var(--muted);
+}
+
+.tf-patterns .query-sheet text {
+  fill: var(--muted);
+  stroke: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 5px;
+  font-weight: 600;
+}
+
+.tf-patterns .spec-caption {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.5rem;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tf-patterns .view-stack {
+  display: flex;
+  gap: 8px;
+}
+
+.tf-patterns .view-stack--grid {
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 4px;
+}
+
+.tf-patterns .view-stack--grid .view-card:last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+.tf-patterns .view-card {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: #b9c1cc;
+}
+
+.tf-patterns .view-card svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.tf-patterns .composition-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 4px 0;
+  color: var(--dim);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.tf-patterns .composition-note::before {
+  width: 18px;
+  height: 1px;
+  flex: 0 0 18px;
+  background: var(--accent);
+  content: "";
+}
+
+@container (max-width: 640px) {
+  .tf-patterns .patterns-shell {
+    border-radius: 12px;
+  }
+
+  .tf-patterns table,
+  .tf-patterns tbody,
+  .tf-patterns tr,
+  .tf-patterns th,
+  .tf-patterns td {
+    display: block;
+    width: 100%;
+  }
+
+  .tf-patterns colgroup,
+  .tf-patterns thead {
+    display: none;
+  }
+
+  .tf-patterns tbody tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 22px;
+    gap: 4px 18px;
+  }
+
+  .tf-patterns tbody th,
+  .tf-patterns tbody td {
+    height: auto;
+    padding: 0;
+  }
+
+  .tf-patterns tbody th {
+    grid-column: 1;
+  }
+
+  .tf-patterns .diagram-cell {
+    grid-column: 1 / -1;
+    margin-top: 14px;
+  }
+}
+
+@container (max-width: 560px) {
+  .tf-patterns tbody tr {
+    grid-template-columns: 1fr;
+    padding: 20px 15px;
+  }
+
+  .tf-patterns tbody th,
+  .tf-patterns .diagram-cell {
+    grid-column: 1;
+  }
+
+  .tf-patterns .flow {
+    min-height: 112px;
+    gap: 8px;
+    padding: 12px 9px;
+  }
+
+  .tf-patterns .flow--enrichment {
+    gap: 4px;
+  }
+
+  .tf-patterns .flow-node {
+    min-width: 68px;
+    padding: 8px;
+    font-size: 0.56rem;
+  }
+
+  .tf-patterns .pattern-flow-arrow {
+    width: 34px;
+    flex-basis: 34px;
+  }
+
+  .tf-patterns .mini-table,
+  .tf-patterns .delta-table {
+    width: 74px;
+    height: 54px;
+  }
+
+  .tf-patterns .delta-table--columns {
+    width: 96px;
+  }
+
+  .tf-patterns .artifact-connector {
+    width: 72px;
+    flex-basis: 72px;
+  }
+
+  .tf-patterns .artifact-connector .pattern-flow-arrow {
+    right: 6px;
+    left: 6px;
+    width: calc(100% - 12px);
+  }
+
+  .tf-patterns .flow--query {
+    gap: 4px;
+  }
+
+  .tf-patterns .flow--query .flow-node {
+    min-width: 60px;
+  }
+
+  .tf-patterns .flow--query .question-bubble {
+    min-width: 0;
+  }
+
+  .tf-patterns .flow--dashboard {
+    padding-inline: 0;
+  }
+
+  .tf-patterns .dashboard-result {
+    gap: 4px;
+  }
+
+  .tf-patterns .dashboard-tables {
+    gap: 6px;
+  }
+
+  .tf-patterns .dashboard-table--narrow {
+    width: 32px;
+  }
+
+  .tf-patterns .control-panel {
+    width: 108px;
+  }
+
+  .tf-patterns .control-flow-arrow {
+    width: 20px;
+    flex-basis: 20px;
+  }
+
+  .tf-patterns .view-stack--grid {
+    grid-template-columns: repeat(2, 38px);
+  }
+
+  .tf-patterns .view-stack--row {
+    gap: 6px;
+  }
+
+  .tf-patterns .view-card {
+    width: 38px;
+    height: 38px;
+  }
+
+  .tf-patterns .view-card svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tf-patterns .visualization-table--three {
+    width: 74px;
+    height: 54px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-patterns tbody tr {
+    transition: none;
+  }
+}
