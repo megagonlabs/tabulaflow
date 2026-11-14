@@ -99,11 +99,7 @@ uv tool run --from playwright playwright install chromium
 TabulaFlow opens with bundled sample data, so you can start exploring
 immediately.
 
-## Data agent patterns { .data-patterns-heading }
-
-Six composable patterns turn questions, documents, and connected sources into
-structured data and query-backed views.
-{ .data-patterns-intro }
+## Data agent patterns
 
 <div class="tf-patterns">
   <svg class="svg-symbols" aria-hidden="true" focusable="false">
@@ -154,219 +150,210 @@ structured data and query-backed views.
     </defs>
   </svg>
 
-  <div class="patterns-shell">
-    <table class="patterns-table">
-      <colgroup>
-        <col class="pattern-column">
-        <col class="flow-column">
-      </colgroup>
-      <thead>
-        <tr>
-          <th scope="col">Pattern</th>
-          <th scope="col">Data flow</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">Text-to-query<span class="pattern-description">Turn natural-language requests into query-backed data tables.</span></th>
-          <td class="diagram-cell">
-            <div class="flow flow--query" role="img" aria-label="A natural-language question becomes a database query and then a table of rows.">
-              <div class="flow-node question-bubble">Revenue by customer</div>
-              <div class="artifact-connector" aria-hidden="true">
-                <div class="spec-card">
-                  <span class="spec-caption">query</span>
-                  <svg class="spec-sheet query-sheet" viewBox="0 0 34 42" focusable="false">
-                    <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
-                    <text x="8" y="14">SELECT</text>
-                    <path d="M8 22h18M8 27h18M8 32h12"></path>
-                  </svg>
-                </div>
-                <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
+  <table class="patterns-table" aria-label="Data agent patterns and their data flows">
+    <colgroup>
+      <col class="pattern-column">
+      <col class="flow-column">
+    </colgroup>
+    <tbody>
+      <tr>
+        <th scope="row">Text-to-query<span class="pattern-description">Turn natural-language requests into query-backed data tables.</span></th>
+        <td class="diagram-cell">
+          <div class="flow flow--query" role="img" aria-label="A natural-language question becomes a database query and then a table of rows.">
+            <div class="flow-node question-bubble">Revenue by customer</div>
+            <div class="artifact-connector" aria-hidden="true">
+              <div class="spec-card">
+                <span class="spec-caption">query</span>
+                <svg class="spec-sheet query-sheet" viewBox="0 0 34 42" focusable="false">
+                  <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
+                  <text x="8" y="14">SELECT</text>
+                  <path d="M8 22h18M8 27h18M8 32h12"></path>
+                </svg>
               </div>
-              <div class="table-output" aria-hidden="true">
-                <div class="mini-table">
-                  <span></span><span></span><span></span>
-                  <span></span><span></span><span></span>
-                  <span></span><span></span><span></span>
-                  <span></span><span></span><span></span>
-                </div>
-              </div>
+              <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
             </div>
-          </td>
-        </tr>
-
-        <tr>
-          <th scope="row">Data-bound visualization<span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span></th>
-          <td class="diagram-cell">
-            <div class="flow flow--visualization" role="img" aria-label="A queryable table and a declarative specification become a chart, map, or graph while remaining linked to the underlying data.">
-              <div class="visualization-table visualization-table--three" aria-hidden="true">
-                <span class="table-header-cell"></span><span class="table-header-cell"></span><span class="table-header-cell"></span>
+            <div class="table-output" aria-hidden="true">
+              <div class="mini-table">
+                <span></span><span></span><span></span>
                 <span></span><span></span><span></span>
                 <span></span><span></span><span></span>
                 <span></span><span></span><span></span>
               </div>
-              <div class="artifact-connector" aria-hidden="true">
-                <div class="spec-card">
-                  <span class="spec-caption">visualization spec</span>
-                  <svg class="spec-sheet" viewBox="0 0 34 42" focusable="false">
-                    <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
-                    <path class="spec-code" d="M12 9h-1c-2 0-2 2-2 3s-1 2-2 2c1 0 2 1 2 2s0 3 2 3h1M22 9h1c2 0 2 2 2 3s1 2 2 2c-1 0-2 1-2 2s0 3-2 3h-1"></path>
-                    <path d="M8 27h18M8 32h12"></path>
-                  </svg>
-                </div>
-                <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
-              </div>
-              <div class="view-stack view-stack--grid" aria-hidden="true">
-                <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
-                <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
-                <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
-              </div>
             </div>
-          </td>
-        </tr>
+          </div>
+        </td>
+      </tr>
 
-        <tr>
-          <th scope="row">Interactive dashboard<span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span></th>
-          <td class="diagram-cell">
-            <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update a two-by-two table, a one-by-one table, and chart, map, and graph views backed by parameterized queries.">
-              <div class="dashboard-result" aria-hidden="true">
-                <div class="control-panel">
-                  <div class="radio-options"><span class="radio-option selected">Gross revenue</span><span class="radio-option">Net revenue</span></div>
-                  <div>
-                    <div class="range-label"><span>Minimum revenue</span><span class="range-value">$10k</span></div>
-                    <div class="range-control"></div>
-                  </div>
-                </div>
-                <svg class="control-flow-arrow" viewBox="0 0 64 104" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                  <path class="control-flow-line" d="M1 52h10c12 0 12-34 25-34h12M11 52c12 0 12 27 25 27h12"></path>
-                  <path d="M42 11l7 7-7 7M42 72l7 7-7 7"></path>
+      <tr>
+        <th scope="row">Data-bound visualization<span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span></th>
+        <td class="diagram-cell">
+          <div class="flow flow--visualization" role="img" aria-label="A queryable table and a declarative specification become a chart, map, or graph while remaining linked to the underlying data.">
+            <div class="visualization-table visualization-table--three" aria-hidden="true">
+              <span class="table-header-cell"></span><span class="table-header-cell"></span><span class="table-header-cell"></span>
+              <span></span><span></span><span></span>
+              <span></span><span></span><span></span>
+              <span></span><span></span><span></span>
+            </div>
+            <div class="artifact-connector" aria-hidden="true">
+              <div class="spec-card">
+                <span class="spec-caption">visualization spec</span>
+                <svg class="spec-sheet" viewBox="0 0 34 42" focusable="false">
+                  <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
+                  <path class="spec-code" d="M12 9h-1c-2 0-2 2-2 3s-1 2-2 2c1 0 2 1 2 2s0 3 2 3h1M22 9h1c2 0 2 2 2 3s1 2 2 2c-1 0-2 1-2 2s0 3-2 3h-1"></path>
+                  <path d="M8 27h18M8 32h12"></path>
                 </svg>
-                <div class="dashboard-views">
-                  <div class="dashboard-tables">
-                    <div class="visualization-table dashboard-table">
-                      <span class="table-header-cell"></span><span class="table-header-cell"></span>
-                      <span></span><span></span>
-                      <span></span><span></span>
-                    </div>
-                    <div class="visualization-table dashboard-table dashboard-table--narrow">
-                      <span class="table-header-cell"></span>
-                      <span></span>
-                    </div>
-                  </div>
-                  <div class="view-stack view-stack--row">
-                    <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
-                    <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
-                    <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
-                  </div>
+              </div>
+              <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
+            </div>
+            <div class="view-stack view-stack--grid" aria-hidden="true">
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Interactive dashboard<span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span></th>
+        <td class="diagram-cell">
+          <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update a two-by-two table, a one-by-one table, and chart, map, and graph views backed by parameterized queries.">
+            <div class="dashboard-result" aria-hidden="true">
+              <div class="control-panel">
+                <div class="radio-options"><span class="radio-option selected">Gross revenue</span><span class="radio-option">Net revenue</span></div>
+                <div>
+                  <div class="range-label"><span>Minimum revenue</span><span class="range-value">$10k</span></div>
+                  <div class="range-control"></div>
                 </div>
               </div>
-            </div>
-          </td>
-        </tr>
-
-        <tr>
-          <th scope="row">Extraction<span class="pattern-description">Add rows by extracting structured records from unstructured content.</span></th>
-          <td class="diagram-cell">
-            <div class="flow" role="img" aria-label="Unstructured sources, including documents and web pages, add two mint rows beneath one existing gray data row while the table header remains unchanged.">
-              <svg class="document-stack-icon" viewBox="0 0 54 54" aria-hidden="true" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
-              <svg class="pattern-flow-arrow" viewBox="0 0 48 16" aria-hidden="true" focusable="false"><path d="M1 8h42M36 2l7 6-7 6"></path></svg>
-              <div class="delta-output">
-                <svg class="delta-table" viewBox="0 0 88 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                  <defs>
-                    <linearGradient id="tf-pattern-extraction-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="64">
-                      <stop class="grid-neutral" offset="46.875%"></stop>
-                      <stop class="grid-mint" offset="46.875%"></stop>
-                    </linearGradient>
-                  </defs>
-                  <rect class="table-header" width="88" height="13"></rect>
-                  <rect class="added-region" y="30" width="88" height="34"></rect>
-                  <path class="table-grid" stroke="url(#tf-pattern-extraction-grid)" d="M29.5 .75V63.25M58.5 .75V63.25M.75 13H87.25M.75 47H87.25"></path>
-                  <path class="table-grid table-separator" d="M.75 30H87.25"></path>
-                  <rect class="table-outline" x=".75" y=".75" width="86.5" height="62.5" rx="6.25"></rect>
-                </svg>
-                <span class="delta-caption" aria-hidden="true">new rows</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-
-        <tr>
-          <th scope="row">Row-wise enrichment<span class="pattern-description">Add columns by processing each row with an agent.</span></th>
-          <td class="diagram-cell">
-            <div class="flow flow--enrichment" role="img" aria-label="Three document stacks pass through independent row agents along solid arrows, adding a new typed column highlighted in mint.">
-              <div class="document-stack-group" aria-hidden="true">
-                <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
-                <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
-                <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
-              </div>
-              <div class="enrichment-connector" aria-hidden="true">
-                <span class="connector-label">row agents</span>
-                <svg class="pattern-flow-arrow" viewBox="0 0 38 64" focusable="false">
-                  <path d="M1 9.5h3C16 9.5 16 21.5 28 21.5H36M31.5 17l4.5 4.5-4.5 4.5"></path>
-                  <path d="M1 38.5H36M31.5 34l4.5 4.5-4.5 4.5"></path>
-                  <path d="M1 67.5h3C16 67.5 16 55.5 28 55.5H36M31.5 51l4.5 4.5-4.5 4.5"></path>
-                </svg>
-              </div>
-              <div class="delta-output delta-output--columns">
-                <svg class="delta-table delta-table--columns" viewBox="0 0 116 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                  <defs>
-                    <linearGradient id="tf-pattern-enrichment-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="116" y2="0">
-                      <stop class="grid-neutral" offset="75%"></stop>
-                      <stop class="grid-mint" offset="75%"></stop>
-                    </linearGradient>
-                  </defs>
-                  <rect class="table-header" width="116" height="13"></rect>
-                  <rect class="added-region" x="87" width="29" height="64"></rect>
-                  <rect class="added-header" x="87" width="29" height="13"></rect>
-                  <path class="table-grid" stroke="url(#tf-pattern-enrichment-grid)" d="M29 .75V63.25M58 .75V63.25M.75 13H115.25M.75 30H115.25M.75 47H115.25"></path>
-                  <path class="table-grid table-separator" d="M87 .75V63.25"></path>
-                  <rect class="table-outline" x=".75" y=".75" width="114.5" height="62.5" rx="6.25"></rect>
-                </svg>
-                <span class="delta-caption" aria-hidden="true">new columns</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-
-        <tr>
-          <th scope="row">Cross-source join<span class="pattern-description">Connect records across sources, even when names differ.</span></th>
-          <td class="diagram-cell">
-            <div class="flow" role="img" aria-label="The mint first SQL row matches the mint second Neo4j row, producing the mint first output row. The blue second SQL row matches the blue first Neo4j row, producing the blue second output row. Headers remain neutral.">
-              <div class="join-sources" aria-hidden="true">
-                <div class="join-source">
-                  <span>SQL</span>
-                  <div class="join-table join-table--input">
+              <svg class="control-flow-arrow" viewBox="0 0 64 104" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path class="control-flow-line" d="M1 52h10c12 0 12-34 25-34h12M11 52c12 0 12 27 25 27h12"></path>
+                <path d="M42 11l7 7-7 7M42 72l7 7-7 7"></path>
+              </svg>
+              <div class="dashboard-views">
+                <div class="dashboard-tables">
+                  <div class="visualization-table dashboard-table">
+                    <span class="table-header-cell"></span><span class="table-header-cell"></span>
                     <span></span><span></span>
-                    <span class="matched-cell"></span><span class="matched-cell"></span>
-                    <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
-                  </div>
-                </div>
-                <div class="join-source">
-                  <span>Neo4j</span>
-                  <div class="join-table join-table--input">
                     <span></span><span></span>
-                    <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
-                    <span class="matched-cell"></span><span class="matched-cell"></span>
+                  </div>
+                  <div class="visualization-table dashboard-table dashboard-table--narrow">
+                    <span class="table-header-cell"></span>
+                    <span></span>
                   </div>
                 </div>
-              </div>
-              <div class="join-connector" aria-hidden="true">
-                <span class="connector-label">resolve &amp; join</span>
-                <svg class="pattern-flow-arrow pattern-flow-arrow--merge" viewBox="0 0 48 100" preserveAspectRatio="none" focusable="false"><path d="M1 16h5C18 16 16 50 26 50M1 84h5C18 84 16 50 26 50M26 50h17M36 44l7 6-7 6"></path></svg>
-              </div>
-              <div class="join-table" aria-hidden="true">
-                <span></span><span></span><span></span>
-                <span class="matched-cell"></span><span class="matched-cell"></span><span class="matched-cell"></span>
-                <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+                <div class="view-stack view-stack--row">
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
+                </div>
               </div>
             </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+          </div>
+        </td>
+      </tr>
 
-  <p class="composition-note">Patterns compose: extracted or enriched rows can be joined, parameterized, and visualized without losing their connection to the underlying data.</p>
+      <tr>
+        <th scope="row">Extraction<span class="pattern-description">Add rows by extracting structured records from unstructured content.</span></th>
+        <td class="diagram-cell">
+          <div class="flow" role="img" aria-label="Unstructured sources, including documents and web pages, add two mint rows beneath one existing gray data row while the table header remains unchanged.">
+            <svg class="document-stack-icon" viewBox="0 0 54 54" aria-hidden="true" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+            <svg class="pattern-flow-arrow" viewBox="0 0 48 16" aria-hidden="true" focusable="false"><path d="M1 8h42M36 2l7 6-7 6"></path></svg>
+            <div class="delta-output">
+              <svg class="delta-table" viewBox="0 0 88 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="tf-pattern-extraction-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="64">
+                    <stop class="grid-neutral" offset="46.875%"></stop>
+                    <stop class="grid-mint" offset="46.875%"></stop>
+                  </linearGradient>
+                </defs>
+                <rect class="table-header" width="88" height="13"></rect>
+                <rect class="added-region" y="30" width="88" height="34"></rect>
+                <path class="table-grid" stroke="url(#tf-pattern-extraction-grid)" d="M29.5 .75V63.25M58.5 .75V63.25M.75 13H87.25M.75 47H87.25"></path>
+                <path class="table-grid table-separator" d="M.75 30H87.25"></path>
+                <rect class="table-outline" x=".75" y=".75" width="86.5" height="62.5" rx="6.25"></rect>
+              </svg>
+              <span class="delta-caption" aria-hidden="true">new rows</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Row-wise enrichment<span class="pattern-description">Add columns by processing each row with an agent.</span></th>
+        <td class="diagram-cell">
+          <div class="flow flow--enrichment" role="img" aria-label="Three document stacks pass through independent row agents along solid arrows, adding a new typed column highlighted in mint.">
+            <div class="document-stack-group" aria-hidden="true">
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+            </div>
+            <div class="enrichment-connector" aria-hidden="true">
+              <span class="connector-label">row agents</span>
+              <svg class="pattern-flow-arrow" viewBox="0 0 38 64" focusable="false">
+                <path d="M1 9.5h3C16 9.5 16 21.5 28 21.5H36M31.5 17l4.5 4.5-4.5 4.5"></path>
+                <path d="M1 38.5H36M31.5 34l4.5 4.5-4.5 4.5"></path>
+                <path d="M1 67.5h3C16 67.5 16 55.5 28 55.5H36M31.5 51l4.5 4.5-4.5 4.5"></path>
+              </svg>
+            </div>
+            <div class="delta-output delta-output--columns">
+              <svg class="delta-table delta-table--columns" viewBox="0 0 116 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="tf-pattern-enrichment-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="116" y2="0">
+                    <stop class="grid-neutral" offset="75%"></stop>
+                    <stop class="grid-mint" offset="75%"></stop>
+                  </linearGradient>
+                </defs>
+                <rect class="table-header" width="116" height="13"></rect>
+                <rect class="added-region" x="87" width="29" height="64"></rect>
+                <rect class="added-header" x="87" width="29" height="13"></rect>
+                <path class="table-grid" stroke="url(#tf-pattern-enrichment-grid)" d="M29 .75V63.25M58 .75V63.25M.75 13H115.25M.75 30H115.25M.75 47H115.25"></path>
+                <path class="table-grid table-separator" d="M87 .75V63.25"></path>
+                <rect class="table-outline" x=".75" y=".75" width="114.5" height="62.5" rx="6.25"></rect>
+              </svg>
+              <span class="delta-caption" aria-hidden="true">new columns</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">Cross-source join<span class="pattern-description">Connect records across sources, even when names differ.</span></th>
+        <td class="diagram-cell">
+          <div class="flow" role="img" aria-label="The mint first SQL row matches the mint second Neo4j row, producing the mint first output row. The blue second SQL row matches the blue first Neo4j row, producing the blue second output row. Headers remain neutral.">
+            <div class="join-sources" aria-hidden="true">
+              <div class="join-source">
+                <span>SQL</span>
+                <div class="join-table join-table--input">
+                  <span></span><span></span>
+                  <span class="matched-cell"></span><span class="matched-cell"></span>
+                  <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+                </div>
+              </div>
+              <div class="join-source">
+                <span>Neo4j</span>
+                <div class="join-table join-table--input">
+                  <span></span><span></span>
+                  <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+                  <span class="matched-cell"></span><span class="matched-cell"></span>
+                </div>
+              </div>
+            </div>
+            <div class="join-connector" aria-hidden="true">
+              <span class="connector-label">resolve &amp; join</span>
+              <svg class="pattern-flow-arrow pattern-flow-arrow--merge" viewBox="0 0 48 100" preserveAspectRatio="none" focusable="false"><path d="M1 16h5C18 16 16 50 26 50M1 84h5C18 84 16 50 26 50M26 50h17M36 44l7 6-7 6"></path></svg>
+            </div>
+            <div class="join-table" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <span class="matched-cell"></span><span class="matched-cell"></span><span class="matched-cell"></span>
+              <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
 </div>
 
 TabulaFlow also supports [structured disambiguation](#demo-disambiguation) for
