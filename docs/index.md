@@ -125,8 +125,8 @@ immediately.
         <circle cx="39" cy="9" r="1.7" fill="#5faf87" stroke="none"></circle>
       </symbol>
       <symbol id="tf-pattern-viz-map" viewBox="5 5 38 38">
-        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3z" fill="#293b50"></path>
-        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3zM19 8v27M28 13v27"></path>
+        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3z" fill="#293b50" stroke="#8298ad"></path>
+        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3zM19 8v27M28 13v27" stroke="#8298ad"></path>
         <g transform="translate(14 14)">
           <path d="M0 0c-3 0-5 2.2-5 5 0 3.8 5 8 5 8s5-4.2 5-8c0-2.8-2-5-5-5z" fill="#5faf87" stroke="none"></path>
           <circle cx="0" cy="5" r="1.6" fill="#202733" stroke="none"></circle>
@@ -137,7 +137,7 @@ immediately.
         </g>
       </symbol>
       <symbol id="tf-pattern-viz-graph" viewBox="0 0 28 28">
-        <g stroke-width="0.9">
+        <g stroke="#8298ad" stroke-width="0.9">
           <path d="M14 14 12 4M14 14 23 8M14 14 23 21M14 14 10 24M14 14 4 16M12 4 23 8"></path>
           <circle cx="14" cy="14" r="3.2" fill="#8298ad" stroke="none"></circle>
           <circle cx="12" cy="4" r="2.1" fill="#202733"></circle>
