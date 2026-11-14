@@ -161,8 +161,8 @@ immediately.
           Text-to-query
           <span class="pattern-description">Turn natural-language requests into query-backed data tables.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--demo" href="#demo-database" aria-label="Watch the MySQL demo">MySQL</a>
-            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the quick-start Python example">Quick start</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-database" aria-label="Watch the MySQL chat demo">Chat with MySQL</a>
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the chat agent Python example">Build a chat agent</a>
           </span>
         </th>
         <td class="diagram-cell">
@@ -196,9 +196,9 @@ immediately.
           Data-bound visualization
           <span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--demo" href="#demo-travel" aria-label="Watch the map demo">Map</a>
-            <a class="resource-pill resource-pill--demo" href="#demo-wikidata" aria-label="Watch the graph demo">Graph</a>
-            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#example-warehouse-transfer-graph" aria-label="View the graph artifacts Python example">Graph artifacts</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-travel" aria-label="Watch the trip-planning map demo">Plan a trip</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-wikidata" aria-label="Watch the Wikidata graph visualization demo">Visualize Wikidata</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#example-warehouse-transfer-graph" aria-label="View the graph artifacts Python example">Define a graph</a>
           </span>
         </th>
         <td class="diagram-cell">
@@ -234,8 +234,8 @@ immediately.
           Interactive dashboard
           <span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Disambiguation</a>
-            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#add-interactive-controls" aria-label="View the interactive parameters Python example">Parameters</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Resolve ambiguity</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#add-interactive-controls" aria-label="View the interactive controls Python example">Add controls</a>
           </span>
         </th>
         <td class="diagram-cell">
@@ -280,8 +280,8 @@ immediately.
           Extraction
           <span class="pattern-description">Add rows by extracting structured records from unstructured content.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Research papers</a>
-            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#extract-records-from-documents" aria-label="View the document extraction Python example">Document extraction</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#extract-records-from-documents" aria-label="View the document extraction Python example">Extract documents</a>
           </span>
         </th>
         <td class="diagram-cell">
@@ -313,8 +313,8 @@ immediately.
           Row-wise enrichment
           <span class="pattern-description">Add columns by processing each row with an agent.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Research papers</a>
-            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the DataFrame enrichment Python example">DataFrame enrichment</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the row enrichment Python example">Enrich rows</a>
           </span>
         </th>
         <td class="diagram-cell">
