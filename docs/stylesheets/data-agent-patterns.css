@@ -655,8 +655,8 @@
 }
 
 .tf-patterns .view-card svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -805,8 +805,8 @@
   }
 
   .tf-patterns .view-card svg {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
   }
 
   .tf-patterns .visualization-table--three {
