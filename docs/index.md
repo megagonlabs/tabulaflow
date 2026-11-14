@@ -157,7 +157,14 @@ immediately.
     </colgroup>
     <tbody>
       <tr>
-        <th scope="row">Text-to-query<span class="pattern-description">Turn natural-language requests into query-backed data tables.</span></th>
+        <th scope="row">
+          Text-to-query
+          <span class="pattern-description">Turn natural-language requests into query-backed data tables.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-database" aria-label="Watch the MySQL demo">MySQL</a>
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the quick-start Python example">Quick start</a>
+          </span>
+        </th>
         <td class="diagram-cell">
           <div class="flow flow--query" role="img" aria-label="A natural-language question becomes a database query and then a table of rows.">
             <div class="flow-node question-bubble">Revenue by customer</div>
@@ -185,7 +192,15 @@ immediately.
       </tr>
 
       <tr>
-        <th scope="row">Data-bound visualization<span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span></th>
+        <th scope="row">
+          Data-bound visualization
+          <span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-travel" aria-label="Watch the map demo">Map</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-wikidata" aria-label="Watch the graph demo">Graph</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#example-warehouse-transfer-graph" aria-label="View the graph artifacts Python example">Graph artifacts</a>
+          </span>
+        </th>
         <td class="diagram-cell">
           <div class="flow flow--visualization" role="img" aria-label="A queryable table and a declarative specification become a chart, map, or graph while remaining linked to the underlying data.">
             <div class="visualization-table visualization-table--three" aria-hidden="true">
@@ -215,7 +230,14 @@ immediately.
       </tr>
 
       <tr>
-        <th scope="row">Interactive dashboard<span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span></th>
+        <th scope="row">
+          Interactive dashboard
+          <span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Disambiguation</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#add-interactive-controls" aria-label="View the interactive parameters Python example">Parameters</a>
+          </span>
+        </th>
         <td class="diagram-cell">
           <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update a two-by-two table, a one-by-one table, and chart, map, and graph views backed by parameterized queries.">
             <div class="dashboard-result" aria-hidden="true">
@@ -254,7 +276,14 @@ immediately.
       </tr>
 
       <tr>
-        <th scope="row">Extraction<span class="pattern-description">Add rows by extracting structured records from unstructured content.</span></th>
+        <th scope="row">
+          Extraction
+          <span class="pattern-description">Add rows by extracting structured records from unstructured content.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Research papers</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#extract-records-from-documents" aria-label="View the document extraction Python example">Document extraction</a>
+          </span>
+        </th>
         <td class="diagram-cell">
           <div class="flow" role="img" aria-label="Unstructured sources, including documents and web pages, add two mint rows beneath one existing gray data row while the table header remains unchanged.">
             <svg class="document-stack-icon" viewBox="0 0 54 54" aria-hidden="true" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
@@ -280,7 +309,14 @@ immediately.
       </tr>
 
       <tr>
-        <th scope="row">Row-wise enrichment<span class="pattern-description">Add columns by processing each row with an agent.</span></th>
+        <th scope="row">
+          Row-wise enrichment
+          <span class="pattern-description">Add columns by processing each row with an agent.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Research papers</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the DataFrame enrichment Python example">DataFrame enrichment</a>
+          </span>
+        </th>
         <td class="diagram-cell">
           <div class="flow flow--enrichment" role="img" aria-label="Three document stacks pass through independent row agents along solid arrows, adding a new typed column highlighted in mint.">
             <div class="document-stack-group" aria-hidden="true">
@@ -318,7 +354,10 @@ immediately.
       </tr>
 
       <tr>
-        <th scope="row">Cross-source join<span class="pattern-description">Connect records across sources, even when names differ.</span></th>
+        <th scope="row">
+          Cross-source join
+          <span class="pattern-description">Connect records across sources, even when names differ.</span>
+        </th>
         <td class="diagram-cell">
           <div class="flow" role="img" aria-label="The mint first SQL row matches the mint second Neo4j row, producing the mint first output row. The blue second SQL row matches the blue first Neo4j row, producing the blue second output row. Headers remain neutral.">
             <div class="join-sources" aria-hidden="true">

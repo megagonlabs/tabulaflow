@@ -634,7 +634,7 @@
 
 .tf-patterns .view-stack--grid {
   display: grid;
-  grid-template-columns: repeat(2, 44px);
+  grid-template-columns: repeat(2, 38px);
   gap: 4px;
 }
 
@@ -645,8 +645,8 @@
 
 .tf-patterns .view-card {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border: 1px solid var(--border-strong);
   border-radius: 7px;
@@ -655,8 +655,8 @@
 }
 
 .tf-patterns .view-card svg {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -792,7 +792,7 @@
   }
 
   .tf-patterns .view-stack--grid {
-    grid-template-columns: repeat(2, 38px);
+    grid-template-columns: repeat(2, 34px);
   }
 
   .tf-patterns .view-stack--row {
@@ -800,17 +800,28 @@
   }
 
   .tf-patterns .view-card {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
   }
 
   .tf-patterns .view-card svg {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
   }
 
   .tf-patterns .visualization-table--three {
     width: 74px;
     height: 54px;
   }
+}
+
+.tf-patterns .pattern-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.tf-patterns .pattern-links .resource-pill {
+  margin-right: 0;
 }
