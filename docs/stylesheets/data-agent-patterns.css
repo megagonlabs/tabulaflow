@@ -31,11 +31,11 @@
 }
 
 .tf-patterns col.pattern-column {
-  width: 36%;
+  width: 42%;
 }
 
 .tf-patterns col.flow-column {
-  width: 64%;
+  width: 58%;
 }
 
 .tf-patterns tbody tr {
@@ -54,7 +54,7 @@
 }
 
 .tf-patterns tbody th {
-  padding-right: 24px;
+  padding-right: 16px;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: normal;
@@ -62,7 +62,7 @@
 }
 
 .tf-patterns tbody td {
-  padding-left: 24px;
+  padding-left: 16px;
 }
 
 .tf-patterns .pattern-description {
@@ -818,7 +818,7 @@
 .tf-patterns .pattern-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   margin: 10px 0 0;
 }
 
