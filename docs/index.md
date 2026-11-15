@@ -232,7 +232,7 @@ immediately.
       <tr>
         <th scope="row">
           <span class="pattern-title">Interactive dashboard</span>
-          <span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span>
+          <span class="pattern-description">Create tables and visualizations with shared controls that update their data, including <a href="https://arxiv.org/pdf/2610.09396">structured disambiguation</a> for ambiguous questions.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Resolve ambiguity</a>
             <a class="resource-pill resource-pill--code" href="library/structured-outputs/#add-interactive-controls" aria-label="View the interactive controls Python example">Add controls</a>
@@ -311,7 +311,7 @@ immediately.
       <tr>
         <th scope="row">
           <span class="pattern-title">Row-wise enrichment</span>
-          <span class="pattern-description">Add columns by processing each row with an agent.</span>
+          <span class="pattern-description">Add columns by processing rows in parallel with agents that can browse pages and click buttons. Its nested version is an instance of <a href="https://arxiv.org/pdf/2512.24601">recursive language model</a>.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
             <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the row enrichment Python example">Enrich rows</a>
@@ -397,11 +397,6 @@ immediately.
   </table>
 
 </div>
-
-TabulaFlow also supports [structured disambiguation](#demo-disambiguation) for
-ambiguous questions, based on [ARCS](research/arcs.md);
-[multimodal data browsing](#demo-hugging-face) without an LLM; and parallel
-browser agents for [large-scale research](#demo-research).
 
 ## How does TabulaFlow work?
 
