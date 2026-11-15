@@ -358,7 +358,7 @@ immediately.
           <span class="pattern-title">Cross-source join</span>
           <span class="pattern-description">Connect records across sources, even when names differ.</span>
           <span class="pattern-links">
-            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the cross-source join Python example">Join sales and support</a>
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the cross-source join Python example">Join data across systems</a>
           </span>
         </th>
         <td class="diagram-cell">
