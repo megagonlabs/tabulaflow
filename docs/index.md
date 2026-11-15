@@ -357,6 +357,9 @@ immediately.
         <th scope="row">
           <span class="pattern-title">Cross-source join</span>
           <span class="pattern-description">Connect records across sources, even when names differ.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the cross-source join Python example">Join sales and support</a>
+          </span>
         </th>
         <td class="diagram-cell">
           <div class="flow" role="img" aria-label="The mint first SQL row matches the mint second Neo4j row, producing the mint first output row. The blue second SQL row matches the blue first Neo4j row, producing the blue second output row. Headers remain neutral.">
