@@ -158,7 +158,7 @@ immediately.
     <tbody>
       <tr>
         <th scope="row">
-          Text-to-query
+          <span class="pattern-title">Text-to-query</span>
           <span class="pattern-description">Turn natural-language requests into query-backed data tables.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-database" aria-label="Watch the MySQL chat demo">Chat with MySQL</a>
@@ -193,7 +193,7 @@ immediately.
 
       <tr>
         <th scope="row">
-          Data-bound visualization
+          <span class="pattern-title">Data-bound visualization</span>
           <span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-travel" aria-label="Watch the trip-planning map demo">Plan a trip</a>
@@ -231,7 +231,7 @@ immediately.
 
       <tr>
         <th scope="row">
-          Interactive dashboard
+          <span class="pattern-title">Interactive dashboard</span>
           <span class="pattern-description">Create tables and visualizations with shared controls that update their data.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Resolve ambiguity</a>
@@ -277,7 +277,7 @@ immediately.
 
       <tr>
         <th scope="row">
-          Extraction
+          <span class="pattern-title">Extraction</span>
           <span class="pattern-description">Add rows by extracting structured records from unstructured content.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
@@ -310,7 +310,7 @@ immediately.
 
       <tr>
         <th scope="row">
-          Row-wise enrichment
+          <span class="pattern-title">Row-wise enrichment</span>
           <span class="pattern-description">Add columns by processing each row with an agent.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
@@ -355,7 +355,7 @@ immediately.
 
       <tr>
         <th scope="row">
-          Cross-source join
+          <span class="pattern-title">Cross-source join</span>
           <span class="pattern-description">Connect records across sources, even when names differ.</span>
         </th>
         <td class="diagram-cell">

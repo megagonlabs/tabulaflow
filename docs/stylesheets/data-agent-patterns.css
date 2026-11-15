@@ -65,6 +65,10 @@
   padding-left: 16px;
 }
 
+.tf-patterns .pattern-title {
+  color: color-mix(in srgb, var(--tf-text) 80%, var(--tf-text-muted));
+}
+
 .tf-patterns .pattern-description {
   display: block;
   margin-top: 6px;
