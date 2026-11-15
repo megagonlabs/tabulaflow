@@ -361,9 +361,9 @@
 
 .tf-patterns .control-panel {
   display: grid;
-  width: 140px;
-  gap: 10px;
-  padding: 10px;
+  width: 124px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -371,7 +371,7 @@
 
 .tf-patterns .radio-options {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   color: var(--muted);
   font-size: 0.5rem;
 }
@@ -415,7 +415,7 @@
 .tf-patterns .range-control {
   position: relative;
   height: 3px;
-  margin: 7px 3px 3px;
+  margin: 5px 3px 2px;
   border-radius: 999px;
   background: var(--border-strong);
 }
@@ -541,13 +541,6 @@
   height: 64px;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: 0.75fr repeat(3, 1fr);
-}
-
-.tf-patterns .dashboard-table--narrow {
-  width: 32px;
-  height: 32px;
-  grid-template-columns: 1fr;
-  grid-template-rows: 0.75fr 1fr;
 }
 
 .tf-patterns .flow--query,
@@ -780,10 +773,6 @@
 
   .tf-patterns .dashboard-tables {
     gap: 6px;
-  }
-
-  .tf-patterns .dashboard-table--narrow {
-    width: 32px;
   }
 
   .tf-patterns .control-panel {

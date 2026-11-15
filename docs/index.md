@@ -239,12 +239,12 @@ immediately.
           </span>
         </th>
         <td class="diagram-cell">
-          <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update a two-by-two table, a one-by-one table, and chart, map, and graph views backed by parameterized queries.">
+          <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update two two-by-two tables and chart, map, and graph views backed by parameterized queries.">
             <div class="dashboard-result" aria-hidden="true">
               <div class="control-panel">
                 <div class="radio-options"><span class="radio-option selected">Gross revenue</span><span class="radio-option">Net revenue</span></div>
                 <div>
-                  <div class="range-label"><span>Minimum revenue</span><span class="range-value">$10k</span></div>
+                  <div class="range-label"><span>Minimum</span><span class="range-value">$10k</span></div>
                   <div class="range-control"></div>
                 </div>
               </div>
@@ -259,9 +259,10 @@ immediately.
                     <span></span><span></span>
                     <span></span><span></span>
                   </div>
-                  <div class="visualization-table dashboard-table dashboard-table--narrow">
-                    <span class="table-header-cell"></span>
-                    <span></span>
+                  <div class="visualization-table dashboard-table">
+                    <span class="table-header-cell"></span><span class="table-header-cell"></span>
+                    <span></span><span></span>
+                    <span></span><span></span>
                   </div>
                 </div>
                 <div class="view-stack view-stack--row">
