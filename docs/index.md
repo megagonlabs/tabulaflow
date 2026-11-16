@@ -1,103 +1,17 @@
 # What is TabulaFlow?
 
-TabulaFlow is an open-source data agent built on a modular Python library.
+TabulaFlow is an open-source data agent. [Use our terminal-native data agent application](#get-started) [Use it as a Python library](library/quick-start.md).
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
+You can also browse data directly without an LLM or use it like a coding agent to write code
+or handle everyday tasks.
 
-Unlike existing coding-agent harnesses, which are built around files and the
-shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
+Unlike existing coding-agent harnesses that are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
+Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
 
-- **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles data resolution and
-  rendering, so the agent never wastes tokens embedding data values or writing HTML
-  to create visual artifacts.
-  [See the comparison](#how-does-tabulaflow-work){ .inline-cta }
-- **Human ergonomics.** Data provenance is automatically tracked: each
-  visualization exposes its underlying data table, and each table exposes the
-  query that produced it.
-- **Shell-independent.** The core harness remains fully functional for data work
-  even when shell and filesystem access are disabled (e.g., when building
-  hosted applications).
-
-Like a general-purpose coding agent, TabulaFlow can also write code, run shell
-commands, and browse the web.
-
-<div class="demo-gallery" id="demo-gallery">
-  <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
-  <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" data-anchor-id="demo-disambiguation"
-      data-title="Get Precise Data via Interactive Disambiguation"
-      data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
-      data-type="Structured disambiguation"
-      data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
-    <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" data-anchor-id="demo-research"
-      data-title="Build a Research Paper Database"
-      data-description="Build a comprehensive, structured database of conference papers on a research topic."
-      data-type="Research workflow"
-      data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
-    <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" data-anchor-id="demo-travel"
-      data-title="Plan a trip on a map"
-      data-description="Find museums, add neighborhood boundaries, and map a walking route."
-      data-type="Mapping workflow"
-      data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
-    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
-      data-title="Chat to a Bioinformatics MySQL db"
-      data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
-      data-type="Database workflow"
-      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
-    <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" data-anchor-id="demo-wikidata"
-      data-title="Query and Visualize Graphs"
-      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
-      data-type="Knowledge graph workflow"
-      data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
-    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
-      data-title="Explore a multimodal Hugging Face dataset"
-      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-      data-type="Data browsing workflow"
-      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
-  </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
-    <video class="demo-gallery__video" controls preload="metadata"
-      src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
-    <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
-      <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Structured disambiguation</span>
-        <strong>Get Precise Data via Interactive Disambiguation</strong>
-        <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
-      </div>
-      <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
-    </figure>
-  </div>
-</div>
-
-## Get started
-
-Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
-key, and launch it:
-
-```bash
-uv tool install tabulaflow
-export OPENAI_API_KEY="your-api-key"
-tabulaflow
-```
-
-See [Models and providers](models.md) for Anthropic, vLLM, and other providers.
-
-We also recommend installing Chromium to enable agent-driven web browsing:
-
-```bash
-uv tool run --from playwright playwright install chromium
-```
-
-TabulaFlow opens with bundled sample data, so you can start exploring
-immediately.
 
 ## Data agent patterns
 
@@ -398,6 +312,83 @@ immediately.
   </table>
 
 </div>
+
+
+<div class="demo-gallery" id="demo-gallery">
+  <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
+  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
+  <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
+    <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" data-anchor-id="demo-disambiguation"
+      data-title="Get Precise Data via Interactive Disambiguation"
+      data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
+      data-type="Structured disambiguation"
+      data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
+    <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" data-anchor-id="demo-research"
+      data-title="Build a Research Paper Database"
+      data-description="Build a comprehensive, structured database of conference papers on a research topic."
+      data-type="Research workflow"
+      data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
+    <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" data-anchor-id="demo-travel"
+      data-title="Plan a trip on a map"
+      data-description="Find museums, add neighborhood boundaries, and map a walking route."
+      data-type="Mapping workflow"
+      data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
+    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
+      data-title="Chat to a Bioinformatics MySQL db"
+      data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
+      data-type="Database workflow"
+      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
+    <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" data-anchor-id="demo-wikidata"
+      data-title="Query and Visualize Graphs"
+      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+      data-type="Knowledge graph workflow"
+      data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
+    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
+      data-title="Explore a multimodal Hugging Face dataset"
+      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+      data-type="Data browsing workflow"
+      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
+  </div>
+  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
+    <video class="demo-gallery__video" controls preload="metadata"
+      src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
+    <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
+      <div class="media-placeholder__content">
+        <span class="media-placeholder__type">Structured disambiguation</span>
+        <strong>Get Precise Data via Interactive Disambiguation</strong>
+        <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
+      </div>
+      <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
+    </figure>
+  </div>
+</div>
+
+## Get started
+
+Install TabulaFlow with [`uv`](https://docs.astral.sh/uv/), set a model provider
+key, and launch it:
+
+```bash
+uv tool install tabulaflow
+export OPENAI_API_KEY="your-api-key"
+tabulaflow
+```
+
+See [Models and providers](models.md) for Anthropic, vLLM, and other providers.
+
+We also recommend installing Chromium to enable agent-driven web browsing:
+
+```bash
+uv tool run --from playwright playwright install chromium
+```
+
+TabulaFlow opens with bundled sample data, so you can start exploring
+immediately.
+
 
 ## How does TabulaFlow work?
 
