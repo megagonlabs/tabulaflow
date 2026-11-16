@@ -31,11 +31,11 @@
 }
 
 .tf-patterns col.pattern-column {
-  width: 42%;
+  width: 60%;
 }
 
 .tf-patterns col.flow-column {
-  width: 58%;
+  width: 40%;
 }
 
 .tf-patterns tbody tr {
@@ -54,7 +54,7 @@
 }
 
 .tf-patterns tbody th {
-  padding-right: 16px;
+  padding-right: 8px;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: normal;
@@ -62,7 +62,7 @@
 }
 
 .tf-patterns tbody td {
-  padding-left: 16px;
+  padding-left: 8px;
 }
 
 .tf-patterns .pattern-title {
@@ -659,6 +659,24 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
+}
+
+@container (max-width: 860px) {
+  .tf-patterns col.pattern-column {
+    width: 42%;
+  }
+
+  .tf-patterns col.flow-column {
+    width: 58%;
+  }
+
+  .tf-patterns tbody th {
+    padding-right: 16px;
+  }
+
+  .tf-patterns tbody td {
+    padding-left: 16px;
+  }
 }
 
 @container (max-width: 640px) {
