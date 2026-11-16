@@ -41,7 +41,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
           data-description="Build a comprehensive, structured database of conference papers on a research topic."
           data-type="Research workflow"
           data-poster="assets/demos/find-research-papers-poster.jpg"
-          data-video-src="assets/demos/find-research-papers.mp4">Research</button>
+          data-video-src="assets/demos/find-research-papers.mp4">Deep research</button>
         <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
           data-title="Plan a trip on a map"
           data-description="Find museums, add neighborhood boundaries, and map a walking route."
