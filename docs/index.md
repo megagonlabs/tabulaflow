@@ -1,3 +1,8 @@
+---
+hide:
+  - toc
+---
+
 # What is TabulaFlow?
 
 TabulaFlow is an open-source data agent. <a class="resource-pill resource-pill--terminal" href="#get-started">Use our terminal-native data agent application</a> <a class="resource-pill resource-pill--code" href="library/quick-start/">Use it as a Python library</a>
