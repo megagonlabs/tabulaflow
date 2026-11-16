@@ -866,26 +866,75 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 
 .md-typeset .landing-showcase .demo-gallery__tabs {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-color: var(--tf-border) transparent;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+  border-bottom: 0;
 }
 
 .md-typeset .landing-showcase .demo-gallery__tabs button {
   flex: 0 0 auto;
-  height: 30px;
-  padding: 4px 8px 7px;
+  height: 28px;
+  padding: 3px 9px;
   font-size: 11px;
-  border-radius: 5px 5px 0 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.md-typeset .landing-showcase .demo-gallery__tabs button:is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.md-typeset .landing-showcase .demo-gallery__tabs button[aria-selected="true"] {
+  color: var(--tf-accent);
+  background: rgba(95, 175, 135, 0.1);
+  border-color: rgba(95, 175, 135, 0.22);
 }
 
 .md-typeset .landing-showcase .demo-gallery__stage {
-  margin-top: 10px;
+  position: relative;
+  margin-top: 12px;
+}
+
+.md-typeset .demo-gallery__play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  place-items: center;
+  color: var(--tf-accent);
+  cursor: pointer;
+  background: rgba(20, 25, 33, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transform: translate(-50%, -50%);
+  transition: color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.md-typeset .demo-gallery__play svg {
+  width: 22px;
+  height: 22px;
+  margin-left: 2px;
+  fill: currentColor;
+}
+
+.md-typeset .demo-gallery__play:is(:hover, :focus-visible) {
+  color: #10261b;
+  background: var(--tf-accent);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.md-typeset .demo-gallery__play[hidden] {
+  display: none;
 }
 
 .md-typeset .code-showcase__panel .highlight {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   border: 1px solid var(--tf-code-border);
   border-radius: 8px;
 }

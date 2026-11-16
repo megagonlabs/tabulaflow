@@ -34,36 +34,46 @@ Its core harness is **shell-independent**, making it particularly suitable for b
           data-title="Get Precise Data via Interactive Disambiguation"
           data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
           data-type="Structured disambiguation"
-          data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
+          data-poster="assets/demos/structured-disambiguation-poster.jpg"
+          data-video-src="assets/demos/structured-disambiguation.mp4">Disambiguation</button>
         <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
           data-title="Build a Research Paper Database"
           data-description="Build a comprehensive, structured database of conference papers on a research topic."
           data-type="Research workflow"
-          data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
+          data-poster="assets/demos/find-research-papers-poster.jpg"
+          data-video-src="assets/demos/find-research-papers.mp4">Research</button>
         <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
           data-title="Plan a trip on a map"
           data-description="Find museums, add neighborhood boundaries, and map a walking route."
           data-type="Mapping workflow"
-          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
+          data-poster="assets/demos/plan-a-trip-on-a-map-poster.jpg"
+          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Map</button>
         <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
           data-title="Chat to a Bioinformatics MySQL db"
           data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
           data-type="Database workflow"
-          data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
+          data-poster="assets/demos/chat-to-a-database-poster.jpg"
+          data-video-src="assets/demos/chat-to-a-database.mp4">MySQL</button>
         <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
           data-title="Query and Visualize Graphs"
           data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
           data-type="Knowledge graph workflow"
-          data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
+          data-poster="assets/demos/query-wikidata-poster.jpg"
+          data-video-src="assets/demos/query-wikidata.mp4">Wikidata</button>
         <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
           data-title="Explore a multimodal Hugging Face dataset"
           data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
           data-type="Data browsing workflow"
-          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
+          data-poster="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg"
+          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Multimodal</button>
       </div>
       <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
-        <video class="demo-gallery__video" controls preload="metadata"
+        <video class="demo-gallery__video" preload="metadata"
+          poster="assets/demos/structured-disambiguation-poster.jpg"
           src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
+        <button class="demo-gallery__play" type="button" aria-label="Play Get Precise Data via Interactive Disambiguation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+        </button>
         <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
           <div class="media-placeholder__content">
             <span class="media-placeholder__type">Structured disambiguation</span>
@@ -87,16 +97,15 @@ Its core harness is **shell-independent**, making it particularly suitable for b
 
     ```python
     from tabulaflow.agents import ChatSession
-    from tabulaflow.data import DataConnectorRegistry, SQLConnector
+    from tabulaflow.data import SQLConnector
 
-    db = await SQLConnector.from_url_async("sqlite:///sales.db")
-    sources = DataConnectorRegistry()
-    sources.register("sales", db)
+    sales = await SQLConnector.from_url_async("sqlite:///sales.db")
+    registry.register("sales", sales)
 
     async with ChatSession(
-        sources, model="openai:gpt-5.6-sol", reasoning="low"
-    ) as agent:
-        result = await agent.run(
+        registry, model="openai:gpt-5.6-sol", reasoning="low"
+    ) as session:
+        result = await session.run(
             "Show revenue by customer as a table and a bar chart."
         )
 
@@ -132,7 +141,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
         citations: int | None
         code_url: str | None
 
-    papers = await DataFrameEnricher(enable_browser_tools=True).enrich(
+    enriched = await DataFrameEnricher(enable_browser_tools=True).enrich(
         papers,
         record_type=PaperDetails,
         instruction="Find citations and code for {{ title }}.",
