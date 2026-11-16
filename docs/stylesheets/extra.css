@@ -792,7 +792,7 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 .md-typeset .demo-gallery__stage {
   margin-top: 0.6rem;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 3px;
 }
 
 .md-typeset .demo-gallery .media-placeholder {
@@ -887,9 +887,9 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .landing-showcase .demo-gallery__tabs button[aria-selected="true"] {
-  color: var(--tf-accent);
-  background: rgba(95, 175, 135, 0.1);
-  border-color: rgba(95, 175, 135, 0.22);
+  color: var(--tf-text);
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .md-typeset .landing-showcase .demo-gallery__stage {
@@ -906,7 +906,7 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
   height: 48px;
   padding: 0;
   place-items: center;
-  color: var(--tf-accent);
+  color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
   background: rgba(20, 25, 33, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -924,8 +924,8 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .demo-gallery__play:is(:hover, :focus-visible) {
-  color: #10261b;
-  background: var(--tf-accent);
+  color: #fff;
+  background: rgba(48, 54, 63, 0.92);
   transform: translate(-50%, -50%) scale(1.05);
 }
 
