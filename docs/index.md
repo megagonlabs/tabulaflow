@@ -18,6 +18,133 @@ shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
 Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
 
 
+<div class="landing-showcase-wrap">
+<div class="landing-showcase">
+  <div class="landing-showcase__panel landing-showcase__application">
+    <div class="landing-showcase__title">Use the application</div>
+    <div class="demo-gallery" id="demo-gallery">
+      <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
+      <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
+        <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" aria-label="Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
+          data-title="Get Precise Data via Interactive Disambiguation"
+          data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
+          data-type="Structured disambiguation"
+          data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
+        <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
+          data-title="Build a Research Paper Database"
+          data-description="Build a comprehensive, structured database of conference papers on a research topic."
+          data-type="Research workflow"
+          data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
+        <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
+          data-title="Plan a trip on a map"
+          data-description="Find museums, add neighborhood boundaries, and map a walking route."
+          data-type="Mapping workflow"
+          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
+        <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
+          data-title="Chat to a Bioinformatics MySQL db"
+          data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
+          data-type="Database workflow"
+          data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
+        <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
+          data-title="Query and Visualize Graphs"
+          data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+          data-type="Knowledge graph workflow"
+          data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
+        <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
+          data-title="Explore a multimodal Hugging Face dataset"
+          data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+          data-type="Data browsing workflow"
+          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
+      </div>
+      <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
+        <video class="demo-gallery__video" controls preload="metadata"
+          src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
+        <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
+          <div class="media-placeholder__content">
+            <span class="media-placeholder__type">Structured disambiguation</span>
+            <strong>Get Precise Data via Interactive Disambiguation</strong>
+            <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
+          </div>
+          <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+  <div class="landing-showcase__panel landing-showcase__code" markdown="1">
+    <div class="landing-showcase__title">Build with Python</div>
+    <div class="code-showcase">
+      <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
+        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Agent</button>
+        <button type="button" role="tab" id="code-tab-extraction" aria-controls="code-panel-extraction" aria-selected="false" tabindex="-1">Extraction</button>
+        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Enrichment</button>
+      </div>
+      <div class="code-showcase__panel" id="code-panel-agent" role="tabpanel" aria-labelledby="code-tab-agent" markdown="1">
+
+    ```python
+    from tabulaflow.agents import ChatSession
+    from tabulaflow.data import DataConnectorRegistry, SQLConnector
+
+    db = await SQLConnector.from_url_async("sqlite:///sales.db")
+    sources = DataConnectorRegistry()
+    sources.register("sales", db)
+
+    async with ChatSession(
+        sources, model="openai:gpt-5.6-sol", reasoning="low"
+    ) as agent:
+        result = await agent.run(
+            "Show revenue by customer as a table and a bar chart."
+        )
+
+    table, chart = result.output.artifacts
+    ```
+
+      </div>
+      <div class="code-showcase__panel" id="code-panel-extraction" role="tabpanel" aria-labelledby="code-tab-extraction" markdown="1" hidden>
+
+    ```python
+    from pydantic import BaseModel
+    from tabulaflow.agents.extraction import EntityExtractor
+
+    class Paper(BaseModel):
+        title: str
+        year: int
+
+    papers = await EntityExtractor().extract(
+        pdf,
+        record_type=Paper,
+        instruction="Extract every paper with its title and year.",
+    )
+    ```
+
+      </div>
+      <div class="code-showcase__panel" id="code-panel-enrichment" role="tabpanel" aria-labelledby="code-tab-enrichment" markdown="1" hidden>
+
+    ```python
+    from pydantic import BaseModel
+    from tabulaflow.agents.enrichment import DataFrameEnricher
+
+    class PaperDetails(BaseModel):
+        citations: int | None
+        code_url: str | None
+
+    papers = await DataFrameEnricher(enable_browser_tools=True).enrich(
+        papers,
+        record_type=PaperDetails,
+        instruction="Find citations and code for {{ title }}.",
+    )
+    ```
+
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
 ## Data agent patterns
 
 <div class="tf-patterns">
@@ -318,59 +445,6 @@ Its core harness is **shell-independent**, making it particularly suitable for b
 
 </div>
 
-
-<div class="demo-gallery" id="demo-gallery">
-  <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
-  <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" data-anchor-id="demo-disambiguation"
-      data-title="Get Precise Data via Interactive Disambiguation"
-      data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
-      data-type="Structured disambiguation"
-      data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
-    <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" data-anchor-id="demo-research"
-      data-title="Build a Research Paper Database"
-      data-description="Build a comprehensive, structured database of conference papers on a research topic."
-      data-type="Research workflow"
-      data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
-    <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" data-anchor-id="demo-travel"
-      data-title="Plan a trip on a map"
-      data-description="Find museums, add neighborhood boundaries, and map a walking route."
-      data-type="Mapping workflow"
-      data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
-    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
-      data-title="Chat to a Bioinformatics MySQL db"
-      data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
-      data-type="Database workflow"
-      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
-    <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" data-anchor-id="demo-wikidata"
-      data-title="Query and Visualize Graphs"
-      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
-      data-type="Knowledge graph workflow"
-      data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
-    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
-      data-title="Explore a multimodal Hugging Face dataset"
-      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-      data-type="Data browsing workflow"
-      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
-  </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
-    <video class="demo-gallery__video" controls preload="metadata"
-      src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
-    <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
-      <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Structured disambiguation</span>
-        <strong>Get Precise Data via Interactive Disambiguation</strong>
-        <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
-      </div>
-      <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
-    </figure>
-  </div>
-</div>
 
 ## Get started
 
