@@ -5,7 +5,7 @@ hide:
 
 # What is TabulaFlow?
 
-TabulaFlow is an open-source data agent. <a class="resource-pill resource-pill--demo" href="#get-started">Use our terminal-native data agent application</a> <a class="resource-pill resource-pill--code" href="library/quick-start/">Use it as a Python library</a>
+TabulaFlow is an open-source data agent.
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
@@ -86,7 +86,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
     </div>
   </div>
   <div class="landing-showcase__panel landing-showcase__code" markdown="1">
-    <div class="landing-showcase__title">Build with Python</div>
+    <div class="landing-showcase__title">Build with Python library</div>
     <div class="code-showcase">
       <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
         <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Agent</button>
