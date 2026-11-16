@@ -255,6 +255,14 @@ body {
   line-height: 1.75;
 }
 
+article.md-typeset:has(> .tf-patterns) > p,
+article.md-typeset:has(> .tf-patterns) > ul,
+article.md-typeset:has(> .tf-patterns) > ol,
+article.md-typeset:has(> .tf-patterns) > .highlight,
+article.md-typeset:has(> .tf-patterns) > .admonition {
+  max-width: 80ch;
+}
+
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3,
