@@ -31,30 +31,30 @@ handles data resolution, rendering, and provenance tracking. Its core harness is
 <table>
   <tr>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/structured-disambiguation-poster.jpg" alt="Interactive disambiguation demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation">Interactive disambiguation</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/structured-disambiguation-poster.jpg" alt="Interactive disambiguation demo" width="100%"></a>
+      <br>Interactive disambiguation
     </td>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-research"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/find-research-papers-poster.jpg" alt="Deep research demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-research">Deep research</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-research"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/find-research-papers-poster.jpg" alt="Deep research demo" width="100%"></a>
+      <br>Deep research
     </td>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-travel"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="Map demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-travel">Plan a trip on a map</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-travel"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="Plan a trip on a map demo" width="100%"></a>
+      <br>Plan a trip on a map
     </td>
   </tr>
   <tr>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-database"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/chat-to-a-database-poster.jpg" alt="MySQL demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-database">Analyze a bioinformatics mysql db</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-database"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/chat-to-a-database-poster.jpg" alt="Analyze a bioinformatics mysql db demo" width="100%"></a>
+      <br>Analyze a bioinformatics mysql db
     </td>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/query-wikidata-poster.jpg" alt="Wikidata graph demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata">Wikidata and graphs</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/query-wikidata-poster.jpg" alt="Wikidata and graphs demo" width="100%"></a>
+      <br>Wikidata and graphs
     </td>
     <td align="center" width="33%">
-      <a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="Multimodal demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face">Browse media in tables</a>
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="Browse media in tables demo" width="100%"></a>
+      <br>Browse media in tables
     </td>
   </tr>
 </table>
