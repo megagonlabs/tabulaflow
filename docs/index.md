@@ -89,65 +89,72 @@ Its core harness is **shell-independent**, making it particularly suitable for b
     <div class="landing-showcase__title">Build with Python library</div>
     <div class="code-showcase">
       <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
-        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Agent</button>
-        <button type="button" role="tab" id="code-tab-extraction" aria-controls="code-panel-extraction" aria-selected="false" tabindex="-1">Extraction</button>
-        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Enrichment</button>
+        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Query &amp; visualize</button>
+        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Row-wise enrichment</button>
       </div>
       <div class="code-showcase__panel" id="code-panel-agent" role="tabpanel" aria-labelledby="code-tab-agent" markdown="1">
 
     ```python
     from tabulaflow.agents import ChatSession
-    from tabulaflow.data import SQLConnector
+    from tabulaflow.data import DataConnectorRegistry, SQLConnector
 
-    sales = await SQLConnector.from_url_async("sqlite:///sales.db")
-    registry.register("sales", sales)
+    async with DataConnectorRegistry() as registry:
+        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///sales.db")
+        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///support.db")
+        registry.register("sales", sales)
+        registry.register("support", support)
 
-    async with ChatSession(
-        registry, model="openai:gpt-5.6-sol", reasoning="low"
-    ) as session:
-        result = await session.run(
-            "Show revenue by customer as a table and a bar chart."
-        )
+        async with ChatSession(
+            registry=registry, model="openai:gpt-5.6-sol", reasoning="low"
+        ) as session:
+            result = await session.run(
+                "Join sales and support by customer ID. Compare revenue with open "
+                "high-priority tickets as a table and revenue as a bar chart."
+            )
 
     table, chart = result.output.artifacts
     ```
 
-      </div>
-      <div class="code-showcase__panel" id="code-panel-extraction" role="tabpanel" aria-labelledby="code-tab-extraction" markdown="1" hidden>
-
-    ```python
-    from pydantic import BaseModel
-    from tabulaflow.agents.extraction import EntityExtractor
-
-    class Paper(BaseModel):
-        title: str
-        year: int
-
-    papers = await EntityExtractor().extract(
-        pdf,
-        record_type=Paper,
-        instruction="Extract every paper with its title and year.",
-    )
-    ```
-
+      <a class="code-showcase__example-link" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the full agent example">Full example →</a>
       </div>
       <div class="code-showcase__panel" id="code-panel-enrichment" role="tabpanel" aria-labelledby="code-tab-enrichment" markdown="1" hidden>
 
     ```python
+    import pandas as pd
     from pydantic import BaseModel
     from tabulaflow.agents.enrichment import DataFrameEnricher
 
-    class PaperDetails(BaseModel):
-        citations: int | None
-        code_url: str | None
+    class JobDetails(BaseModel):
+        business_domain: str | None = None
+        work_mode: str | None = None
+        min_experience_years: int | None = None
 
-    enriched = await DataFrameEnricher(enable_browser_tools=True).enrich(
-        papers,
-        record_type=PaperDetails,
-        instruction="Find citations and code for {{ title }}.",
+    jobs = pd.DataFrame([
+        {"title": "Data Analyst", "description": "Analyze retail sales data."}
+    ])
+
+    enriched = await DataFrameEnricher().enrich(
+        jobs,
+        record_type=JobDetails,
+        instruction=(
+            "Extract business domain, work mode, and minimum experience "
+            "from {{ title }}: {{ description }}"
+        ),
     )
     ```
 
+      <div class="code-showcase__dataframe-flow" role="img" aria-label="The jobs DataFrame is enriched row-wise into a DataFrame with the same rows and columns plus business domain, work mode, and minimum experience years">
+        <div class="code-showcase__dataframe">
+          <strong>jobs <span>· DataFrame</span></strong>
+          <span>title · description</span>
+        </div>
+        <span class="code-showcase__dataframe-arrow" aria-hidden="true">→</span>
+        <div class="code-showcase__dataframe">
+          <strong>enriched <span>· DataFrame</span></strong>
+          <span>same rows and columns<br>+ business_domain · work_mode · min_experience_years</span>
+        </div>
+      </div>
+      <a class="code-showcase__example-link" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the full enrichment example">Full example →</a>
       </div>
     </div>
   </div>

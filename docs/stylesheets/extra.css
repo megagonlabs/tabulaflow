@@ -948,6 +948,54 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
   border-radius: 8px;
 }
 
+.md-typeset .code-showcase__dataframe-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.4fr);
+  gap: 12px;
+  align-items: center;
+  margin: 14px 2px 0;
+  color: var(--tf-text-muted);
+  font-size: 10px;
+}
+
+.md-typeset .code-showcase__dataframe {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.md-typeset .code-showcase__dataframe strong {
+  color: var(--tf-text);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.md-typeset .code-showcase__dataframe strong span {
+  color: var(--tf-text-dim);
+  font-weight: 400;
+}
+
+.md-typeset .code-showcase__dataframe > span {
+  line-height: 1.6;
+}
+
+.md-typeset .code-showcase__dataframe-arrow {
+  color: var(--tf-text-dim);
+}
+
+.md-typeset .code-showcase__example-link {
+  display: block;
+  margin: 8px 2px 0;
+  color: var(--tf-text-dim);
+  font-size: 11px;
+  text-align: right;
+  text-decoration: none;
+}
+
+.md-typeset .code-showcase__example-link:is(:hover, :focus-visible) {
+  color: var(--tf-text);
+}
+
 .md-typeset .code-showcase__panel[hidden] {
   display: none;
 }
