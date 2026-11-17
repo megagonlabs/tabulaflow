@@ -966,7 +966,7 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .landing-showcase__code pre > code {
-  font-size: 12px;
+  font-size: 10px;
 }
 
 @container (max-width: 900px) {
