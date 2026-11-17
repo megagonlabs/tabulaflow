@@ -150,6 +150,7 @@ or handle everyday tasks.
 Unlike existing coding-agent harnesses that are built around files and the
 shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
 Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
+[Compare token efficiency](#how-does-tabulaflow-work){ .inline-cta }
 
 ## Data agent patterns
 
