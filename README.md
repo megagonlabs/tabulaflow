@@ -32,29 +32,29 @@ handles data resolution, rendering, and provenance tracking. Its core harness is
   <tr>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/structured-disambiguation-poster.jpg" alt="Interactive disambiguation demo" width="100%"></a>
-      <br>Interactive disambiguation
+      <br><small>Interactive disambiguation</small>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-research"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/find-research-papers-poster.jpg" alt="Deep research demo" width="100%"></a>
-      <br>Deep research
+      <br><small>Deep research</small>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-travel"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="Plan a trip on a map demo" width="100%"></a>
-      <br>Plan a trip on a map
+      <br><small>Plan a trip on a map</small>
     </td>
   </tr>
   <tr>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-database"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/chat-to-a-database-poster.jpg" alt="Analyze a bioinformatics mysql db demo" width="100%"></a>
-      <br>Analyze a bioinformatics mysql db
+      <br><small>Analyze a bioinformatics mysql db</small>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/query-wikidata-poster.jpg" alt="Wikidata and graphs demo" width="100%"></a>
-      <br>Wikidata and graphs
+      <br><small>Wikidata and graphs</small>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="Browse media in tables demo" width="100%"></a>
-      <br>Browse media in tables
+      <br><small>Browse media in tables</small>
     </td>
   </tr>
 </table>
