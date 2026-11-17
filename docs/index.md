@@ -24,44 +24,6 @@ or handle everyday tasks.
       <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
       <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
       <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
-      <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-        <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" aria-label="Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
-          data-title="Get Precise Data via Interactive Disambiguation"
-          data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
-          data-type="Structured disambiguation"
-          data-poster="assets/demos/structured-disambiguation-poster.jpg"
-          data-video-src="assets/demos/structured-disambiguation.mp4">Disambiguation</button>
-        <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
-          data-title="Build a Research Paper Database"
-          data-description="Build a comprehensive, structured database of conference papers on a research topic."
-          data-type="Research workflow"
-          data-poster="assets/demos/find-research-papers-poster.jpg"
-          data-video-src="assets/demos/find-research-papers.mp4">Deep research</button>
-        <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
-          data-title="Plan a trip on a map"
-          data-description="Find museums, add neighborhood boundaries, and map a walking route."
-          data-type="Mapping workflow"
-          data-poster="assets/demos/plan-a-trip-on-a-map-poster.jpg"
-          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Map</button>
-        <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
-          data-title="Chat to a Bioinformatics MySQL db"
-          data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
-          data-type="Database workflow"
-          data-poster="assets/demos/chat-to-a-database-poster.jpg"
-          data-video-src="assets/demos/chat-to-a-database.mp4">MySQL</button>
-        <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
-          data-title="Query and Visualize Graphs"
-          data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
-          data-type="Knowledge graph workflow"
-          data-poster="assets/demos/query-wikidata-poster.jpg"
-          data-video-src="assets/demos/query-wikidata.mp4">Wikidata graph</button>
-        <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
-          data-title="Explore a multimodal Hugging Face dataset"
-          data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-          data-type="Data browsing workflow"
-          data-poster="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg"
-          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Multimodal</button>
-      </div>
       <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
         <video class="demo-gallery__video" preload="metadata"
           poster="assets/demos/structured-disambiguation-poster.jpg"
@@ -77,6 +39,62 @@ or handle everyday tasks.
           </div>
           <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
         </figure>
+      </div>
+      <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
+        <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" aria-label="Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
+          data-title="Get Precise Data via Interactive Disambiguation"
+          data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
+          data-type="Structured disambiguation"
+          data-poster="assets/demos/structured-disambiguation-poster.jpg"
+          data-video-src="assets/demos/structured-disambiguation.mp4">
+          <img src="assets/demos/structured-disambiguation-poster.jpg" alt="" loading="lazy">
+          <span>Disambiguation</span>
+        </button>
+        <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
+          data-title="Build a Research Paper Database"
+          data-description="Build a comprehensive, structured database of conference papers on a research topic."
+          data-type="Research workflow"
+          data-poster="assets/demos/find-research-papers-poster.jpg"
+          data-video-src="assets/demos/find-research-papers.mp4">
+          <img src="assets/demos/find-research-papers-poster.jpg" alt="" loading="lazy">
+          <span>Deep research</span>
+        </button>
+        <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
+          data-title="Plan a trip on a map"
+          data-description="Find museums, add neighborhood boundaries, and map a walking route."
+          data-type="Mapping workflow"
+          data-poster="assets/demos/plan-a-trip-on-a-map-poster.jpg"
+          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">
+          <img src="assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="" loading="lazy">
+          <span>Map</span>
+        </button>
+        <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
+          data-title="Chat to a Bioinformatics MySQL db"
+          data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
+          data-type="Database workflow"
+          data-poster="assets/demos/chat-to-a-database-poster.jpg"
+          data-video-src="assets/demos/chat-to-a-database.mp4">
+          <img src="assets/demos/chat-to-a-database-poster.jpg" alt="" loading="lazy">
+          <span>MySQL</span>
+        </button>
+        <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
+          data-title="Query and Visualize Graphs"
+          data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+          data-type="Knowledge graph workflow"
+          data-poster="assets/demos/query-wikidata-poster.jpg"
+          data-video-src="assets/demos/query-wikidata.mp4">
+          <img src="assets/demos/query-wikidata-poster.jpg" alt="" loading="lazy">
+          <span>Wikidata graph</span>
+        </button>
+        <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
+          data-title="Explore a multimodal Hugging Face dataset"
+          data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+          data-type="Data browsing workflow"
+          data-poster="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg"
+          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">
+          <img src="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="" loading="lazy">
+          <span>Multimodal</span>
+        </button>
       </div>
     </div>
   </div>
