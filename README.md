@@ -40,21 +40,21 @@ handles data resolution, rendering, and provenance tracking. Its core harness is
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-travel"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="Map demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-travel">Map</a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-travel">Plan a trip on a map</a>
     </td>
   </tr>
   <tr>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-database"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/chat-to-a-database-poster.jpg" alt="MySQL demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-database">MySQL</a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-database">Analyze a bioinformatics mysql db</a>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/query-wikidata-poster.jpg" alt="Wikidata graph demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata">Wikidata graph</a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata">Wikidata and graphs</a>
     </td>
     <td align="center" width="33%">
       <a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="Multimodal demo poster" width="100%"></a>
-      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face">Multimodal</a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face">Browse media in tables</a>
     </td>
   </tr>
 </table>
