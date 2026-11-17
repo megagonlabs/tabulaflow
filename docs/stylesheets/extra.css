@@ -943,18 +943,15 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .demo-gallery__dialog {
-  position: relative;
   box-sizing: border-box;
-  width: min(1100px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
+  width: min(720px, 70vw);
+  max-width: 70vw;
+  max-height: 92vh;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--tf-text);
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  background: transparent;
+  border: 0;
 }
 
 .md-typeset .demo-gallery__dialog::backdrop {
@@ -963,45 +960,53 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .demo-gallery__dialog-close {
-  position: absolute;
-  z-index: 1;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  width: 34px;
-  height: 34px;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.86);
+  color: rgba(228, 228, 231, 0.72);
   cursor: pointer;
-  background: rgba(12, 16, 22, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  border: 0;
   border-radius: 50%;
-  backdrop-filter: blur(12px);
   transition: color 120ms ease, background-color 120ms ease;
 }
 
 .md-typeset .demo-gallery__dialog-close:is(:hover, :focus-visible) {
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.md-typeset .demo-gallery__dialog-close:active {
   color: #fff;
-  background: rgba(12, 16, 22, 0.82);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .md-typeset .demo-gallery__dialog-close svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
-  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .md-typeset .demo-gallery__dialog-video {
   display: block;
   width: 100%;
-  max-height: calc(100vh - 34px);
+  max-height: 68vh;
+  margin: 0 auto;
   aspect-ratio: 8 / 5;
   object-fit: contain;
   background: #000;
+  border-radius: 3px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.38);
 }
 
 .md-typeset .code-showcase__panel {
