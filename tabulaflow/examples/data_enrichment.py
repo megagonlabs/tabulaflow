@@ -41,7 +41,10 @@ async def main() -> None:
         ]
     )
 
-    enricher = DataFrameEnricher(llm="openai:gpt-5.6-luna")
+    enricher = DataFrameEnricher(
+        llm="openai:gpt-5.6-luna",
+        enable_browser_tools=False,
+    )
     enriched = await enricher.enrich(
         jobs,
         record_type=JobDetails,

@@ -112,6 +112,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
                 "high-priority tickets as a table and revenue as a bar chart."
             )
 
+    answer = result.text
     table, chart = result.output.artifacts
     ```
 
@@ -130,10 +131,11 @@ Its core harness is **shell-independent**, making it particularly suitable for b
         min_experience_years: int | None = None
 
     jobs = pd.DataFrame([
-        {"title": "Data Analyst", "description": "Analyze retail sales data."}
+        {"title": "Data Analyst", "description": "Analyze retail sales data."},
+        # Additional rows...
     ])
 
-    enriched = await DataFrameEnricher().enrich(
+    enriched = await DataFrameEnricher(enable_browser_tools=False).enrich(
         jobs,
         record_type=JobDetails,
         instruction=(
@@ -143,17 +145,6 @@ Its core harness is **shell-independent**, making it particularly suitable for b
     )
     ```
 
-      <div class="code-showcase__dataframe-flow" role="img" aria-label="The jobs DataFrame is enriched row-wise into a DataFrame with the same rows and columns plus business domain, work mode, and minimum experience years">
-        <div class="code-showcase__dataframe">
-          <strong>jobs <span>· DataFrame</span></strong>
-          <span>title · description</span>
-        </div>
-        <span class="code-showcase__dataframe-arrow" aria-hidden="true">→</span>
-        <div class="code-showcase__dataframe">
-          <strong>enriched <span>· DataFrame</span></strong>
-          <span>same rows and columns<br>+ business_domain · work_mode · min_experience_years</span>
-        </div>
-      </div>
       <a class="code-showcase__example-link" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the full enrichment example">Full example →</a>
       </div>
     </div>
