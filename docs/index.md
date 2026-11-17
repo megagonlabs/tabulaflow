@@ -1,81 +1,457 @@
-# What is TabulaFlow?
+---
+hide:
+  - toc
+---
 
-TabulaFlow is an open-source data agent built on a modular Python library.
+# General-purpose data agent
+
+TabulaFlow is an open-source data agent application, as well as a library for building data agents.
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
+You can also browse data directly without an LLM or use it like a coding agent to write code
+or handle everyday tasks.
 
-Unlike existing coding-agent harnesses, which are built around files and the
-shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
-
-- **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles data resolution and
-  rendering, so the agent never wastes tokens embedding data values or writing HTML
-  to create visual artifacts.
-  [See the comparison](#how-does-tabulaflow-work){ .inline-cta }
-- **Human ergonomics.** Data provenance is automatically tracked: each
-  visualization exposes its underlying data table, and each table exposes the
-  query that produced it.
-- **Shell-independent.** The core harness remains fully functional for data work
-  even when shell and filesystem access are disabled (e.g., when building
-  hosted applications).
-
-Like a general-purpose coding agent, TabulaFlow can also write code, run shell
-commands, and browse the web.
-
-<div class="demo-gallery" id="demo-gallery">
-  <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
-  <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
-  <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-    <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" data-anchor-id="demo-disambiguation"
-      data-title="Get Precise Data via Interactive Disambiguation"
-      data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
-      data-type="Structured disambiguation"
-      data-video-src="assets/demos/structured-disambiguation.mp4">Get Precise Data via Interactive Disambiguation</button>
-    <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" data-anchor-id="demo-research"
-      data-title="Build a Research Paper Database"
-      data-description="Build a comprehensive, structured database of conference papers on a research topic."
-      data-type="Research workflow"
-      data-video-src="assets/demos/find-research-papers.mp4">Build a Research Paper Database</button>
-    <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" data-anchor-id="demo-travel"
-      data-title="Plan a trip on a map"
-      data-description="Find museums, add neighborhood boundaries, and map a walking route."
-      data-type="Mapping workflow"
-      data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Plan a Trip on a Map</button>
-    <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" data-anchor-id="demo-database"
-      data-title="Chat to a Bioinformatics MySQL db"
-      data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
-      data-type="Database workflow"
-      data-video-src="assets/demos/chat-to-a-database.mp4">Chat to a Bioinformatics MySQL db</button>
-    <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" data-anchor-id="demo-wikidata"
-      data-title="Query and Visualize Graphs"
-      data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
-      data-type="Knowledge graph workflow"
-      data-video-src="assets/demos/query-wikidata.mp4">Query and Visualize Graphs</button>
-    <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" data-anchor-id="demo-hugging-face"
-      data-title="Explore a multimodal Hugging Face dataset"
-      data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
-      data-type="Data browsing workflow"
-      data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Explore a Multimodal Hugging Face Dataset</button>
-  </div>
-  <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
-    <video class="demo-gallery__video" controls preload="metadata"
-      src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
-    <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
-      <div class="media-placeholder__content">
-        <span class="media-placeholder__type">Structured disambiguation</span>
-        <strong>Get Precise Data via Interactive Disambiguation</strong>
-        <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
+<div class="landing-showcase-wrap">
+<div class="landing-showcase">
+  <div class="landing-showcase__panel landing-showcase__application">
+    <div class="landing-showcase__title">Use the application</div>
+    <div class="demo-gallery" id="demo-gallery">
+      <span class="demo-gallery__anchor" id="demo-disambiguation" data-tab-id="demo-tab-disambiguation" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-research" data-tab-id="demo-tab-research" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-travel" data-tab-id="demo-tab-travel" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
+      <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
+      <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
+        <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" aria-label="Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
+          data-title="Get Precise Data via Interactive Disambiguation"
+          data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
+          data-type="Structured disambiguation"
+          data-poster="assets/demos/structured-disambiguation-poster.jpg"
+          data-video-src="assets/demos/structured-disambiguation.mp4">Disambiguation</button>
+        <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
+          data-title="Build a Research Paper Database"
+          data-description="Build a comprehensive, structured database of conference papers on a research topic."
+          data-type="Research workflow"
+          data-poster="assets/demos/find-research-papers-poster.jpg"
+          data-video-src="assets/demos/find-research-papers.mp4">Deep research</button>
+        <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
+          data-title="Plan a trip on a map"
+          data-description="Find museums, add neighborhood boundaries, and map a walking route."
+          data-type="Mapping workflow"
+          data-poster="assets/demos/plan-a-trip-on-a-map-poster.jpg"
+          data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">Map</button>
+        <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
+          data-title="Chat to a Bioinformatics MySQL db"
+          data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
+          data-type="Database workflow"
+          data-poster="assets/demos/chat-to-a-database-poster.jpg"
+          data-video-src="assets/demos/chat-to-a-database.mp4">MySQL</button>
+        <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
+          data-title="Query and Visualize Graphs"
+          data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
+          data-type="Knowledge graph workflow"
+          data-poster="assets/demos/query-wikidata-poster.jpg"
+          data-video-src="assets/demos/query-wikidata.mp4">Wikidata graph</button>
+        <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
+          data-title="Explore a multimodal Hugging Face dataset"
+          data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
+          data-type="Data browsing workflow"
+          data-poster="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg"
+          data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">Multimodal</button>
       </div>
-      <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
-    </figure>
+      <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
+        <video class="demo-gallery__video" preload="metadata"
+          poster="assets/demos/structured-disambiguation-poster.jpg"
+          src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
+        <button class="demo-gallery__play" type="button" aria-label="Play Get Precise Data via Interactive Disambiguation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+        </button>
+        <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
+          <div class="media-placeholder__content">
+            <span class="media-placeholder__type">Structured disambiguation</span>
+            <strong>Get Precise Data via Interactive Disambiguation</strong>
+            <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
+          </div>
+          <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+  <div class="landing-showcase__panel landing-showcase__code" markdown="1">
+    <div class="landing-showcase__title">Build with Python library</div>
+    <div class="code-showcase">
+      <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
+        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Query &amp; visualize</button>
+        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Row-wise enrichment</button>
+      </div>
+      <div class="code-showcase__panel" id="code-panel-agent" role="tabpanel" aria-labelledby="code-tab-agent" markdown="1">
+
+    ```python
+    from tabulaflow.agents import ChatSession
+    from tabulaflow.data import DataConnectorRegistry, SQLConnector
+
+    async with DataConnectorRegistry() as registry:
+        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///sales.db")
+        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///support.db")
+        registry.register("sales", sales)
+        registry.register("support", support)
+
+        async with ChatSession(
+            registry=registry, model="openai:gpt-5.6-sol", reasoning="low"
+        ) as session:
+            result = await session.run(
+                "Join sales and support by customer ID. Compare revenue with open "
+                "high-priority tickets as a table and revenue as a bar chart."
+            )
+
+    answer = result.text
+    table, chart = result.output.artifacts
+    ```
+
+      <a class="code-showcase__example-link" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the full agent example">Full example →</a>
+      </div>
+      <div class="code-showcase__panel" id="code-panel-enrichment" role="tabpanel" aria-labelledby="code-tab-enrichment" markdown="1" hidden>
+
+    ```python
+    import pandas as pd
+    from pydantic import BaseModel
+    from tabulaflow.agents.enrichment import DataFrameEnricher
+
+    class JobDetails(BaseModel):
+        business_domain: str | None = None
+        work_mode: str | None = None
+        min_experience_years: int | None = None
+
+    jobs = pd.DataFrame([
+        {"title": "Data Analyst", "description": "Analyze retail sales data."},
+        # Additional rows...
+    ])
+
+    enriched = await DataFrameEnricher(enable_browser_tools=False).enrich(
+        jobs,
+        record_type=JobDetails,
+        instruction=(
+            "Extract business domain, work mode, and minimum experience "
+            "from {{ title }}: {{ description }}"
+        ),
+    )
+    ```
+
+      <a class="code-showcase__example-link" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the full enrichment example">Full example →</a>
+      </div>
+    </div>
   </div>
 </div>
+</div>
+
+Unlike existing coding-agent harnesses that are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
+Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
+[Compare token efficiency](#how-does-tabulaflow-work){ .inline-cta }
+
+## Data agent patterns
+
+<div class="tf-patterns">
+  <svg class="svg-symbols" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="tf-pattern-document-stack" viewBox="0 0 54 54">
+        <g transform="rotate(-3 22 29)">
+          <rect fill="#1a212c" stroke="#465365" stroke-linejoin="round" stroke-width="1.5" x="3.5" y="5.5" width="38" height="46" rx="5"></rect>
+          <path fill="none" stroke="#556171" stroke-linecap="round" stroke-width="3" d="M11.5 21h21M11.5 29h21"></path>
+        </g>
+        <g transform="rotate(3 32 25)">
+          <rect fill="#1a212c" stroke="#465365" stroke-linejoin="round" stroke-width="1.5" x="12.5" y="1.5" width="38" height="46" rx="5"></rect>
+          <path fill="none" stroke="#556171" stroke-linecap="round" stroke-width="3" d="M20.5 17h21M20.5 25h21"></path>
+        </g>
+      </symbol>
+      <symbol id="tf-pattern-viz-chart" viewBox="10 5 32 32">
+        <rect x="14" y="26" width="5" height="7" rx="1" fill="#8298ad" stroke="none"></rect>
+        <rect x="23" y="20" width="5" height="13" rx="1" fill="#8298ad" stroke="none"></rect>
+        <rect x="32" y="23" width="5" height="10" rx="1" fill="#8298ad" stroke="none"></rect>
+        <path d="M14 20l9-6 8 3 8-8" stroke="#5faf87" stroke-width="2"></path>
+        <circle cx="14" cy="20" r="1.7" fill="#5faf87" stroke="none"></circle>
+        <circle cx="23" cy="14" r="1.7" fill="#5faf87" stroke="none"></circle>
+        <circle cx="31" cy="17" r="1.7" fill="#5faf87" stroke="none"></circle>
+        <circle cx="39" cy="9" r="1.7" fill="#5faf87" stroke="none"></circle>
+      </symbol>
+      <symbol id="tf-pattern-viz-map" viewBox="5 5 38 38">
+        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3z" fill="#293b50" stroke="#8298ad"></path>
+        <path d="M8 13l11-5 9 5 12-3v25l-12 5-9-5-11 3zM19 8v27M28 13v27" stroke="#8298ad"></path>
+        <g transform="translate(14 14)">
+          <path d="M0 0c-3 0-5 2.2-5 5 0 3.8 5 8 5 8s5-4.2 5-8c0-2.8-2-5-5-5z" fill="#5faf87" stroke="none"></path>
+          <circle cx="0" cy="5" r="1.6" fill="#202733" stroke="none"></circle>
+        </g>
+        <g transform="translate(33 20)">
+          <path d="M0 0c-3 0-5 2.2-5 5 0 3.8 5 8 5 8s5-4.2 5-8c0-2.8-2-5-5-5z" fill="#5faf87" stroke="none"></path>
+          <circle cx="0" cy="5" r="1.6" fill="#202733" stroke="none"></circle>
+        </g>
+      </symbol>
+      <symbol id="tf-pattern-viz-graph" viewBox="0 0 28 28">
+        <g stroke="#8298ad" stroke-width="0.9">
+          <path d="M14 14 12 4M14 14 23 8M14 14 23 21M14 14 10 24M14 14 4 16M12 4 23 8"></path>
+          <circle cx="14" cy="14" r="3.2" fill="#8298ad" stroke="none"></circle>
+          <circle cx="12" cy="4" r="2.1" fill="#202733"></circle>
+          <circle cx="23" cy="8" r="2.1" fill="#202733"></circle>
+          <circle cx="23" cy="21" r="2.1" fill="#202733"></circle>
+          <circle cx="10" cy="24" r="2.1" fill="#202733"></circle>
+          <circle cx="4" cy="16" r="2.1" fill="#202733"></circle>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <table class="patterns-table" aria-label="Data agent patterns and their data flows">
+    <colgroup>
+      <col class="pattern-column">
+      <col class="flow-column">
+    </colgroup>
+    <tbody>
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Text-to-query</span>
+          <span class="pattern-description">Turn natural-language requests into query-backed data tables.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-database" aria-label="Watch the MySQL chat demo">Chat with MySQL</a>
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the chat agent Python example">Build a chat agent</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow flow--query" role="img" aria-label="A natural-language question becomes a database query and then a table of rows.">
+            <div class="flow-node question-bubble">Revenue by customer</div>
+            <div class="artifact-connector" aria-hidden="true">
+              <div class="spec-card">
+                <span class="spec-caption">query</span>
+                <svg class="spec-sheet query-sheet" viewBox="0 0 34 42" focusable="false">
+                  <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
+                  <text x="8" y="14">SELECT</text>
+                  <path d="M8 22h18M8 27h18M8 32h12"></path>
+                </svg>
+              </div>
+              <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
+            </div>
+            <div class="table-output" aria-hidden="true">
+              <div class="mini-table">
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Data-bound visualization</span>
+          <span class="pattern-description">Turn data tables into charts, maps, and graphs that stay linked to their data.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-travel" aria-label="Watch the trip-planning map demo">Plan a trip</a>
+            <a class="resource-pill resource-pill--demo" href="#demo-wikidata" aria-label="Watch the Wikidata graph visualization demo">Visualize Wikidata</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#example-warehouse-transfer-graph" aria-label="View the graph artifacts Python example">Define a graph</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow flow--visualization" role="img" aria-label="A queryable table and a declarative specification become a chart, map, or graph while remaining linked to the underlying data.">
+            <div class="visualization-table visualization-table--three" aria-hidden="true">
+              <span class="table-header-cell"></span><span class="table-header-cell"></span><span class="table-header-cell"></span>
+              <span></span><span></span><span></span>
+              <span></span><span></span><span></span>
+              <span></span><span></span><span></span>
+            </div>
+            <div class="artifact-connector" aria-hidden="true">
+              <div class="spec-card">
+                <span class="spec-caption">visualization spec</span>
+                <svg class="spec-sheet" viewBox="0 0 34 42" focusable="false">
+                  <rect x=".75" y=".75" width="32.5" height="40.5" rx="4"></rect>
+                  <path class="spec-code" d="M12 9h-1c-2 0-2 2-2 3s-1 2-2 2c1 0 2 1 2 2s0 3 2 3h1M22 9h1c2 0 2 2 2 3s1 2 2 2c-1 0-2 1-2 2s0 3-2 3h-1"></path>
+                  <path d="M8 27h18M8 32h12"></path>
+                </svg>
+              </div>
+              <svg class="pattern-flow-arrow" viewBox="0 0 72 16" focusable="false"><path d="M5 8h62M58 2l9 6-9 6"></path></svg>
+            </div>
+            <div class="view-stack view-stack--grid" aria-hidden="true">
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
+              <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Interactive dashboard</span>
+          <span class="pattern-description">Create tables and visualizations with shared controls that update their data, including <a href="https://arxiv.org/pdf/2610.09396">structured disambiguation</a> for ambiguous questions.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-disambiguation" aria-label="Watch the interactive disambiguation demo">Resolve ambiguity</a>
+            <a class="resource-pill resource-pill--code" href="library/structured-outputs/#add-interactive-controls" aria-label="View the interactive controls Python example">Add controls</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow flow--dashboard" role="img" aria-label="Shared controls for Gross or Net revenue and a minimum revenue slider set to ten thousand dollars update two two-by-two tables and chart, map, and graph views backed by parameterized queries.">
+            <div class="dashboard-result" aria-hidden="true">
+              <div class="control-panel">
+                <div class="radio-options"><span class="radio-option selected">Gross revenue</span><span class="radio-option">Net revenue</span></div>
+                <div>
+                  <div class="range-label"><span>Minimum</span><span class="range-value">$10k</span></div>
+                  <div class="range-control"></div>
+                </div>
+              </div>
+              <svg class="control-flow-arrow" viewBox="0 0 64 104" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path class="control-flow-line" d="M1 52h10c12 0 12-34 25-34h12M11 52c12 0 12 27 25 27h12"></path>
+                <path d="M42 11l7 7-7 7M42 72l7 7-7 7"></path>
+              </svg>
+              <div class="dashboard-views">
+                <div class="dashboard-tables">
+                  <div class="visualization-table dashboard-table">
+                    <span class="table-header-cell"></span><span class="table-header-cell"></span>
+                    <span></span><span></span>
+                    <span></span><span></span>
+                  </div>
+                  <div class="visualization-table dashboard-table">
+                    <span class="table-header-cell"></span><span class="table-header-cell"></span>
+                    <span></span><span></span>
+                    <span></span><span></span>
+                  </div>
+                </div>
+                <div class="view-stack view-stack--row">
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-chart"></use></svg></span>
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-map"></use></svg></span>
+                  <span class="view-card"><svg><use xlink:href="#tf-pattern-viz-graph"></use></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Extraction</span>
+          <span class="pattern-description">Add rows by extracting many structured records from unstructured content that far exceeds an LLM's context window.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#extract-records-from-documents" aria-label="View the document extraction Python example">Extract documents</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow" role="img" aria-label="Unstructured sources, including documents and web pages, add two mint rows beneath one existing gray data row while the table header remains unchanged.">
+            <svg class="document-stack-icon" viewBox="0 0 54 54" aria-hidden="true" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+            <svg class="pattern-flow-arrow" viewBox="0 0 48 16" aria-hidden="true" focusable="false"><path d="M1 8h42M36 2l7 6-7 6"></path></svg>
+            <div class="delta-output">
+              <svg class="delta-table" viewBox="0 0 88 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="tf-pattern-extraction-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="64">
+                    <stop class="grid-neutral" offset="46.875%"></stop>
+                    <stop class="grid-mint" offset="46.875%"></stop>
+                  </linearGradient>
+                </defs>
+                <rect class="table-header" width="88" height="13"></rect>
+                <rect class="added-region" y="30" width="88" height="34"></rect>
+                <path class="table-grid" stroke="url(#tf-pattern-extraction-grid)" d="M29.5 .75V63.25M58.5 .75V63.25M.75 13H87.25M.75 47H87.25"></path>
+                <path class="table-grid table-separator" d="M.75 30H87.25"></path>
+                <rect class="table-outline" x=".75" y=".75" width="86.5" height="62.5" rx="6.25"></rect>
+              </svg>
+              <span class="delta-caption" aria-hidden="true">new rows</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Row-wise enrichment</span>
+          <span class="pattern-description">Add columns to very large tables using subagents that can browse pages and click buttons. The nested version is an instance of <a href="https://arxiv.org/pdf/2512.24601">recursive language models</a>.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
+            <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the row enrichment Python example">Enrich rows</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow flow--enrichment" role="img" aria-label="Three document stacks pass through independent row agents along solid arrows, adding a new typed column highlighted in mint.">
+            <div class="document-stack-group" aria-hidden="true">
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+              <svg class="document-stack-icon document-stack-icon--small" viewBox="0 0 54 54" focusable="false"><use xlink:href="#tf-pattern-document-stack"></use></svg>
+            </div>
+            <div class="enrichment-connector" aria-hidden="true">
+              <span class="connector-label">row agents</span>
+              <svg class="pattern-flow-arrow" viewBox="0 0 38 64" focusable="false">
+                <path d="M1 9.5h3C16 9.5 16 21.5 28 21.5H36M31.5 17l4.5 4.5-4.5 4.5"></path>
+                <path d="M1 38.5H36M31.5 34l4.5 4.5-4.5 4.5"></path>
+                <path d="M1 67.5h3C16 67.5 16 55.5 28 55.5H36M31.5 51l4.5 4.5-4.5 4.5"></path>
+              </svg>
+            </div>
+            <div class="delta-output delta-output--columns">
+              <svg class="delta-table delta-table--columns" viewBox="0 0 116 64" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="tf-pattern-enrichment-grid" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="116" y2="0">
+                    <stop class="grid-neutral" offset="75%"></stop>
+                    <stop class="grid-mint" offset="75%"></stop>
+                  </linearGradient>
+                </defs>
+                <rect class="table-header" width="116" height="13"></rect>
+                <rect class="added-region" x="87" width="29" height="64"></rect>
+                <rect class="added-header" x="87" width="29" height="13"></rect>
+                <path class="table-grid" stroke="url(#tf-pattern-enrichment-grid)" d="M29 .75V63.25M58 .75V63.25M.75 13H115.25M.75 30H115.25M.75 47H115.25"></path>
+                <path class="table-grid table-separator" d="M87 .75V63.25"></path>
+                <rect class="table-outline" x=".75" y=".75" width="114.5" height="62.5" rx="6.25"></rect>
+              </svg>
+              <span class="delta-caption" aria-hidden="true">new columns</span>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th scope="row">
+          <span class="pattern-title">Cross-source join</span>
+          <span class="pattern-description">Connect records across sources, even when names differ.</span>
+          <span class="pattern-links">
+            <a class="resource-pill resource-pill--code" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the cross-source join Python example">Join data across systems</a>
+          </span>
+        </th>
+        <td class="diagram-cell">
+          <div class="flow" role="img" aria-label="The mint first SQL row matches the mint second Neo4j row, producing the mint first output row. The blue second SQL row matches the blue first Neo4j row, producing the blue second output row. Headers remain neutral.">
+            <div class="join-sources" aria-hidden="true">
+              <div class="join-source">
+                <span>SQL</span>
+                <div class="join-table join-table--input">
+                  <span></span><span></span>
+                  <span class="matched-cell"></span><span class="matched-cell"></span>
+                  <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+                </div>
+              </div>
+              <div class="join-source">
+                <span>Neo4j</span>
+                <div class="join-table join-table--input">
+                  <span></span><span></span>
+                  <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+                  <span class="matched-cell"></span><span class="matched-cell"></span>
+                </div>
+              </div>
+            </div>
+            <div class="join-connector" aria-hidden="true">
+              <span class="connector-label">resolve &amp; join</span>
+              <svg class="pattern-flow-arrow pattern-flow-arrow--merge" viewBox="0 0 48 100" preserveAspectRatio="none" focusable="false"><path d="M1 16h5C18 16 16 50 26 50M1 84h5C18 84 16 50 26 50M26 50h17M36 44l7 6-7 6"></path></svg>
+            </div>
+            <div class="join-table" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <span class="matched-cell"></span><span class="matched-cell"></span><span class="matched-cell"></span>
+              <span class="matched-cell--blue"></span><span class="matched-cell--blue"></span><span class="matched-cell--blue"></span>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+
 
 ## Get started
 
@@ -99,65 +475,11 @@ uv tool run --from playwright playwright install chromium
 TabulaFlow opens with bundled sample data, so you can start exploring
 immediately.
 
-## What TabulaFlow can do
-
-Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
-databases with DBeaver or Neo4j Browser, work with Hugging Face datasets or
-Wikidata, or conduct deep research with structured
-datasets.
-
-<ul>
-<li><strong>Interactive visualization.</strong> Create charts, maps, and relationship graphs
-  backed by queryable, parameterized data, including graphs from Neo4j.
-  <div class="demo-links">
-    <a class="demo-cta" href="#demo-disambiguation">Disambiguation demo</a>
-    <a class="demo-cta" href="#demo-travel">Map demo</a>
-    <a class="demo-cta" href="#demo-wikidata">Graph demo</a>
-    <a class="demo-cta" href="#demo-research">Research papers demo</a>
-    <a class="demo-cta" href="#demo-database">MySQL demo</a>
-  </div>
-</li>
-<li><strong>Structured disambiguation for precise answer.</strong> Get precise data and answer when there is
-  ambiguity via interactive structured disambiguation proposed in the
-  <a href="research/arcs/">ARCS paper</a>.
-  <div class="demo-links">
-    <a class="demo-cta" href="#demo-disambiguation">Disambiguation demo</a>
-  </div>
-</li>
-<li><strong>Multimodal data browsing.</strong> Browse databases or Hugging Face datasets
-  directly (no LLM needed). View images, PDFs, and other media directly inside
-  tables, or ask an agent to analyze them.
-  <div class="demo-links">
-    <a class="demo-cta" href="#demo-hugging-face">Hugging Face demo</a>
-  </div>
-</li>
-<li><strong>Cross-source analysis.</strong> Combine files and databases in a local workspace
-  without changing the original sources.</li>
-<li><strong>Large-scale dataset construction.</strong> Combine multiple sources and turn
-  unstructured web pages and documents into structured, normalized tables with
-  thousands of rows for deep research.
-  <div class="demo-links">
-    <a class="demo-cta" href="#demo-research">Research paper database demo</a>
-  </div>
-</li>
-<li><strong>Agentic data enrichment.</strong> Enrich each row with an agent that can browse
-  the web, query connected databases, and return typed results. Process many
-  rows concurrently.
-  <div class="demo-links">
-    <a class="demo-cta" href="#demo-research">Research paper database demo</a>
-    <a class="demo-cta" href="#demo-travel">Map demo</a>
-  </div>
-</li>
-<li><strong>Parallel browser use.</strong> TabulaFlow's browser harness lets agents interact
-  with many web pages in parallel during complex deep research tasks, including
-  pages that require clicks and forms.</li>
-</ul>
-
 
 ## How does TabulaFlow work?
 
 TabulaFlow's agent harness is optimized for data tasks. It handles data resolution, styling, and provenance tracking
-automatically so the agent doesn't need to. It also does not require shell or filesystem access. The comparison below
+automatically so the agent never wastes tokens embedding data values or writing HTML to create visual artifacts. It also does not require shell or filesystem access. The comparison below
 shows how it creates an [interactive chart](#demo-disambiguation) alongside a typical coding-agent
 harness:
 

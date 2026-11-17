@@ -1,25 +1,120 @@
-Answer: Revenue by region is shown in the bar chart card. West: $2,000; East: $1,500.
+Answer: The customer summary and total revenue bar chart are shown above. The joined results are also saved as `customer_sales_support_summary` in the workspace.
 
-Open high-priority support tickets (table card):
-- Ticket 201 — Checkout payment failures — priority: high — status: open
-- Ticket 202 — Invoice downloads unavailable — priority: high — status: open
-Artifact: Revenue by region
-Source: sales
-SQL: SELECT region, SUM(revenue_usd) AS total_revenue_usd
-FROM sales
-GROUP BY region
-ORDER BY total_revenue_usd DESC;
+------------------------------------------------------------------------
+Artifact: customer summary
+Source: workspace
+SQL: CREATE OR REPLACE TABLE customer_sales_support_summary AS
+WITH revenue AS (
+    SELECT
+        customer_id,
+        SUM(revenue_usd) AS total_revenue_usd
+    FROM sales_orders
+    GROUP BY customer_id
+),
+open_high_priority AS (
+    SELECT
+        customer_id,
+        COUNT(*) FILTER (
+            WHERE lower(status) = 'open'
+              AND lower(priority) = 'high'
+        ) AS open_high_priority_tickets
+    FROM support_tickets
+    GROUP BY customer_id
+),
+customers AS (
+    SELECT customer_id FROM revenue
+    UNION
+    SELECT customer_id FROM open_high_priority
+)
+SELECT
+    c.customer_id,
+    COALESCE(r.total_revenue_usd, 0) AS total_revenue_usd,
+    COALESCE(t.open_high_priority_tickets, 0) AS open_high_priority_tickets
+FROM customers c
+LEFT JOIN revenue r USING (customer_id)
+LEFT JOIN open_high_priority t USING (customer_id)
+ORDER BY c.customer_id;
+
+SELECT * FROM customer_sales_support_summary ORDER BY customer_id;
 DataFrame:
-   region  total_revenue_usd
-0   West               2000
-1   East               1500
-Artifact: Open high-priority support tickets
-Source: support
-SQL: SELECT ticket_id, subject, priority, status
-FROM support
-WHERE lower(priority) = 'high' AND lower(status) != 'resolved'
-ORDER BY ticket_id;
+    customer_id  total_revenue_usd  open_high_priority_tickets
+0          101               2000                           1
+1          102                900                           1
+2          103                600                           0
+
+------------------------------------------------------------------------
+Artifact: total revenue
+Source: workspace
+SQL: CREATE OR REPLACE TABLE customer_sales_support_summary AS
+WITH revenue AS (
+    SELECT
+        customer_id,
+        SUM(revenue_usd) AS total_revenue_usd
+    FROM sales_orders
+    GROUP BY customer_id
+),
+open_high_priority AS (
+    SELECT
+        customer_id,
+        COUNT(*) FILTER (
+            WHERE lower(status) = 'open'
+              AND lower(priority) = 'high'
+        ) AS open_high_priority_tickets
+    FROM support_tickets
+    GROUP BY customer_id
+),
+customers AS (
+    SELECT customer_id FROM revenue
+    UNION
+    SELECT customer_id FROM open_high_priority
+)
+SELECT
+    c.customer_id,
+    COALESCE(r.total_revenue_usd, 0) AS total_revenue_usd,
+    COALESCE(t.open_high_priority_tickets, 0) AS open_high_priority_tickets
+FROM customers c
+LEFT JOIN revenue r USING (customer_id)
+LEFT JOIN open_high_priority t USING (customer_id)
+ORDER BY c.customer_id;
+
+SELECT * FROM customer_sales_support_summary ORDER BY customer_id;
 DataFrame:
-    ticket_id                        subject priority status
-0        201      Checkout payment failures     high   open
-1        202  Invoice downloads unavailable     high   open
+    customer_id  total_revenue_usd  open_high_priority_tickets
+0          101               2000                           1
+1          102                900                           1
+2          103                600                           0
+Vega-Lite spec:
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": "Total Revenue by Customer",
+  "mark": "bar",
+  "encoding": {
+    "x": {
+      "field": "customer_id",
+      "type": "nominal",
+      "title": "Customer ID",
+      "sort": null
+    },
+    "y": {
+      "field": "total_revenue_usd",
+      "type": "quantitative",
+      "title": "Total Revenue (USD)",
+      "axis": {
+        "format": "$,.0f"
+      }
+    },
+    "tooltip": [
+      {
+        "field": "customer_id",
+        "type": "nominal",
+        "title": "Customer ID"
+      },
+      {
+        "field": "total_revenue_usd",
+        "type": "quantitative",
+        "title": "Total Revenue",
+        "format": "$,.0f"
+      }
+    ]
+  }
+}
