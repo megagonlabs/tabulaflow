@@ -35,7 +35,7 @@ async def load_sample_data(stock: SQLConnector) -> None:
 
 async def main() -> None:
     # --8<-- [start:connect]
-    stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    stock = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
     # --8<-- [end:connect]
     # Async context management guarantees connector cleanup.
     async with stock:

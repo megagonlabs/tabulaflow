@@ -534,7 +534,7 @@ async def test_support_example_cleans_up_after_model_failure(
 
 async def test_support_example_prepares_packaged_assets(tmp_path: Path) -> None:
     example = runpy.run_path(str(EXAMPLES / "custom_agents.py"))
-    orders = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    orders = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
     try:
         await example["prepare_example"](orders, tmp_path)
         assert (tmp_path / "faq.txt").read_text().startswith("Customer support FAQ")

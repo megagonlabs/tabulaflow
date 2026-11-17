@@ -99,7 +99,7 @@ config = SQLConnectorConfig(
     max_result_rows=10_000,
 )
 database = await SQLConnector.from_url_async(
-    "sqlite+aiosqlite:///inventory.sqlite", config=config
+    "sqlite:///inventory.sqlite", config=config
 )
 ```
 
