@@ -55,7 +55,7 @@
 
 .tf-patterns tbody th {
   padding-right: 8px;
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: normal;
   line-height: 1.4;
@@ -73,7 +73,7 @@
   display: block;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 400;
   letter-spacing: normal;
   line-height: 1.55;
@@ -830,7 +830,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin: 12px 0 0;
+  margin: 18px 0 0;
 }
 
 .tf-patterns .pattern-links .resource-pill {
