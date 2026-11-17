@@ -8,47 +8,46 @@
 [![Python](https://img.shields.io/pypi/pyversions/tabulaflow.svg)](https://pypi.org/project/tabulaflow/)
 [![CI](https://github.com/megagonlabs/tabulaflow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/megagonlabs/tabulaflow/actions/workflows/ci.yml)
 
-TabulaFlow is an open-source data agent built on a modular Python library.
+TabulaFlow is an open-source data agent application, as well as a library for building data agents.
 See the [documentation](https://megagonlabs.github.io/tabulaflow/).
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
+You can also browse data directly without an LLM or use it like a coding agent to write code
+or handle everyday tasks.
 
-Unlike existing coding-agent harnesses, which are built around files and the
-shell, TabulaFlow treats tables as first-class citizens, as its name suggests:
-
-- **Agent ergonomics.** The agent writes only queries and visualization
-  specifications. TabulaFlow handles data resolution and rendering, so the
-  agent never wastes tokens handcrafting data values or HTML to create visual
-  artifacts.
-  [See the comparison](https://megagonlabs.github.io/tabulaflow/#how-does-tabulaflow-work)
-- **Human ergonomics.** Data provenance is automatically tracked: each
-  visualization exposes its underlying data table, and each table exposes the
-  query that produced it.
-- **Shell-independent.** The core harness remains fully functional for data work
-  even when shell and filesystem access are disabled (e.g., when building
-  hosted applications).
-
-Like a general-purpose coding agent, TabulaFlow can also write code, run shell
-commands, and browse the web.
+Unlike existing coding-agent harnesses that are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
+The agent writes only queries and visualization specifications, while TabulaFlow
+handles data resolution, rendering, and provenance tracking. Its core harness is
+**shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
+[Compare token efficiency](https://megagonlabs.github.io/tabulaflow/#how-does-tabulaflow-work)
 
 [**Use the data agent**](#get-started) ·
 [**Build a data application**](#tabulaflow-as-a-python-library) ·
 [**Run text-to-query experiments**](#tabulaflow-for-researchers)
 
-
-
 https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
 
-
-
 **More demos:**
-[Get Precise Data via Interactive Disambiguation](https://megagonlabs.github.io/tabulaflow/#demo-disambiguation) ·
-[Build a Research Paper Database](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
-[Chat to a Bioinformatics MySQL db](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
-[Explore a Multimodal Hugging Face Dataset](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face) ·
-[Query and Visualize Graphs](https://megagonlabs.github.io/tabulaflow/#demo-wikidata)
+[Interactive disambiguation](https://megagonlabs.github.io/tabulaflow/#demo-disambiguation) ·
+[Deep research](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
+[Map](https://megagonlabs.github.io/tabulaflow/#demo-travel) ·
+[MySQL](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
+[Wikidata graph](https://megagonlabs.github.io/tabulaflow/#demo-wikidata) ·
+[Multimodal](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face)
+
+## Data agent patterns
+
+| Pattern | Description |
+|---|---|
+| [Text-to-query](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources) | Turn natural-language requests into query-backed data tables. |
+| [Data-bound visualization](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/) | Turn data tables into charts, maps, and graphs that stay linked to their data. |
+| [Interactive dashboard](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/#add-interactive-controls) | Create tables and visualizations with shared controls that update their data. |
+| [Extraction](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#extract-records-from-documents) | Add rows by extracting structured records from unstructured content that far exceeds an LLM's context window. |
+| [Row-wise enrichment](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#example-find-jobs-that-fit) | Add columns to very large tables using subagents that can browse pages and click buttons. |
+| [Cross-source join](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources) | Connect records across sources, even when names differ. |
 
 ## Get started
 
