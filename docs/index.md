@@ -54,7 +54,7 @@ or handle everyday tasks.
           data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
           data-type="Knowledge graph workflow"
           data-poster="assets/demos/query-wikidata-poster.jpg"
-          data-video-src="assets/demos/query-wikidata.mp4">Wikidata</button>
+          data-video-src="assets/demos/query-wikidata.mp4">Wikidata graph</button>
         <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
           data-title="Explore a multimodal Hugging Face dataset"
           data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
