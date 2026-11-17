@@ -478,7 +478,7 @@ immediately.
 ## How does TabulaFlow work?
 
 TabulaFlow's agent harness is optimized for data tasks. It handles data resolution, styling, and provenance tracking
-automatically so the agent doesn't need to. It also does not require shell or filesystem access. The comparison below
+automatically so the agent never wastes tokens embedding data values or writing HTML to create visual artifacts. It also does not require shell or filesystem access. The comparison below
 shows how it creates an [interactive chart](#demo-disambiguation) alongside a typical coding-agent
 harness:
 
