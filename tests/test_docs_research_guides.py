@@ -25,7 +25,7 @@ async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.Monk
     monkeypatch.setattr(models, "ALLOW_MODEL_REQUESTS", False)
     monkeypatch.setattr("tabulaflow.agents.trace.compute_api_cost", lambda *args, **kwargs: 0)
     monkeypatch.chdir(tmp_path)
-    connector = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    connector = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
     closed: list[SQLConnector] = []
     original_close = SQLConnector.close_async
 

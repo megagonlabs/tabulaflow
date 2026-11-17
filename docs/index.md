@@ -102,8 +102,8 @@ or handle everyday tasks.
     from tabulaflow.data import DataConnectorRegistry, SQLConnector
 
     async with DataConnectorRegistry() as registry:
-        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///sales.db")
-        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///support.db")
+        sales = await SQLConnector.from_url_async("sqlite:///sales.db")
+        support = await SQLConnector.from_url_async("sqlite:///support.db")
         registry.register("sales", sales)
         registry.register("support", support)
 

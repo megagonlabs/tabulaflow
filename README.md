@@ -196,9 +196,9 @@ async def load_sample_data(sales: SQLConnector, support: SQLConnector) -> None:
 
 async def main() -> None:
     async with DataConnectorRegistry() as registry:
-        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        sales = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
         registry.register("sales", sales)
-        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        support = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
         registry.register("support", support)
         await load_sample_data(sales, support)
 
@@ -242,7 +242,7 @@ from tabulaflow.data import SQLConnector
 
 
 async def main() -> None:
-    stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    stock = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
     async with stock:
         await stock.write_dataframe_async(
             pd.DataFrame(

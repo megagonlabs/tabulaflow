@@ -38,10 +38,10 @@ async def load_sample_data(sales: SQLConnector, support: SQLConnector) -> None:
 
 async def main() -> None:
     async with DataConnectorRegistry() as registry:
-        sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        sales = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
         # The registry closes registered connectors when this block exits.
         registry.register("sales", sales)
-        support = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        support = await SQLConnector.from_url_async("sqlite:///:memory:", read_only=False)
         registry.register("support", support)
         workspace = await SQLConnector.from_url_async("duckdb:///:memory:", read_only=False)
         registry.register("workspace", workspace)
