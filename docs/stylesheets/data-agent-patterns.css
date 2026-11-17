@@ -32,11 +32,11 @@
 }
 
 .tf-patterns col.pattern-column {
-  width: 60%;
+  width: 50%;
 }
 
 .tf-patterns col.flow-column {
-  width: 40%;
+  width: 50%;
 }
 
 .tf-patterns tbody tr {
@@ -49,13 +49,13 @@
 
 .tf-patterns tbody th,
 .tf-patterns tbody td {
-  padding: 24px 0;
+  padding-block: 16px;
   text-align: left;
   vertical-align: middle;
 }
 
 .tf-patterns tbody th {
-  padding-right: 8px;
+  padding-right: 12px;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: normal;
@@ -63,7 +63,7 @@
 }
 
 .tf-patterns tbody td {
-  padding-left: 8px;
+  padding-left: 12px;
 }
 
 .tf-patterns .pattern-title {
@@ -661,24 +661,6 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
-}
-
-@container (max-width: 860px) {
-  .tf-patterns col.pattern-column {
-    width: 42%;
-  }
-
-  .tf-patterns col.flow-column {
-    width: 58%;
-  }
-
-  .tf-patterns tbody th {
-    padding-right: 16px;
-  }
-
-  .tf-patterns tbody td {
-    padding-left: 16px;
-  }
 }
 
 @container (max-width: 640px) {
