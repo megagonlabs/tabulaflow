@@ -28,15 +28,36 @@ handles data resolution, rendering, and provenance tracking. Its core harness is
 [**Build a data application**](#tabulaflow-as-a-python-library) ·
 [**Run text-to-query experiments**](#tabulaflow-for-researchers)
 
-https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
-
-**More demos:**
-[Interactive disambiguation](https://megagonlabs.github.io/tabulaflow/#demo-disambiguation) ·
-[Deep research](https://megagonlabs.github.io/tabulaflow/#demo-research) ·
-[Map](https://megagonlabs.github.io/tabulaflow/#demo-travel) ·
-[MySQL](https://megagonlabs.github.io/tabulaflow/#demo-database) ·
-[Wikidata graph](https://megagonlabs.github.io/tabulaflow/#demo-wikidata) ·
-[Multimodal](https://megagonlabs.github.io/tabulaflow/#demo-hugging-face)
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/structured-disambiguation-poster.jpg" alt="Interactive disambiguation demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-disambiguation">Interactive disambiguation</a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-research"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/find-research-papers-poster.jpg" alt="Deep research demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-research">Deep research</a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-travel"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="Map demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-travel">Map</a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-database"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/chat-to-a-database-poster.jpg" alt="MySQL demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-database">MySQL</a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/query-wikidata-poster.jpg" alt="Wikidata graph demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-wikidata">Wikidata graph</a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face"><img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="Multimodal demo poster" width="100%"></a>
+      <br><a href="https://megagonlabs.github.io/tabulaflow/#demo-hugging-face">Multimodal</a>
+    </td>
+  </tr>
+</table>
 
 ## Data agent patterns
 
