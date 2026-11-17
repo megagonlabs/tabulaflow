@@ -80,13 +80,10 @@ or handle everyday tasks.
           <span>Browse media in tables</span>
         </button>
       </div>
-      <dialog class="demo-gallery__dialog" id="demo-dialog" aria-labelledby="demo-dialog-title">
-        <div class="demo-gallery__dialog-header">
-          <div class="demo-gallery__dialog-title" id="demo-dialog-title"></div>
-          <button class="demo-gallery__dialog-close" type="button" aria-label="Close demo">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
-          </button>
-        </div>
+      <dialog class="demo-gallery__dialog" id="demo-dialog" aria-label="Demo video">
+        <button class="demo-gallery__dialog-close" type="button" aria-label="Close demo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+        </button>
         <video class="demo-gallery__dialog-video" controls playsinline preload="metadata"></video>
       </dialog>
     </div>

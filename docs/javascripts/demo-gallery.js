@@ -22,7 +22,6 @@ const openDemo = async (gallery, button, { autoplay = false, updateHistory = fal
   const video = dialog.querySelector("video")
   const anchorId = button.dataset.anchorId
 
-  dialog.querySelector(".demo-gallery__dialog-title").textContent = button.dataset.title
   video.setAttribute("aria-label", button.dataset.title)
   video.pause()
   video.src = button.dataset.videoSrc
