@@ -3,7 +3,7 @@ hide:
   - toc
 ---
 
-# The general-purpose data agent
+# General-purpose data agent
 
 TabulaFlow is an open-source data agent application, as well as a library for building data agents.
 
@@ -12,11 +12,6 @@ to analyze, visualize, or transform. It works with all kinds of data, including
 SQL and graph databases, files, Hugging Face datasets, Wikidata, and web pages.
 You can also browse data directly without an LLM or use it like a coding agent to write code
 or handle everyday tasks.
-
-Unlike existing coding-agent harnesses that are built around files and the
-shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
-Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
-
 
 <div class="landing-showcase-wrap">
 <div class="landing-showcase">
@@ -151,6 +146,10 @@ Its core harness is **shell-independent**, making it particularly suitable for b
   </div>
 </div>
 </div>
+
+Unlike existing coding-agent harnesses that are built around files and the
+shell, TabulaFlow treats tables as first-class citizens, as its name suggests.
+Its core harness is **shell-independent**, making it particularly suitable for building data applications without requiring sandboxes.
 
 ## Data agent patterns
 

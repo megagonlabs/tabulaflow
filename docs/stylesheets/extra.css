@@ -255,6 +255,17 @@ body {
   line-height: 1.75;
 }
 
+article.md-typeset:has(> .tf-patterns) > h1 {
+  color: var(--tf-wordmark);
+  line-height: 1.25;
+}
+
+article.md-typeset:has(> .tf-patterns) > p:first-of-type {
+  color: var(--tf-text-muted);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
 article.md-typeset:has(> .tf-patterns) > p,
 article.md-typeset:has(> .tf-patterns) > ul,
 article.md-typeset:has(> .tf-patterns) > ol,
