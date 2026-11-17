@@ -290,7 +290,12 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset h1 {
+  margin-bottom: 0.5em;
   font-size: 2.35em;
+}
+
+.md-typeset h1 + p {
+  margin-top: 0.5em;
 }
 
 .md-typeset h2 {
@@ -981,6 +986,7 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset .trajectory-comparison {
+  max-width: 80ch;
   margin: 1.25rem 0;
 }
 

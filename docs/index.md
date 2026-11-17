@@ -3,9 +3,9 @@ hide:
   - toc
 ---
 
-# What is TabulaFlow?
+# The general-purpose data agent
 
-TabulaFlow is an open-source data agent.
+TabulaFlow is an open-source data agent application, as well as a library for building data agents.
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform. It works with all kinds of data, including
