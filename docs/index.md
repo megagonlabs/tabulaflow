@@ -331,7 +331,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
       <tr>
         <th scope="row">
           <span class="pattern-title">Extraction</span>
-          <span class="pattern-description">Add rows by extracting structured records from unstructured content.</span>
+          <span class="pattern-description">Add rows by extracting many structured records from unstructured content that far exceeds an LLM's context window.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
             <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#extract-records-from-documents" aria-label="View the document extraction Python example">Extract documents</a>
@@ -364,7 +364,7 @@ Its core harness is **shell-independent**, making it particularly suitable for b
       <tr>
         <th scope="row">
           <span class="pattern-title">Row-wise enrichment</span>
-          <span class="pattern-description">Add columns by processing rows in parallel with agents that can browse pages and click buttons. Its nested version is an instance of <a href="https://arxiv.org/pdf/2512.24601">recursive language model</a>.</span>
+          <span class="pattern-description">Add columns to very large tables using subagents that can browse pages and click buttons. The nested version is an instance of <a href="https://arxiv.org/pdf/2512.24601">recursive language models</a>.</span>
           <span class="pattern-links">
             <a class="resource-pill resource-pill--demo" href="#demo-research" aria-label="Watch the research paper database demo">Build a paper database</a>
             <a class="resource-pill resource-pill--code" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the row enrichment Python example">Enrich rows</a>
