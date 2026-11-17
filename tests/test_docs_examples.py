@@ -24,30 +24,61 @@ async def test_quick_start(
     example = runpy.run_path(str(script))
     chart_spec = {
         "mark": "bar",
-        "encoding": {"x": {"field": "region", "type": "nominal"}, "y": {"field": "revenue", "type": "quantitative"}},
+        "encoding": {
+            "x": {"field": "customer_id", "type": "nominal"},
+            "y": {"field": "total_revenue_usd", "type": "quantitative"},
+        },
     }
+    join_query = (
+        "SELECT r.customer_id, r.total_revenue_usd, "
+        "COALESCE(t.open_high_priority_tickets, 0) AS open_high_priority_tickets "
+        "FROM customer_revenue r LEFT JOIN open_high_priority_tickets t USING (customer_id) "
+        "ORDER BY r.customer_id"
+    )
     steps = [
         (
             "run_query",
             {
                 "connector_alias": "sales",
-                "query": "SELECT region, SUM(revenue_usd) AS revenue FROM sales GROUP BY region",
+                "query": ("SELECT customer_id, SUM(revenue_usd) AS total_revenue_usd FROM sales GROUP BY customer_id"),
             },
         ),
         (
             "run_query",
             {
                 "connector_alias": "support",
-                "query": "SELECT * FROM support WHERE priority = 'high' AND status = 'open' ORDER BY ticket_id",
+                "query": (
+                    "SELECT customer_id, COUNT(*) AS open_high_priority_tickets FROM support "
+                    "WHERE priority = 'high' AND status = 'open' GROUP BY customer_id"
+                ),
             },
         ),
-        ("render_chart", {"source_id": "S1", "vegalite_spec": json.dumps(chart_spec)}),
+        (
+            "write_result_table",
+            {
+                "source_id": "S1",
+                "target_alias": "workspace",
+                "target_schema": None,
+                "target_table": "customer_revenue",
+            },
+        ),
+        (
+            "write_result_table",
+            {
+                "source_id": "S2",
+                "target_alias": "workspace",
+                "target_schema": None,
+                "target_table": "open_high_priority_tickets",
+            },
+        ),
+        ("run_query", {"connector_alias": "workspace", "query": join_query}),
+        ("render_chart", {"source_id": "S3", "vegalite_spec": json.dumps(chart_spec)}),
         (
             "show_artifacts",
             {
                 "artifacts": [
-                    {"id": "CHART1", "label": "Revenue by region"},
-                    {"id": "S2", "label": "Open high-priority tickets"},
+                    {"id": "CHART1", "label": "Revenue by customer"},
+                    {"id": "S3", "label": "Customer revenue and support"},
                 ]
             },
         ),
@@ -59,7 +90,7 @@ async def test_quick_start(
             assert isinstance(part.content, str)
             assert "(error:" not in part.content
         if len(returns) == len(steps):
-            yield "ANSWER:\nWest: $2,000. East: $1,500. Two high-priority tickets remain open."
+            yield "ANSWER:\nCustomer 101 has $2,000 revenue and one open high-priority ticket."
         else:
             name, arguments = steps[len(returns)]
             yield {0: DeltaToolCall(name=name, json_args=json.dumps(arguments))}
@@ -70,20 +101,28 @@ async def test_quick_start(
     original_run = ChatSession.run
 
     async def verify_run(self: ChatSession, question: str) -> Any:
-        assert set(self._registry.list_aliases()) == {"sales", "support"}
+        assert set(self._registry.list_aliases()) == {"sales", "support", "workspace"}
         assert self._registry.get("sales").global_id != self._registry.get("support").global_id
-        assert self._workspace is None
+        assert self._workspace is self._registry.get("workspace")
         result = await original_run(self, question)
         resolved = await OutputResolver(self.output_store).resolve(result.output)
         chart, table = resolved.artifacts
         assert isinstance(chart, ResolvedChartArtifact)
         assert isinstance(table, ResolvedTableArtifact)
-        assert chart.result.metadata.connector_alias == "sales"
-        assert table.result.metadata.connector_alias == "support"
+        assert chart.result.metadata.connector_alias == "workspace"
+        assert table.result.metadata.connector_alias == "workspace"
         assert chart.result.df is not None
         assert table.result.df is not None
-        assert dict(zip(chart.result.df["region"], chart.result.df["revenue"])) == {"West": 2000, "East": 1500}
-        assert table.result.df["ticket_id"].tolist() == [201, 202]
+        assert dict(zip(chart.result.df["customer_id"], chart.result.df["total_revenue_usd"])) == {
+            101: 2000,
+            102: 900,
+            103: 600,
+        }
+        assert dict(zip(table.result.df["customer_id"], table.result.df["open_high_priority_tickets"])) == {
+            101: 1,
+            102: 1,
+            103: 0,
+        }
         assert chart.spec["mark"] == "bar"
         if reverse_artifacts:
             result.output.artifacts.reverse()
@@ -102,17 +141,20 @@ async def test_quick_start(
     output = capsys.readouterr().out
     for expected in (
         "Answer:",
-        "Artifact: Revenue by region",
-        "Artifact: Open high-priority tickets",
-        "Source: sales",
-        "Source: support",
-        "SQL: SELECT region, SUM(revenue_usd) AS revenue FROM sales GROUP BY region",
-        "SQL: SELECT * FROM support WHERE priority = 'high' AND status = 'open' ORDER BY ticket_id",
+        "Artifact: Revenue by customer",
+        "Artifact: Customer revenue and support",
+        "Source: workspace",
+        join_query,
         "2000",
-        "1500",
-        "201",
-        "202",
+        "900",
+        "600",
+        "open_high_priority_tickets",
+        "Vega-Lite spec:",
+        '"mark": "bar"',
     ):
         assert expected in output
     assert output.count("DataFrame:\n") == 2
-    assert (output.index("Source: support") < output.index("Source: sales")) == reverse_artifacts
+    assert output.count("-" * 72) == 2
+    assert (
+        output.index("Artifact: Customer revenue and support") < output.index("Artifact: Revenue by customer")
+    ) == reverse_artifacts

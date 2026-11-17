@@ -2,6 +2,7 @@ const selectDemo = (gallery, tab, updateHash = false) => {
   const stage = gallery.querySelector(".demo-gallery__stage")
   const video = gallery.querySelector(".demo-gallery__video")
   const placeholder = gallery.querySelector(".media-placeholder")
+  const playButton = gallery.querySelector(".demo-gallery__play")
 
   for (const candidate of gallery.querySelectorAll('[role="tab"]')) {
     const selected = candidate === tab
@@ -18,6 +19,10 @@ const selectDemo = (gallery, tab, updateHash = false) => {
   video.removeAttribute("src")
   video.removeAttribute("poster")
   video.load()
+  video.controls = false
+  video.setAttribute("aria-label", tab.dataset.title)
+  playButton.hidden = false
+  playButton.setAttribute("aria-label", `Play ${tab.dataset.title}`)
 
   if (tab.dataset.videoSrc) {
     video.src = tab.dataset.videoSrc
@@ -26,6 +31,7 @@ const selectDemo = (gallery, tab, updateHash = false) => {
     placeholder.hidden = true
   } else {
     video.hidden = true
+    playButton.hidden = true
     placeholder.hidden = false
   }
 
@@ -41,6 +47,8 @@ const tabForDemoHash = gallery => {
 }
 
 const initializeDemoGallery = gallery => {
+  const video = gallery.querySelector(".demo-gallery__video")
+  const playButton = gallery.querySelector(".demo-gallery__play")
   const tabs = [...gallery.querySelectorAll('[role="tab"]')]
 
   for (const tab of tabs) {
@@ -59,6 +67,17 @@ const initializeDemoGallery = gallery => {
       next.focus()
     })
   }
+
+  playButton.addEventListener("click", async () => {
+    video.controls = true
+    playButton.hidden = true
+    await video.play()
+  })
+  video.addEventListener("ended", () => {
+    video.controls = false
+    playButton.hidden = false
+    playButton.setAttribute("aria-label", playButton.getAttribute("aria-label").replace(/^Play /, "Replay "))
+  })
 
   const tab = tabForDemoHash(gallery)
   if (tab) selectDemo(gallery, tab)

@@ -33,9 +33,12 @@ These building blocks are fully typed and organized into four layers:
 
 ## Example: Chat with two data sources
 
-Sales and support records live in separate databases. Compare revenue by
-region and find open high-priority tickets in one request, with an inspectable
-chart and table.
+Sales orders and support tickets live in separate commerce and helpdesk systems.
+Join them by customer ID to compare each customer's revenue with open
+high-priority issues, with an inspectable chart and table.
+
+An in-memory DuckDB workspace lets the agent join results from separate
+connections without modifying either source.
 
 ```python title="quick_start.py"
 --8<-- "tabulaflow/examples/quick_start.py:example"
