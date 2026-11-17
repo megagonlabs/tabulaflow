@@ -395,7 +395,7 @@ article.md-typeset:has(> .tf-patterns) > .admonition {
 }
 
 .md-typeset pre > code {
-  padding: 14px 48px 14px 16px;
+  padding: 14px 16px;
   background: transparent;
   color: var(--tf-code-text);
   font-size: 13px;

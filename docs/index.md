@@ -111,8 +111,8 @@ or handle everyday tasks.
             registry=registry, model="openai:gpt-5.6-sol", reasoning="low"
         ) as session:
             result = await session.run(
-                "Join sales and support by customer ID. Compare revenue with open "
-                "high-priority tickets as a table and revenue as a bar chart."
+                "Join sales and support by customer ID. Compare revenue with open"
+                " high-priority tickets as a table and revenue as a bar chart."
             )
 
     answer = result.text
