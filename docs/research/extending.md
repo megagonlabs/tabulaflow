@@ -45,7 +45,7 @@ from tabulaflow.data import SQLConnector
 from tabulaflow.research.types import GoldQuery, NL2QDataset, SimpleNL2QTask
 
 connector = await SQLConnector.from_url_async(
-    "sqlite+aiosqlite:///:memory:", read_only=False
+    "sqlite:///:memory:", read_only=False
 )
 await connector.write_dataframe_async(
     pd.DataFrame({"order_id": [1, 2, 3]}),

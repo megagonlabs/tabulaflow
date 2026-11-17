@@ -147,9 +147,11 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/data-agent-patterns.css
 
 extra_javascript:
   - javascripts/toc-selection.js
   - javascripts/copy-button.js
   - javascripts/demo-gallery.js
+  - javascripts/code-showcase.js
   - javascripts/arcs-page.js
