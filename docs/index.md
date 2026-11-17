@@ -48,7 +48,7 @@ or handle everyday tasks.
           data-poster="assets/demos/structured-disambiguation-poster.jpg"
           data-video-src="assets/demos/structured-disambiguation.mp4">
           <img src="assets/demos/structured-disambiguation-poster.jpg" alt="" loading="lazy">
-          <span>Disambiguation</span>
+          <span>Interactive disambiguation</span>
         </button>
         <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
           data-title="Build a Research Paper Database"
@@ -66,7 +66,7 @@ or handle everyday tasks.
           data-poster="assets/demos/plan-a-trip-on-a-map-poster.jpg"
           data-video-src="assets/demos/plan-a-trip-on-a-map.mp4">
           <img src="assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="" loading="lazy">
-          <span>Map</span>
+          <span>Plan a trip on a map</span>
         </button>
         <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
           data-title="Chat to a Bioinformatics MySQL db"
@@ -75,7 +75,7 @@ or handle everyday tasks.
           data-poster="assets/demos/chat-to-a-database-poster.jpg"
           data-video-src="assets/demos/chat-to-a-database.mp4">
           <img src="assets/demos/chat-to-a-database-poster.jpg" alt="" loading="lazy">
-          <span>MySQL</span>
+          <span>Analyze a bioinformatics mysql db</span>
         </button>
         <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
           data-title="Query and Visualize Graphs"
@@ -84,7 +84,7 @@ or handle everyday tasks.
           data-poster="assets/demos/query-wikidata-poster.jpg"
           data-video-src="assets/demos/query-wikidata.mp4">
           <img src="assets/demos/query-wikidata-poster.jpg" alt="" loading="lazy">
-          <span>Wikidata graph</span>
+          <span>Wikidata and graphs</span>
         </button>
         <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
           data-title="Explore a multimodal Hugging Face dataset"
@@ -93,7 +93,7 @@ or handle everyday tasks.
           data-poster="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg"
           data-video-src="assets/demos/explore-a-multimodal-hugging-face-dataset.mp4">
           <img src="assets/demos/explore-a-multimodal-hugging-face-dataset-poster.jpg" alt="" loading="lazy">
-          <span>Multimodal</span>
+          <span>Browse media in tables</span>
         </button>
       </div>
     </div>
@@ -101,11 +101,8 @@ or handle everyday tasks.
   <div class="landing-showcase__panel landing-showcase__code" markdown="1">
     <div class="landing-showcase__title">Build with Python library</div>
     <div class="code-showcase">
-      <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
-        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Query &amp; visualize</button>
-        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Row-wise enrichment</button>
-      </div>
-      <div class="code-showcase__panel" id="code-panel-agent" role="tabpanel" aria-labelledby="code-tab-agent" markdown="1">
+      <section class="code-showcase__panel" aria-labelledby="code-title-agent" markdown="1">
+        <div class="code-showcase__title" id="code-title-agent">Query &amp; visualize</div>
 
     ```python
     from tabulaflow.agents import ChatSession
@@ -130,8 +127,9 @@ or handle everyday tasks.
     ```
 
       <a class="code-showcase__example-link" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the full agent example">Full example →</a>
-      </div>
-      <div class="code-showcase__panel" id="code-panel-enrichment" role="tabpanel" aria-labelledby="code-tab-enrichment" markdown="1" hidden>
+      </section>
+      <section class="code-showcase__panel" aria-labelledby="code-title-enrichment" markdown="1">
+        <div class="code-showcase__title" id="code-title-enrichment">Row-wise enrichment</div>
 
     ```python
     import pandas as pd
@@ -159,7 +157,7 @@ or handle everyday tasks.
     ```
 
       <a class="code-showcase__example-link" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the full enrichment example">Full example →</a>
-      </div>
+      </section>
     </div>
   </div>
 </div>
