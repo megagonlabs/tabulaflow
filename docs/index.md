@@ -24,24 +24,8 @@ or handle everyday tasks.
       <span class="demo-gallery__anchor" id="demo-database" data-tab-id="demo-tab-database" aria-hidden="true"></span>
       <span class="demo-gallery__anchor" id="demo-wikidata" data-tab-id="demo-tab-wikidata" aria-hidden="true"></span>
       <span class="demo-gallery__anchor" id="demo-hugging-face" data-tab-id="demo-tab-hugging-face" aria-hidden="true"></span>
-      <div class="demo-gallery__stage" role="tabpanel" aria-labelledby="demo-tab-disambiguation">
-        <video class="demo-gallery__video" preload="metadata"
-          poster="assets/demos/structured-disambiguation-poster.jpg"
-          src="assets/demos/structured-disambiguation.mp4" aria-label="TabulaFlow interactive disambiguation and visualization demo"></video>
-        <button class="demo-gallery__play" type="button" aria-label="Play Get Precise Data via Interactive Disambiguation">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
-        </button>
-        <figure class="media-placeholder media-placeholder--video" aria-live="polite" hidden>
-          <div class="media-placeholder__content">
-            <span class="media-placeholder__type">Structured disambiguation</span>
-            <strong>Get Precise Data via Interactive Disambiguation</strong>
-            <span>Resolve an ambiguous question with an interactive, parameterized visualization.</span>
-          </div>
-          <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
-        </figure>
-      </div>
-      <div class="demo-gallery__tabs" role="tablist" aria-label="TabulaFlow demos">
-        <button type="button" role="tab" id="demo-tab-disambiguation" aria-selected="true" aria-label="Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
+      <div class="demo-gallery__tabs" role="group" aria-label="TabulaFlow demos">
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-disambiguation" aria-label="Play Get Precise Data via Interactive Disambiguation" data-anchor-id="demo-disambiguation"
           data-title="Get Precise Data via Interactive Disambiguation"
           data-description="Resolve an ambiguous question with an interactive, parameterized visualization."
           data-type="Structured disambiguation"
@@ -50,7 +34,7 @@ or handle everyday tasks.
           <img src="assets/demos/structured-disambiguation-poster.jpg" alt="" loading="lazy">
           <span>Interactive disambiguation</span>
         </button>
-        <button type="button" role="tab" id="demo-tab-research" aria-selected="false" tabindex="-1" aria-label="Build a Research Paper Database" data-anchor-id="demo-research"
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-research" aria-label="Play Build a Research Paper Database" data-anchor-id="demo-research"
           data-title="Build a Research Paper Database"
           data-description="Build a comprehensive, structured database of conference papers on a research topic."
           data-type="Research workflow"
@@ -59,7 +43,7 @@ or handle everyday tasks.
           <img src="assets/demos/find-research-papers-poster.jpg" alt="" loading="lazy">
           <span>Deep research</span>
         </button>
-        <button type="button" role="tab" id="demo-tab-travel" aria-selected="false" tabindex="-1" aria-label="Plan a Trip on a Map" data-anchor-id="demo-travel"
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-travel" aria-label="Play Plan a Trip on a Map" data-anchor-id="demo-travel"
           data-title="Plan a trip on a map"
           data-description="Find museums, add neighborhood boundaries, and map a walking route."
           data-type="Mapping workflow"
@@ -68,7 +52,7 @@ or handle everyday tasks.
           <img src="assets/demos/plan-a-trip-on-a-map-poster.jpg" alt="" loading="lazy">
           <span>Plan a trip on a map</span>
         </button>
-        <button type="button" role="tab" id="demo-tab-database" aria-selected="false" tabindex="-1" aria-label="Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-database" aria-label="Play Chat to a Bioinformatics MySQL db" data-anchor-id="demo-database"
           data-title="Chat to a Bioinformatics MySQL db"
           data-description="Connect a bioinformatics MySQL database and ask TabulaFlow to introduce and explore it."
           data-type="Database workflow"
@@ -77,7 +61,7 @@ or handle everyday tasks.
           <img src="assets/demos/chat-to-a-database-poster.jpg" alt="" loading="lazy">
           <span>Analyze a bioinformatics mysql db</span>
         </button>
-        <button type="button" role="tab" id="demo-tab-wikidata" aria-selected="false" tabindex="-1" aria-label="Query and Visualize Graphs" data-anchor-id="demo-wikidata"
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-wikidata" aria-label="Play Query and Visualize Graphs" data-anchor-id="demo-wikidata"
           data-title="Query and Visualize Graphs"
           data-description="Ask a knowledge-graph question, inspect the results, and explore their relationships."
           data-type="Knowledge graph workflow"
@@ -86,7 +70,7 @@ or handle everyday tasks.
           <img src="assets/demos/query-wikidata-poster.jpg" alt="" loading="lazy">
           <span>Wikidata and graphs</span>
         </button>
-        <button type="button" role="tab" id="demo-tab-hugging-face" aria-selected="false" tabindex="-1" aria-label="Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
+        <button type="button" class="demo-gallery__choice" aria-haspopup="dialog" aria-controls="demo-dialog" id="demo-tab-hugging-face" aria-label="Play Explore a Multimodal Hugging Face Dataset" data-anchor-id="demo-hugging-face"
           data-title="Explore a multimodal Hugging Face dataset"
           data-description="Connect a multimodal Hugging Face dataset and explore its schema, rows, and media."
           data-type="Data browsing workflow"
@@ -96,13 +80,25 @@ or handle everyday tasks.
           <span>Browse media in tables</span>
         </button>
       </div>
+      <dialog class="demo-gallery__dialog" id="demo-dialog" aria-labelledby="demo-dialog-title">
+        <div class="demo-gallery__dialog-header">
+          <div class="demo-gallery__dialog-title" id="demo-dialog-title"></div>
+          <button class="demo-gallery__dialog-close" type="button" aria-label="Close demo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </button>
+        </div>
+        <video class="demo-gallery__dialog-video" controls playsinline preload="metadata"></video>
+      </dialog>
     </div>
   </div>
   <div class="landing-showcase__panel landing-showcase__code" markdown="1">
     <div class="landing-showcase__title">Build with Python library</div>
     <div class="code-showcase">
-      <section class="code-showcase__panel" aria-labelledby="code-title-agent" markdown="1">
-        <div class="code-showcase__title" id="code-title-agent">Query &amp; visualize</div>
+      <div class="code-showcase__tabs demo-gallery__tabs" role="tablist" aria-label="Python examples">
+        <button type="button" role="tab" id="code-tab-agent" aria-controls="code-panel-agent" aria-selected="true">Query &amp; visualize</button>
+        <button type="button" role="tab" id="code-tab-enrichment" aria-controls="code-panel-enrichment" aria-selected="false" tabindex="-1">Row-wise enrichment</button>
+      </div>
+      <div class="code-showcase__panel" id="code-panel-agent" role="tabpanel" aria-labelledby="code-tab-agent" markdown="1">
 
     ```python
     from tabulaflow.agents import ChatSession
@@ -127,9 +123,8 @@ or handle everyday tasks.
     ```
 
       <a class="code-showcase__example-link" href="library/quick-start/#example-chat-with-two-data-sources" aria-label="View the full agent example">Full example →</a>
-      </section>
-      <section class="code-showcase__panel" aria-labelledby="code-title-enrichment" markdown="1">
-        <div class="code-showcase__title" id="code-title-enrichment">Row-wise enrichment</div>
+      </div>
+      <div class="code-showcase__panel" id="code-panel-enrichment" role="tabpanel" aria-labelledby="code-tab-enrichment" markdown="1" hidden>
 
     ```python
     import pandas as pd
@@ -157,7 +152,7 @@ or handle everyday tasks.
     ```
 
       <a class="code-showcase__example-link" href="library/extraction-and-enrichment/#example-find-jobs-that-fit" aria-label="View the full enrichment example">Full example →</a>
-      </section>
+      </div>
     </div>
   </div>
 </div>

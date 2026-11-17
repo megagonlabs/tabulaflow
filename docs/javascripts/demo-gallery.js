@@ -1,96 +1,116 @@
-const selectDemo = (gallery, tab, updateHash = false) => {
-  const stage = gallery.querySelector(".demo-gallery__stage")
-  const video = gallery.querySelector(".demo-gallery__video")
-  const placeholder = gallery.querySelector(".media-placeholder")
-  const playButton = gallery.querySelector(".demo-gallery__play")
+let activeDemoGallery = null
 
-  for (const candidate of gallery.querySelectorAll('[role="tab"]')) {
-    const selected = candidate === tab
-    candidate.setAttribute("aria-selected", selected ? "true" : "false")
-    candidate.tabIndex = selected ? 0 : -1
-  }
-
-  stage.setAttribute("aria-labelledby", tab.id)
-  placeholder.querySelector(".media-placeholder__type").textContent = tab.dataset.type
-  placeholder.querySelector("strong").textContent = tab.dataset.title
-  placeholder.querySelector(".media-placeholder__content > span:last-child").textContent = tab.dataset.description
-
-  video.pause()
-  video.removeAttribute("src")
-  video.removeAttribute("poster")
-  video.load()
-  video.controls = false
-  video.setAttribute("aria-label", tab.dataset.title)
-  playButton.hidden = false
-  playButton.setAttribute("aria-label", `Play ${tab.dataset.title}`)
-
-  if (tab.dataset.videoSrc) {
-    video.src = tab.dataset.videoSrc
-    if (tab.dataset.poster) video.poster = tab.dataset.poster
-    video.hidden = false
-    placeholder.hidden = true
-  } else {
-    video.hidden = true
-    playButton.hidden = true
-    placeholder.hidden = false
-  }
-
-  if (updateHash) history.replaceState(null, "", `#${tab.dataset.anchorId}`)
-}
-
-const tabForDemoHash = gallery => {
+const demoButtonForHash = gallery => {
   const anchor = document.getElementById(location.hash.slice(1))
   if (!anchor?.classList.contains("demo-gallery__anchor")) return null
 
-  const tab = document.getElementById(anchor.dataset.tabId)
-  return tab?.closest(".demo-gallery") === gallery ? tab : null
+  const button = document.getElementById(anchor.dataset.tabId)
+  return button?.closest(".demo-gallery") === gallery ? button : null
+}
+
+const closeDemo = gallery => {
+  const dialog = gallery.querySelector(".demo-gallery__dialog")
+  if (dialog.open) dialog.close()
+}
+
+const openDemo = async (gallery, button, { autoplay = false, updateHistory = false } = {}) => {
+  if (activeDemoGallery && activeDemoGallery !== gallery) closeDemo(activeDemoGallery)
+  activeDemoGallery = gallery
+  gallery.demoButton = button
+
+  const dialog = gallery.querySelector(".demo-gallery__dialog")
+  const video = dialog.querySelector("video")
+  const anchorId = button.dataset.anchorId
+
+  dialog.querySelector(".demo-gallery__dialog-title").textContent = button.dataset.title
+  video.setAttribute("aria-label", button.dataset.title)
+  video.pause()
+  video.src = button.dataset.videoSrc
+  video.poster = button.dataset.poster
+  video.load()
+
+  if (!dialog.open) {
+    gallery.previousOverflow = document.documentElement.style.overflow
+    document.documentElement.style.overflow = "hidden"
+    dialog.showModal()
+  }
+
+  if (updateHistory && location.hash !== `#${anchorId}`) {
+    history.pushState({ ...history.state, demoGallery: anchorId }, "", `#${anchorId}`)
+  }
+
+  if (autoplay) {
+    try {
+      await video.play()
+    } catch (error) {
+      if (!["AbortError", "NotAllowedError"].includes(error.name)) throw error
+    }
+  }
+}
+
+const dismissDemo = gallery => {
+  const button = gallery.demoButton
+  const anchorId = button?.dataset.anchorId
+
+  if (anchorId && location.hash === `#${anchorId}` && history.state?.demoGallery === anchorId) {
+    history.back()
+    return
+  }
+
+  if (anchorId && location.hash === `#${anchorId}`) {
+    const state = { ...history.state }
+    delete state.demoGallery
+    history.replaceState(state, "", "#demo-gallery")
+  }
+  closeDemo(gallery)
+}
+
+const syncDemoWithHash = gallery => {
+  const button = demoButtonForHash(gallery)
+  if (button) openDemo(gallery, button)
+  else closeDemo(gallery)
 }
 
 const initializeDemoGallery = gallery => {
-  const video = gallery.querySelector(".demo-gallery__video")
-  const playButton = gallery.querySelector(".demo-gallery__play")
-  const tabs = [...gallery.querySelectorAll('[role="tab"]')]
+  const dialog = gallery.querySelector(".demo-gallery__dialog")
+  const video = dialog.querySelector("video")
 
-  for (const tab of tabs) {
-    tab.addEventListener("click", () => selectDemo(gallery, tab, true))
-    tab.addEventListener("keydown", event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-
-      event.preventDefault()
-      const current = tabs.indexOf(tab)
-      const next = event.key === "Home"
-        ? tabs[0]
-        : event.key === "End"
-          ? tabs.at(-1)
-          : tabs[(current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length]
-      selectDemo(gallery, next, true)
-      next.focus()
-    })
+  for (const button of gallery.querySelectorAll(".demo-gallery__choice")) {
+    button.addEventListener("click", () => openDemo(gallery, button, { autoplay: true, updateHistory: true }))
   }
 
-  playButton.addEventListener("click", async () => {
-    video.controls = true
-    playButton.hidden = true
-    await video.play()
+  dialog.querySelector(".demo-gallery__dialog-close").addEventListener("click", () => dismissDemo(gallery))
+  dialog.addEventListener("cancel", event => {
+    event.preventDefault()
+    dismissDemo(gallery)
   })
-  video.addEventListener("ended", () => {
-    video.controls = false
-    playButton.hidden = false
-    playButton.setAttribute("aria-label", playButton.getAttribute("aria-label").replace(/^Play /, "Replay "))
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) dismissDemo(gallery)
+  })
+  dialog.addEventListener("close", () => {
+    if (dialog.open) return
+    video.pause()
+    video.removeAttribute("src")
+    video.removeAttribute("poster")
+    video.load()
+
+    if (activeDemoGallery === gallery) {
+      activeDemoGallery = null
+      document.documentElement.style.overflow = gallery.previousOverflow || ""
+      if (gallery.demoButton?.isConnected) gallery.demoButton.focus()
+    }
   })
 
-  const tab = tabForDemoHash(gallery)
-  if (tab) selectDemo(gallery, tab)
+  syncDemoWithHash(gallery)
 }
 
 location$.subscribe(() => {
-  const anchor = document.getElementById(location.hash.slice(1))
-  const gallery = anchor?.closest(".demo-gallery")
-  const tab = gallery ? tabForDemoHash(gallery) : null
-  if (tab) selectDemo(gallery, tab)
+  const gallery = document.querySelector(".demo-gallery")
+  if (gallery) syncDemoWithHash(gallery)
 })
 
 document$.subscribe(() => {
+  if (activeDemoGallery) closeDemo(activeDemoGallery)
   const gallery = document.querySelector(".demo-gallery")
   if (gallery) initializeDemoGallery(gallery)
 })
