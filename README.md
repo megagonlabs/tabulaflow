@@ -40,14 +40,14 @@ https://github.com/user-attachments/assets/ac975684-afcc-4702-a325-d015fb89665d
 
 ## Data agent patterns
 
-| Pattern | Description |
-|---|---|
-| [Text-to-query](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources) | Turn natural-language requests into query-backed data tables. |
-| [Data-bound visualization](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/) | Turn data tables into charts, maps, and graphs that stay linked to their data. |
-| [Interactive dashboard](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/#add-interactive-controls) | Create tables and visualizations with shared controls that update their data. |
-| [Extraction](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#extract-records-from-documents) | Add rows by extracting structured records from unstructured content that far exceeds an LLM's context window. |
-| [Row-wise enrichment](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#example-find-jobs-that-fit) | Add columns to very large tables using subagents that can browse pages and click buttons. |
-| [Cross-source join](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources) | Connect records across sources, even when names differ. |
+| Pattern | Diagram |
+|---|:---:|
+| **[Text-to-query](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources)**<br>Turn natural-language requests into query-backed data tables. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/text-to-query.png" alt="Natural-language request to SQL query to data table" width="302"> |
+| **[Data-bound visualization](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/)**<br>Turn data tables into charts, maps, and graphs that stay linked to their data. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/data-bound-visualization.png" alt="Data table to visualization specification to chart, map, and graph" width="251"> |
+| **[Interactive dashboard](https://megagonlabs.github.io/tabulaflow/library/structured-outputs/#add-interactive-controls)**<br>Create tables and visualizations with shared controls that update their data. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/interactive-dashboard.png" alt="Shared controls updating tables and visualizations" width="279"> |
+| **[Extraction](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#extract-records-from-documents)**<br>Add rows by extracting structured records from unstructured content that far exceeds an LLM's context window. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/extraction.png" alt="Unstructured documents to structured table rows" width="200"> |
+| **[Row-wise enrichment](https://megagonlabs.github.io/tabulaflow/library/extraction-and-enrichment/#example-find-jobs-that-fit)**<br>Add columns to very large tables using subagents that can browse pages and click buttons. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/row-wise-enrichment.png" alt="Row subagents adding structured columns to a table" width="210"> |
+| **[Cross-source join](https://megagonlabs.github.io/tabulaflow/library/quick-start/#example-chat-with-two-data-sources)**<br>Connect records across sources, even when names differ. | <img src="https://raw.githubusercontent.com/megagonlabs/tabulaflow/main/docs/assets/patterns/cross-source-join.png" alt="SQL and Neo4j records resolved into a joined table" width="196"> |
 
 ## Get started
 
