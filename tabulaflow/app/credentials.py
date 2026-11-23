@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.agents.runtime import invalidate_model_cache
+from tabulaflow.app.config import CredentialPreference
 
 CREDENTIALS_PATH = DEFAULT_HOME_DIR / "credentials.json"
 
@@ -69,12 +71,21 @@ class APIKeyStore:
         return f"Invalid credential store: {path}. Fix or delete the file."
 
 
-def load_saved_api_keys(store: APIKeyStore | None = None) -> None:
-    """Load saved keys without overriding explicitly configured environment values."""
+def load_saved_api_keys(
+    store: APIKeyStore | None = None,
+    *,
+    preferences: Mapping[str, CredentialPreference] | None = None,
+) -> dict[str, str]:
+    """Load saved keys and return the original environment values for their names."""
     credentials = store or APIKeyStore()
+    preferred_variables = {preference.variable for preference in (preferences or {}).values()}
+    environment_credentials: dict[str, str] = {}
     for name, key in credentials.load().items():
-        if not os.getenv(name, "").strip():
+        environment_key = os.getenv(name, "")
+        environment_credentials[name] = environment_key
+        if name in preferred_variables or not environment_key.strip():
             os.environ[name] = key
+    return environment_credentials
 
 
 def activate_api_key(name: str, key: str, *, persist: bool = False, store: APIKeyStore | None = None) -> None:

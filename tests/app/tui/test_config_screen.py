@@ -11,9 +11,10 @@ from textual.screen import Screen
 from textual.style import Style
 from textual.widgets import Input, Static
 
-from tabulaflow.app.config import LLMConfig, LLMRoleConfig, ResolvedLLMConfig
+from tabulaflow.app.config import CredentialPreference, LLMConfig, LLMRoleConfig, ResolvedLLMConfig
 from tabulaflow.app.credentials import APIKeyStore
 from tabulaflow.app.model_catalog import VLLMDiscoveryResult, VLLMModelDiscovery
+from tabulaflow.app.providers import provider_spec
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
 from tabulaflow.app.tui.screens.providers import APIKeyScreen, ProviderPickerScreen
 from tabulaflow.app.tui.theme import ACCENT_BOLD
@@ -589,6 +590,60 @@ async def test_provider_picker_lists_only_provider_names() -> None:
         assert all(rendered.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2))
 
 
+async def test_connection_screen_offers_both_sources_even_with_identical_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-shared-secret")
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("OPENAI_API_KEY", "sk-shared-secret")
+    auth = APIKeyScreen(
+        provider_spec("openai"),
+        credential_store=store,
+        preferred_saved_variable="OPENAI_API_KEY",
+    )
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(auth)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        options = str(auth.query_one("#api-key-options", Static).render())
+        paste = str(auth.query_one("#api-key-paste-label", Static).render())
+        assert options.splitlines() == [
+            "    Use environment OPENAI_API_KEY (sk-***cret)",
+            "",
+            "❯ ● Use saved OPENAI_API_KEY (sk-***cret)",
+        ]
+        assert paste == "    Paste API key"
+        assert auth._cursor == 1
+
+
+async def test_saved_key_loaded_into_environment_is_not_a_second_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-saved-secret")
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("OPENAI_API_KEY", "sk-saved-secret")
+    auth = APIKeyScreen(
+        provider_spec("openai"),
+        credential_store=store,
+        environment_credentials={"OPENAI_API_KEY": ""},
+    )
+
+    class PickerApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(auth)
+
+    async with PickerApp().run_test() as pilot:
+        await pilot.pause()
+        options = str(auth.query_one("#api-key-options", Static).render())
+        assert options == "❯ ● Use saved OPENAI_API_KEY (sk-***cret)"
+        assert "Use environment" not in options
+
+
 async def test_provider_switch_uses_detected_key_and_updates_only_selected_role(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -618,9 +673,9 @@ async def test_provider_switch_uses_detected_key_and_updates_only_selected_role(
         rendered = options_widget.render()
         assert isinstance(rendered, Content)
         options = str(rendered)
-        assert "Use detected ANTHROPIC_API_KEY (sk-***test)" in options
+        assert "Use environment ANTHROPIC_API_KEY (sk-***test)" in options
         assert not options.endswith("\n\n")
-        assert all(rendered.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2))
+        assert all(rendered.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2, 4))
         paste = auth.query_one("#api-key-paste")
         assert paste.styles.margin.top == 1
         assert paste.region.y == options_widget.region.y + options_widget.region.height + 1
@@ -631,8 +686,8 @@ async def test_provider_switch_uses_detected_key_and_updates_only_selected_role(
         assert key_input.has_focus
         paste_label = auth.query_one("#api-key-paste-label", Static).render()
         assert isinstance(paste_label, Content)
-        assert str(paste_label).startswith("❯ Paste API key")
-        assert all(paste_label.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2))
+        assert str(paste_label).startswith("❯   Paste API key")
+        assert all(paste_label.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 4))
         await pilot.press("up")
         await pilot.pause()
         assert not key_input.has_focus
@@ -686,7 +741,7 @@ async def test_pasted_key_is_masked_saved_and_applied_with_unchanged_model(
         assert "Paste API key" in str(auth.query_one("#api-key-paste-label", Static).render())
         assert "credentials.json" not in str(auth.query_one("#api-key-status", Static).render())
         assert key_input.has_focus
-        assert str(auth.query_one("#api-key-paste-label", Static).render()).startswith("❯ Paste API key")
+        assert str(auth.query_one("#api-key-paste-label", Static).render()).startswith("❯   Paste API key")
         await pilot.press(*"sk-pasted-secret")
         assert "sk-pasted-secret" not in str(key_input.render())
         await pilot.press("enter")
@@ -703,6 +758,7 @@ async def test_pasted_key_is_masked_saved_and_applied_with_unchanged_model(
 
     result = app.results[0]
     assert result is not None and result.config == _CONFIG
+    assert result.credential_preferences == {"openai": CredentialPreference(source="saved", variable="OPENAI_API_KEY")}
 
 
 async def test_cancelling_model_picker_after_key_change_still_applies_credentials(
@@ -735,6 +791,7 @@ async def test_cancelling_model_picker_after_key_change_still_applies_credential
 
     result = app.results[0]
     assert result is not None and result.config == _CONFIG
+    assert result.credential_preferences == {"openai": CredentialPreference(source="saved", variable="OPENAI_API_KEY")}
 
 
 async def test_saved_key_can_be_selected_explicitly(
@@ -767,6 +824,47 @@ async def test_saved_key_can_be_selected_explicitly(
         await pilot.pause()
         assert os.environ["ANTHROPIC_API_KEY"] == "sk-saved-secret"
         assert _active_screen(app) == picker
+        assert picker.credential_preferences == {
+            "anthropic": CredentialPreference(source="saved", variable="ANTHROPIC_API_KEY")
+        }
+
+
+async def test_environment_selection_restores_automatic_precedence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-saved-secret")
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("OPENAI_API_KEY", "sk-saved-secret")
+    preference = CredentialPreference(source="saved", variable="OPENAI_API_KEY")
+    screen = ConfigScreen(
+        ResolvedLLMConfig(
+            _CONFIG,
+            _CONFIG,
+            credential_preferences={"openai": preference},
+            environment_credentials={"OPENAI_API_KEY": "sk-environment-secret"},
+        ),
+        credential_store=store,
+    )
+    app = _App(screen)
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter")
+        await pilot.pause()
+        picker = app.screen
+        assert isinstance(picker, ModelPickerScreen)
+        picker._cursor = 0
+        await pilot.press("enter", "enter", "up", "enter")
+        await pilot.pause()
+        assert os.environ["OPENAI_API_KEY"] == "sk-environment-secret"
+        assert _active_screen(app) == picker
+        assert picker.credential_preferences == {}
+        await pilot.press("escape", "escape")
+        await pilot.pause()
+
+    result = app.results[0]
+    assert result is not None and result.credential_preferences == {}
+    assert result.environment_credentials == {"OPENAI_API_KEY": "sk-environment-secret"}
 
 
 async def test_cancelling_provider_or_key_selection_preserves_configuration(tmp_path: Path) -> None:

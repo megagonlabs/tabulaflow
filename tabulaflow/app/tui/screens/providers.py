@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Literal
 
 from rich.text import Text
 from textual import events
@@ -145,7 +148,23 @@ class ProviderPickerScreen(Screen[ProviderSpec | None]):
         )
 
 
-class APIKeyScreen(Screen[bool | None]):
+@dataclass(frozen=True)
+class APIKeySelection:
+    """A credential source selected for the current provider."""
+
+    variable: str
+    source: Literal["environment", "saved"]
+
+
+@dataclass(frozen=True)
+class _ConnectionOption:
+    label: str
+    variable: str
+    key: str
+    source: Literal["environment", "saved"]
+
+
+class APIKeyScreen(Screen[APIKeySelection | None]):
     """Select an existing provider key or paste and save a new one."""
 
     can_focus = True
@@ -170,17 +189,31 @@ class APIKeyScreen(Screen[bool | None]):
         Binding("enter", "select", "Select", show=False, priority=True),
     ]
 
-    def __init__(self, provider: ProviderSpec, *, credential_store: APIKeyStore | None = None) -> None:
+    def __init__(
+        self,
+        provider: ProviderSpec,
+        *,
+        credential_store: APIKeyStore | None = None,
+        preferred_saved_variable: str | None = None,
+        environment_credentials: Mapping[str, str] | None = None,
+    ) -> None:
         super().__init__()
         self._provider = provider
         self._store = credential_store or APIKeyStore()
+        self._preferred_saved_variable = preferred_saved_variable
+        environment_credentials = environment_credentials or {}
         self._editing_key = False
-        self._cursor = 0
         self._error = ""
-        self._options: list[tuple[str, str | None, str | None]] = []
+        self._options: list[_ConnectionOption] = []
         for name in provider.api_key_vars:
-            if key := os.getenv(name, "").strip():
-                self._options.append((f"Use detected {name} ({mask_api_key(key) or '••••'})", name, key))
+            key = (
+                environment_credentials[name].strip()
+                if name in environment_credentials
+                else os.getenv(name, "").strip()
+            )
+            if key:
+                label = f"Use environment {name} ({mask_api_key(key) or '••••'})"
+                self._options.append(_ConnectionOption(label, name, key, "environment"))
         try:
             saved = self._store.load()
         except InvalidCredentialStoreError as error:
@@ -188,9 +221,20 @@ class APIKeyScreen(Screen[bool | None]):
             self._error = str(error)
         for name in provider.api_key_vars:
             saved_key = saved.get(name)
-            if saved_key and not any(option[1] == name and option[2] == saved_key for option in self._options):
-                self._options.append((f"Use saved {name} ({mask_api_key(saved_key) or '••••'})", name, saved_key))
-        self._options.append(("Paste API key", None, None))
+            if saved_key:
+                label = f"Use saved {name} ({mask_api_key(saved_key) or '••••'})"
+                self._options.append(_ConnectionOption(label, name, saved_key, "saved"))
+        self._cursor = self._active_option_index() or 0
+
+    def _active_option_index(self) -> int | None:
+        if self._preferred_saved_variable is not None:
+            for index, option in enumerate(self._options):
+                if option.source == "saved" and option.variable == self._preferred_saved_variable:
+                    return index
+        for index, option in enumerate(self._options):
+            if option.source == "environment":
+                return index
+        return 0 if self._options else None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="api-key-body"):
@@ -206,26 +250,25 @@ class APIKeyScreen(Screen[bool | None]):
         self._sync_focus()
 
     def action_move(self, delta: int) -> None:
-        cursor = max(0, min(len(self._options) - 1, self._cursor + delta))
+        cursor = max(0, min(len(self._options), self._cursor + delta))
         if cursor != self._cursor:
             self._cursor = cursor
             self._error = ""
             self._sync_focus()
 
     def action_select(self) -> None:
-        _, name, key = self._options[self._cursor]
-        if name is None:
+        if self._cursor == len(self._options):
             if self._editing_key:
                 self._save_key(self.query_one("#api-key-input", Input).value)
             else:
                 self._sync_focus()
             return
-        assert key is not None
-        activate_api_key(name, key, store=self._store)
-        self.dismiss(True)
+        option = self._options[self._cursor]
+        activate_api_key(option.variable, option.key, store=self._store)
+        self.dismiss(APIKeySelection(variable=option.variable, source=option.source))
 
     def _sync_focus(self) -> None:
-        self._editing_key = self._cursor == len(self._options) - 1
+        self._editing_key = self._cursor == len(self._options)
         self._refresh()
         if self._editing_key:
             self.query_one("#api-key-input", Input).focus()
@@ -256,27 +299,27 @@ class APIKeyScreen(Screen[bool | None]):
             self._error = "Could not save the API key. Check the credential file and try again."
             self._refresh()
             return
-        self.dismiss(True)
+        self.dismiss(APIKeySelection(variable=name, source="saved"))
 
     def _refresh(self) -> None:
         self.query_one("#api-key-title", Static).update(Text(f"Connect {self._provider.name}", style="bold"))
         options = Text()
-        connection_option_count = len(self._options) - 1
-        for index, (label, name, _) in enumerate(self._options):
-            if name is None:
-                continue
+        active_index = self._active_option_index()
+        for index, option in enumerate(self._options):
             selected = index == self._cursor and not self._editing_key
+            active = index == active_index
             options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
-            options.append(label, style=ACCENT_BOLD if selected else "")
-            if index + 1 < connection_option_count:
+            options.append("● " if active else "  ", style=ACCENT_BOLD if active else "")
+            options.append(option.label, style=ACCENT_BOLD if selected or active else "")
+            if index + 1 < len(self._options):
                 options.append("\n\n")
         options_widget = self.query_one("#api-key-options", Static)
         options_widget.update(options)
-        options_widget.display = connection_option_count > 0
-        self.query_one("#api-key-paste").styles.margin = (1 if connection_option_count else 0, 0, 0, 0)
-        paste_selected = self._cursor == len(self._options) - 1
+        options_widget.display = bool(self._options)
+        self.query_one("#api-key-paste").styles.margin = (1 if self._options else 0, 0, 0, 0)
+        paste_selected = self._cursor == len(self._options)
         paste_label = Text()
-        paste_label.append("❯ " if paste_selected else "  ", style=ACCENT_BOLD if paste_selected else "")
+        paste_label.append("❯   " if paste_selected else "    ", style=ACCENT_BOLD if paste_selected else "")
         paste_label.append("Paste API key", style=ACCENT_BOLD if paste_selected else "")
         self.query_one("#api-key-paste-label", Static).update(paste_label)
         self.query_one("#api-key-status", Static).update(Text(self._error, style="dim"))

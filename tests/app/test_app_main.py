@@ -4,14 +4,14 @@ import sys
 
 import pytest
 
-from tabulaflow.app.config import AppConfig, ResolvedLLMConfig
+from tabulaflow.app.config import AppConfig, CredentialPreference, ResolvedLLMConfig
 from tabulaflow.app.main import _app_agent_runtime_config, _resolve_startup_llm_config
 from tabulaflow.app.tui import app as tui
 
 
 @pytest.fixture(autouse=True)
 def _isolate_saved_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", lambda: None)
+    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", lambda **_kwargs: {})
 
 
 def test_app_disables_preprocessing_cache_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -104,9 +104,32 @@ def test_startup_loads_saved_credentials_before_automatic_selection(monkeypatch:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
 
-    def load_credentials() -> None:
+    def load_credentials(**_kwargs: object) -> dict[str, str]:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "saved-key")
+        return {}
 
     monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", load_credentials)
     result = _resolve_startup_llm_config()
     assert result.automatic_env == "ANTHROPIC_API_KEY"
+
+
+def test_startup_passes_saved_credential_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tabulaflow.app.config as app_config
+
+    preference = CredentialPreference(source="saved", variable="OPENAI_API_KEY")
+    monkeypatch.setattr(
+        app_config,
+        "load_app_config",
+        lambda: AppConfig(credential_preferences={"openai": preference}),
+    )
+    received: list[dict[str, CredentialPreference]] = []
+
+    def load_credentials(*, preferences: dict[str, CredentialPreference]) -> dict[str, str]:
+        received.append(preferences)
+        return {"OPENAI_API_KEY": "environment-key"}
+
+    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", load_credentials)
+    result = _resolve_startup_llm_config()
+    assert received == [{"openai": preference}]
+    assert result.credential_preferences == {"openai": preference}
+    assert result.environment_credentials == {"OPENAI_API_KEY": "environment-key"}

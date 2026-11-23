@@ -1410,7 +1410,7 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         await pilot.pause()
 
         assert session.selected_llm_config == config
-        assert updates == [{"llm": config}]
+        assert updates == [{"llm": config, "credential_preferences": {}}]
         assert activations == [selection]
 
 
