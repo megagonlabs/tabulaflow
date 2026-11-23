@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from tabulaflow.app.config import CredentialPreference
 from tabulaflow.app.credentials import (
     APIKeyStore,
     InvalidCredentialStoreError,
@@ -54,10 +55,23 @@ def test_saved_keys_do_not_override_environment(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setenv("OPENAI_API_KEY", "environment-openai")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
-    load_saved_api_keys(store)
+    environment = load_saved_api_keys(store)
 
     assert os.environ["OPENAI_API_KEY"] == "environment-openai"
     assert os.environ["ANTHROPIC_API_KEY"] == "saved-anthropic"
+    assert environment == {"OPENAI_API_KEY": "environment-openai", "ANTHROPIC_API_KEY": ""}
+
+
+def test_preferred_saved_key_overrides_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("OPENAI_API_KEY", "saved-openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "environment-openai")
+    preferences = {"openai": CredentialPreference(source="saved", variable="OPENAI_API_KEY")}
+
+    overridden = load_saved_api_keys(store, preferences=preferences)
+
+    assert os.environ["OPENAI_API_KEY"] == "saved-openai"
+    assert overridden == {"OPENAI_API_KEY": "environment-openai"}
 
 
 def test_activate_pasted_key_persists_and_invalidates_models(

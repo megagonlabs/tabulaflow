@@ -25,6 +25,7 @@ from tabulaflow.app.config import (
     OPENAI_DEFAULT_LLM_CONFIG,
     RECOMMENDED_MAIN_MODELS,
     RECOMMENDED_SUBAGENT_MODELS,
+    CredentialPreference,
     LLMRoleConfig,
     ResolvedLLMConfig,
 )
@@ -35,7 +36,7 @@ from tabulaflow.app.model_catalog import (
     load_local_model_catalog,
 )
 from tabulaflow.app.providers import ProviderSpec, provider_spec
-from tabulaflow.app.tui.screens.providers import APIKeyScreen, ProviderPickerScreen
+from tabulaflow.app.tui.screens.providers import APIKeyScreen, APIKeySelection, ProviderPickerScreen
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
@@ -111,6 +112,8 @@ class ModelPickerScreen(Screen[str | None]):
         catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
         vllm_discovery: VLLMModelDiscovery | None = None,
         credential_store: APIKeyStore | None = None,
+        credential_preferences: dict[str, CredentialPreference] | None = None,
+        environment_credentials: dict[str, str] | None = None,
     ) -> None:
         super().__init__()
         self._role = role
@@ -119,6 +122,8 @@ class ModelPickerScreen(Screen[str | None]):
         self._catalog_loader = catalog_loader or load_local_model_catalog
         self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
         self._credential_store = credential_store or APIKeyStore()
+        self._credential_preferences = dict(credential_preferences or {})
+        self._environment_credentials = dict(environment_credentials or {})
         self._credentials_changed = False
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
         self._recommendations = recommended
@@ -132,6 +137,10 @@ class ModelPickerScreen(Screen[str | None]):
     @property
     def credentials_changed(self) -> bool:
         return self._credentials_changed
+
+    @property
+    def credential_preferences(self) -> dict[str, CredentialPreference]:
+        return self._credential_preferences
 
     def compose(self) -> ComposeResult:
         with Vertical(id="model-picker"):
@@ -210,15 +219,26 @@ class ModelPickerScreen(Screen[str | None]):
         if not provider.api_key_vars:
             self._change_provider(provider.id)
             return
+        preference = self._credential_preferences.get(provider.id)
         self.app.push_screen(
-            APIKeyScreen(provider, credential_store=self._credential_store),
+            APIKeyScreen(
+                provider,
+                credential_store=self._credential_store,
+                preferred_saved_variable=preference.variable if preference is not None else None,
+                environment_credentials=self._environment_credentials,
+            ),
             lambda selected: self._select_api_key(provider.id, selected),
         )
 
-    def _select_api_key(self, provider: str, selected: bool | None) -> None:
-        if selected:
-            self._credentials_changed = True
-            self._change_provider(provider)
+    def _select_api_key(self, provider: str, selected: APIKeySelection | None) -> None:
+        if selected is None:
+            return
+        self._credentials_changed = True
+        if selected.source == "saved":
+            self._credential_preferences[provider] = CredentialPreference(source="saved", variable=selected.variable)
+        else:
+            self._credential_preferences.pop(provider, None)
+        self._change_provider(provider)
 
     def _change_provider(self, provider: str) -> None:
         self._provider = provider
@@ -408,6 +428,8 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         self._catalog_loader = catalog_loader or load_local_model_catalog
         self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
         self._credential_store = credential_store or APIKeyStore()
+        self._credential_preferences = dict(current.credential_preferences)
+        self._environment_credentials = dict(current.environment_credentials)
         self._credentials_changed = False
         self._enabled = current.config is not None
         default = (
@@ -495,16 +517,16 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
                 catalog_loader=self._catalog_loader,
                 vllm_discovery=self._vllm_discovery,
                 credential_store=self._credential_store,
+                credential_preferences=self._credential_preferences,
+                environment_credentials=self._environment_credentials,
             )
-            self.app.push_screen(
-                picker,
-                lambda value: self._set_model(role_name, value, credentials_changed=picker.credentials_changed),
-            )
+            self.app.push_screen(picker, lambda value: self._set_model(role_name, value, picker=picker))
         else:
             self.action_change(1)
 
-    def _set_model(self, role_name: str, model: str | None, *, credentials_changed: bool = False) -> None:
-        self._credentials_changed = self._credentials_changed or credentials_changed
+    def _set_model(self, role_name: str, model: str | None, *, picker: ModelPickerScreen) -> None:
+        self._credentials_changed = self._credentials_changed or picker.credentials_changed
+        self._credential_preferences = dict(picker.credential_preferences)
         if model is not None:
             getattr(self._config, role_name).model = model
             self._refresh()
@@ -513,10 +535,24 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         if not self.dirty:
             self.dismiss(None)
         elif not self._enabled:
-            self.dismiss(ResolvedLLMConfig(LLM_OFF, None))
+            self.dismiss(
+                ResolvedLLMConfig(
+                    LLM_OFF,
+                    None,
+                    credential_preferences=self._credential_preferences,
+                    environment_credentials=self._environment_credentials,
+                )
+            )
         else:
             config = self._config.model_copy(deep=True)
-            self.dismiss(ResolvedLLMConfig(config, config))
+            self.dismiss(
+                ResolvedLLMConfig(
+                    config,
+                    config,
+                    credential_preferences=self._credential_preferences,
+                    environment_credentials=self._environment_credentials,
+                )
+            )
 
     def _refresh(self) -> None:
         values = {

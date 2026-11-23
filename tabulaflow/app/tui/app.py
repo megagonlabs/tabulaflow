@@ -875,7 +875,13 @@ class TabulaflowApp(App[None]):
                 main=LLMRoleConfig(model=model, effort="medium"),
                 subagent=LLMRoleConfig(model=model, effort="medium"),
             )
-            return ResolvedLLMConfig(None, config, "VLLM_BASE_URL"), None
+            return ResolvedLLMConfig(
+                None,
+                config,
+                "VLLM_BASE_URL",
+                credential_preferences=selection.credential_preferences,
+                environment_credentials=selection.environment_credentials,
+            ), None
         return selection, self._vllm_discovery_status(result)
 
     def _vllm_discovery_status(self, result: VLLMDiscoveryResult) -> str:
@@ -1352,7 +1358,10 @@ class TabulaflowApp(App[None]):
             session.apply_llm_request_rate(selection.config.requests_per_minute)
         session.select_llm_config(selection.config)
         self._llm_config = selection
-        update_app_config(llm=selection.selection)
+        update_app_config(
+            llm=selection.selection,
+            credential_preferences=selection.credential_preferences,
+        )
         self._refresh_bottom_status()
         self._start_llm_activation(selection)
 
