@@ -9,6 +9,11 @@ from tabulaflow.app.main import _app_agent_runtime_config, _resolve_startup_llm_
 from tabulaflow.app.tui import app as tui
 
 
+@pytest.fixture(autouse=True)
+def _isolate_saved_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", lambda: None)
+
+
 def test_app_disables_preprocessing_cache_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_PREPROCESSING_CACHE_MODE", "read_write")
     config = _app_agent_runtime_config()
@@ -90,3 +95,18 @@ async def test_run_tui_restores_terminal_modes(
     assert _FakeRunTuiApp.pane_close_args == [True]
     assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
     assert stdout.flushed is True
+
+
+def test_startup_loads_saved_credentials_before_automatic_selection(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tabulaflow.app.config as app_config
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
+
+    def load_credentials() -> None:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "saved-key")
+
+    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", load_credentials)
+    result = _resolve_startup_llm_config()
+    assert result.automatic_env == "ANTHROPIC_API_KEY"

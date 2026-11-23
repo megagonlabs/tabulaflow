@@ -6,6 +6,7 @@ from typer import rich_utils
 
 from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel, run_chat
 from tabulaflow.app.config import InvalidAppConfigError
+from tabulaflow.app.credentials import InvalidCredentialStoreError
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.examples.cli import examples_app
 from tabulaflow.research.cli import benchmark_app
@@ -86,7 +87,7 @@ def root(
                 browser_pane_host=browser_pane_host,
                 browser_pane_public_url=browser_pane_public_url,
             )
-        except InvalidAppConfigError as error:
+        except (InvalidAppConfigError, InvalidCredentialStoreError) as error:
             typer.echo(str(error), err=True)
             raise typer.Exit(1) from None
 

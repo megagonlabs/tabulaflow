@@ -41,7 +41,8 @@ Choose one provider and configure it before launching TabulaFlow:
 
 TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
-models. Credentials are read from the environment and never saved.
+models. Environment credentials are detected automatically. You can also paste
+an API key in `/config`; pasted keys are saved locally for future sessions.
 
 !!! note "vLLM tool calling"
     TabulaFlow relies on automatic tool calling. Follow the current
@@ -63,19 +64,21 @@ anthropic:claude-sonnet-5
 vllm:Qwen/Qwen3-8B
 ```
 
-The picker includes recommended models, the current selection, and compatible
-models from the installed provider stack. You can also type a complete custom
-identifier. TabulaFlow saves model selections in
-`~/.tabulaflow/app_config.json`, but continues to read credentials from the
-environment.
+The picker shows recommended and compatible models from the current provider.
+Choose **Use another provider** to switch providers and select its credentials.
+You can also type a complete custom identifier. TabulaFlow saves model selections
+in `~/.tabulaflow/app_config.json`.
+
+Environment credentials are detected automatically. API keys pasted in `/config`
+are saved with owner-only permissions in `~/.tabulaflow/credentials.json`.
+Loading saved keys never overrides an environment variable that is already set.
 
 ## Supported providers
 
-The model picker includes models from all the provider routes below. TabulaFlow
-uses Pydantic AI's environment variables and authentication unchanged; it does
-not store these credentials. Set the listed variables before launching
-TabulaFlow, then select a `provider:model` identifier in `/config` when
-automatic setup does not apply.
+TabulaFlow supports the provider routes below through Pydantic AI. Set the listed
+variables before launching, or choose **Use another provider** in `/config` to
+use a detected key or paste an API key when that provider supports one. Cloud
+and local providers continue to use their existing environment configuration.
 
 ### API key providers
 
