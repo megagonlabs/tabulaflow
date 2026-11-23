@@ -41,8 +41,7 @@ Choose one provider and configure it before launching TabulaFlow:
 
 TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
-models. Environment credentials are detected automatically. You can also paste
-an API key in `/config`; pasted keys are saved locally for future sessions.
+models. You can also paste an API key in `/config`.
 
 !!! note "vLLM tool calling"
     TabulaFlow relies on automatic tool calling. Follow the current
@@ -65,20 +64,20 @@ vllm:Qwen/Qwen3-8B
 ```
 
 The picker shows recommended and compatible models from the current provider.
-Choose **Use another provider** to switch providers and select its credentials.
-You can also type a complete custom identifier. TabulaFlow saves model selections
-in `~/.tabulaflow/app_config.json`.
+Choose **Use another provider** to switch providers. You can also type a complete
+custom identifier. TabulaFlow saves model selections in
+`~/.tabulaflow/app_config.json`.
 
-Environment credentials are detected automatically. API keys pasted in `/config`
-are saved with owner-only permissions in `~/.tabulaflow/credentials.json`.
-Loading saved keys never overrides an environment variable that is already set.
+Environment credentials are detected automatically and used by default. Keys
+pasted in `/config` are saved with owner-only permissions in
+`~/.tabulaflow/credentials.json`. Selecting a saved key or pasting a new one
+overrides the environment default across restarts.
 
 ## Supported providers
 
-TabulaFlow supports the provider routes below through Pydantic AI. Set the listed
-variables before launching, or choose **Use another provider** in `/config` to
-use a detected key or paste an API key when that provider supports one. Cloud
-and local providers continue to use their existing environment configuration.
+TabulaFlow supports the provider routes below through Pydantic AI. Cloud and
+local providers use the authentication and connection settings listed below
+rather than saved keys from `/config`.
 
 ### API key providers
 
