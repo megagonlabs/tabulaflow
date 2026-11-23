@@ -91,7 +91,6 @@ class ModelPickerScreen(Screen[str | None]):
     ModelPickerScreen #model-picker { height: 1fr; padding: 1 3; }
     ModelPickerScreen #model-picker-title { height: auto; margin-bottom: 1; }
     ModelPickerScreen #change-provider { height: 1; }
-    ModelPickerScreen #model-provider { height: 1; }
     ModelPickerScreen #model-options { height: 1fr; }
     ModelPickerScreen #model-picker-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
@@ -146,7 +145,6 @@ class ModelPickerScreen(Screen[str | None]):
         with Vertical(id="model-picker"):
             yield Static(id="model-picker-title")
             yield Static(id="change-provider")
-            yield Static(id="model-provider")
             yield Static(id="model-options")
         yield Static(id="model-picker-hint")
 
@@ -347,9 +345,9 @@ class ModelPickerScreen(Screen[str | None]):
         provider_action = Text()
         provider_action.append("❯   " if provider_selected else "    ", style=ACCENT_BOLD if provider_selected else "")
         provider_action.append(_USE_ANOTHER_PROVIDER, style="bold" if provider_selected else "")
-        self.query_one("#change-provider", Static).update(provider_action)
         provider_name = provider_spec(self._provider).name
-        self.query_one("#model-provider", Static).update(Text(f"    Current provider: {provider_name}", style="dim"))
+        provider_action.append(f" (current: {provider_name})", style="dim")
+        self.query_one("#change-provider", Static).update(provider_action)
 
         hint = Text.assemble(
             ("Esc", KEY_HINT),

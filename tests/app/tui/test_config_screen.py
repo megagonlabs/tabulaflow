@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from textual.app import App
-from textual.color import Color
 from textual.content import Content
 from textual.screen import Screen
 from textual.style import Style
@@ -76,9 +75,8 @@ def _text(screen: ConfigScreen, selector: str) -> str:
 
 def _option_text(screen: ModelPickerScreen) -> str:
     provider_action = str(screen.query_one("#change-provider", Static).render())
-    provider = str(screen.query_one("#model-provider", Static).render())
     options = str(screen.query_one("#model-options", Static).render()).rstrip("\n")
-    return f"{provider_action}\n{provider}\n{options}"
+    return f"{provider_action}\n{options}"
 
 
 def _active_screen(app: App[None]) -> Screen[object]:
@@ -351,12 +349,10 @@ async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> Non
         assert not guidance_style.bold
         assert guidance_style.foreground is None
         assert picker.query_one("#change-provider", Static).styles.margin.bottom == 0
-        provider_widget = picker.query_one("#model-provider", Static)
-        provider = provider_widget.render()
-        assert isinstance(provider, Content)
-        assert str(provider) == "    Current provider: OpenAI"
-        assert provider.spans[0].style == "dim"
-        assert provider_widget.styles.margin.bottom == 0
+        provider_action = picker.query_one("#change-provider", Static).render()
+        assert isinstance(provider_action, Content)
+        assert str(provider_action) == "    Use another provider (current: OpenAI)"
+        assert provider_action.get_style_at_offset(-1).dim
         hint = str(picker.query_one("#model-picker-hint", Static).render())
         assert "Navigate" not in hint
         assert "Type" not in hint
@@ -455,8 +451,7 @@ async def test_openai_chat_models_are_custom_only() -> None:
         picker = app.screen
         assert isinstance(picker, ModelPickerScreen)
         assert _option_text(picker).splitlines() == [
-            "    Use another provider",
-            "    Current provider: OpenAI",
+            "    Use another provider (current: OpenAI)",
             f"❯   Use {model}  (custom)",
         ]
 
@@ -764,7 +759,7 @@ async def test_pasted_key_is_masked_saved_and_applied_with_unchanged_model(
         assert "Paste API key" in str(auth.query_one("#api-key-paste-label", Static).render())
         assert "credentials.json" not in str(auth.query_one("#api-key-status", Static).render())
         assert key_input.has_focus
-        assert key_input.styles.border_top == ("round", Color.parse("#6a737d"))
+        assert key_input.styles.border_top == ("round", key_input.styles.color)
         assert str(auth.query_one("#api-key-paste-label", Static).render()).startswith("❯   Paste API key")
         await pilot.press(*"sk-pasted-secret")
         assert "sk-pasted-secret" not in str(key_input.render())
@@ -952,4 +947,4 @@ async def test_local_provider_switch_skips_api_key_screen(tmp_path: Path) -> Non
         assert _active_screen(app) == picker
         assert picker._provider == "vllm"
         assert "Qwen/Qwen3-8B" in _option_text(picker)
-        assert "Current provider: vLLM" in str(picker.query_one("#model-provider", Static).render())
+        assert "(current: vLLM)" in str(picker.query_one("#change-provider", Static).render())
