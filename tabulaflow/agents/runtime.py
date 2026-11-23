@@ -61,6 +61,11 @@ class _AgentRuntime:
             per_loop[name] = factory()
         return cast(_ModelT, per_loop[name])
 
+    def invalidate_base_models(self) -> None:
+        """Ensure subsequently resolved models rebuild their provider credentials."""
+        with self._resource_lock:
+            self._base_models.clear()
+
     def get_browser_manager(self) -> WebBrowserManager:
         if self._browser_manager is None:
             with self._resource_lock:
@@ -125,6 +130,11 @@ def set_llm_requests_per_minute(value: int | None) -> None:
     _get_agent_runtime().set_llm_requests_per_minute(value)
 
 
+def invalidate_model_cache() -> None:
+    """Rebuild subsequently resolved models after provider credentials change."""
+    _get_agent_runtime().invalidate_base_models()
+
+
 def _get_agent_runtime() -> _AgentRuntime:
     global _runtime
     if _runtime is None:
@@ -143,4 +153,4 @@ async def _reset_agent_runtime_for_tests() -> None:
         await runtime.close()
 
 
-__all__ = ["initialize_agent_runtime", "set_llm_requests_per_minute"]
+__all__ = ["initialize_agent_runtime", "invalidate_model_cache", "set_llm_requests_per_minute"]

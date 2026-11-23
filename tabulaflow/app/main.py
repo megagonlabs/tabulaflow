@@ -42,7 +42,9 @@ def _app_agent_runtime_config(max_llm_requests_per_minute: int = 300) -> AgentRu
 
 def _resolve_startup_llm_config() -> ResolvedLLMConfig:
     from tabulaflow.app.config import load_app_config, resolve_llm_config
+    from tabulaflow.app.credentials import load_saved_api_keys
 
+    load_saved_api_keys()
     return resolve_llm_config(load_app_config())
 
 

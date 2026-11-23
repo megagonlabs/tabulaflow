@@ -99,10 +99,10 @@ def test_catalog_filter_is_shared_and_capability_based() -> None:
     )
 
 
-def test_model_catalog_orders_explicit_models_without_an_implicit_fallback() -> None:
+def test_model_catalog_contains_only_the_selected_provider() -> None:
     catalog = llm_model_catalog(
         current="anthropic:claude-sonnet-5",
-        recommended=("openai:gpt-5.6-sol",),
+        recommended=("openai:gpt-5.6-sol", "anthropic:claude-opus-5-5"),
         pinned=("vllm:Qwen/Qwen3-8B",),
         available=(
             "xai:grok-4.6",
@@ -115,14 +115,10 @@ def test_model_catalog_orders_explicit_models_without_an_implicit_fallback() -> 
 
     assert catalog == (
         "anthropic:claude-sonnet-5",
-        "openai:gpt-5.6-sol",
-        "vllm:Qwen/Qwen3-8B",
+        "anthropic:claude-opus-5-5",
         "anthropic:claude-haiku-4-5",
-        "xai:grok-4.6",
     )
-    assert llm_model_catalog(current="gateway/openai:custom", recommended=()) == (
-        "gateway/openai:custom",
-    )
+    assert llm_model_catalog(current="gateway/openai:custom", recommended=()) == ("gateway/openai:custom",)
 
 
 async def test_vllm_discovery_is_unset_without_an_endpoint() -> None:

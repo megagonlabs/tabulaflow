@@ -36,6 +36,7 @@ from tabulaflow.app.config import (
     ResolvedLLMConfig,
     update_app_config,
 )
+from tabulaflow.app.credentials import mask_api_key as _masked_api_key
 from tabulaflow.app.model_catalog import ModelCatalog, VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane.cards import render_resolved_output
@@ -123,13 +124,6 @@ def _compact_project_dir(path: Path) -> str:
 
 def _pane_panel(result: "ChatResult") -> PanePanel | None:
     return pane_panel_for_output(result.output)
-
-
-def _masked_api_key(key: str | None) -> str | None:
-    """Return a masked API key suitable for display."""
-    if key is None or len(key) < 12:
-        return None
-    return f"{key[:3]}***{key[-4:]}"
 
 
 def _sanitize_exception_message(error: Exception) -> str:

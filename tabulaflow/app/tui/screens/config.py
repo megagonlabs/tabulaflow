@@ -28,14 +28,18 @@ from tabulaflow.app.config import (
     LLMRoleConfig,
     ResolvedLLMConfig,
 )
+from tabulaflow.app.credentials import APIKeyStore
 from tabulaflow.app.model_catalog import (
     VLLMModelDiscovery,
     llm_model_catalog,
     load_local_model_catalog,
 )
+from tabulaflow.app.providers import ProviderSpec, provider_spec
+from tabulaflow.app.tui.screens.providers import APIKeyScreen, ProviderPickerScreen
 from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _EFFORT_LEVELS: tuple[ReasoningLevel, ...] = ("minimal", "low", "medium", "high", "xhigh")
+_USE_ANOTHER_PROVIDER = "Use another provider"
 
 
 def _fit_model_id(model: str, width: int) -> str:
@@ -47,6 +51,8 @@ def _fit_model_id(model: str, width: int) -> str:
         return "…"
 
     provider, separator, name = model.partition(":")
+    if not separator:
+        name = model
     prefix = f"{provider}{separator}…" if separator else "…"
     prefix_width = cell_len(prefix)
     if prefix_width >= width:
@@ -83,7 +89,9 @@ class ModelPickerScreen(Screen[str | None]):
     ModelPickerScreen { background: $background; }
     ModelPickerScreen #model-picker { height: 1fr; padding: 1 3; }
     ModelPickerScreen #model-picker-title { height: auto; margin-bottom: 1; }
-    ModelPickerScreen #model-options { height: 1fr; padding: 0 0 1 0; }
+    ModelPickerScreen #change-provider { height: 1; }
+    ModelPickerScreen #model-provider { height: 1; }
+    ModelPickerScreen #model-options { height: 1fr; }
     ModelPickerScreen #model-picker-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
 
@@ -102,24 +110,34 @@ class ModelPickerScreen(Screen[str | None]):
         *,
         catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
         vllm_discovery: VLLMModelDiscovery | None = None,
+        credential_store: APIKeyStore | None = None,
     ) -> None:
         super().__init__()
         self._role = role
         self._current = current
+        self._provider = current.partition(":")[0]
         self._catalog_loader = catalog_loader or load_local_model_catalog
         self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
+        self._credential_store = credential_store or APIKeyStore()
+        self._credentials_changed = False
         recommended = RECOMMENDED_MAIN_MODELS if role == "main" else RECOMMENDED_SUBAGENT_MODELS
         self._recommendations = recommended
         self._recommended = frozenset(recommended)
         self._models = llm_model_catalog(current=current, recommended=recommended)
         self._searchable_models = tuple(model for model in self._models if not model.startswith("openai-chat:"))
         self._visible = self._models
-        self._cursor = self._visible.index(current)
+        self._cursor = self._visible.index(current) + 1
         self._filter = ""
+
+    @property
+    def credentials_changed(self) -> bool:
+        return self._credentials_changed
 
     def compose(self) -> ComposeResult:
         with Vertical(id="model-picker"):
             yield Static(id="model-picker-title")
+            yield Static(id="change-provider")
+            yield Static(id="model-provider")
             yield Static(id="model-options")
         yield Static(id="model-picker-hint")
 
@@ -130,16 +148,12 @@ class ModelPickerScreen(Screen[str | None]):
 
     async def _load_catalog(self) -> None:
         available = await self._catalog_loader()
-        result = await self._vllm_discovery.warm()
+        result = await self._vllm_discovery.warm() if self._provider == "vllm" else None
         vllm_models = result.models if result is not None else ()
-        available = tuple((*available, *vllm_models))
-        if not available:
-            self._refresh()
-            return
-        selected = self._visible[self._cursor] if self._cursor < len(self._visible) else self._current
         self._models = llm_model_catalog(
             current=self._current,
             recommended=self._recommendations,
+            provider=self._provider,
             pinned=vllm_models,
             available=available,
         )
@@ -147,8 +161,15 @@ class ModelPickerScreen(Screen[str | None]):
         if self._filter:
             self._apply_filter()
         else:
+            provider_selected = self._cursor == 0
+            selected = self._visible[self._cursor - 1] if 1 <= self._cursor <= len(self._visible) else self._current
             self._visible = self._models
-            self._cursor = self._visible.index(selected if selected in self._visible else self._current)
+            if provider_selected:
+                self._cursor = 0
+            elif selected in self._visible:
+                self._cursor = self._visible.index(selected) + 1
+            else:
+                self._cursor = 1 if self._visible else 0
             self._refresh()
 
     def on_resize(self) -> None:
@@ -163,20 +184,57 @@ class ModelPickerScreen(Screen[str | None]):
         event.prevent_default()
 
     def action_move(self, delta: int) -> None:
-        option_count = len(self._visible) + (self._custom_model is not None)
-        if not option_count:
-            return
+        option_count = len(self._visible) + (self._custom_model is not None) + 1
         self._cursor = max(0, min(option_count - 1, self._cursor + delta))
         self._refresh()
 
     def action_select(self) -> None:
+        if self._cursor == 0:
+            self.app.push_screen(
+                ProviderPickerScreen(self._provider),
+                self._select_provider,
+            )
+            return
         custom_model = self._custom_model
-        if custom_model is not None and self._cursor == 0:
+        model_index = self._cursor - 1
+        if custom_model is not None and model_index == 0:
             self.dismiss(custom_model)
             return
-        model_index = self._cursor - (custom_model is not None)
-        if model_index < len(self._visible):
-            self.dismiss(self._visible[model_index])
+        visible_index = model_index - (custom_model is not None)
+        if 0 <= visible_index < len(self._visible):
+            self.dismiss(self._visible[visible_index])
+
+    def _select_provider(self, provider: ProviderSpec | None) -> None:
+        if provider is None:
+            return
+        if not provider.api_key_vars:
+            self._change_provider(provider.id)
+            return
+        self.app.push_screen(
+            APIKeyScreen(provider, credential_store=self._credential_store),
+            lambda selected: self._select_api_key(provider.id, selected),
+        )
+
+    def _select_api_key(self, provider: str, selected: bool | None) -> None:
+        if selected:
+            self._credentials_changed = True
+            self._change_provider(provider)
+
+    def _change_provider(self, provider: str) -> None:
+        self._provider = provider
+        self._current = ""
+        self._filter = ""
+        self._models = llm_model_catalog(
+            current="",
+            recommended=self._recommendations,
+            provider=provider,
+        )
+        self._searchable_models = self._models
+        self._visible = self._models
+        self._cursor = 1
+        self._refresh()
+        self.focus()
+        self.run_worker(self._load_catalog(), exclusive=True)
 
     def action_erase_filter(self) -> None:
         if self._filter:
@@ -186,7 +244,12 @@ class ModelPickerScreen(Screen[str | None]):
     def _apply_filter(self) -> None:
         query = self._filter.casefold()
         self._visible = tuple(model for model in self._searchable_models if query in model.casefold())
-        self._cursor = 1 if self._custom_model is not None and self._visible else 0
+        if self._visible:
+            self._cursor = 1 + (self._custom_model is not None)
+        elif self._custom_model is not None:
+            self._cursor = 1
+        else:
+            self._cursor = 0
         self._refresh()
 
     def action_cancel(self) -> None:
@@ -201,14 +264,14 @@ class ModelPickerScreen(Screen[str | None]):
         return model if model not in self._searchable_models else None
 
     def _refresh(self) -> None:
-        title_text = "Choose model" if self._role == "main" else "Choose subagent model"
+        title_text = "Choose main model" if self._role == "main" else "Choose subagent model"
         title = Text()
         title.append(title_text, style="bold")
         if self._filter:
             title.append(" · ", style="dim")
             title.append(f"“{self._filter}”", style="bold")
         else:
-            title.append(" · Type to search or enter a custom model ID", style="dim")
+            title.append(" · Type to filter", style="dim")
         self.query_one("#model-picker-title", Static).update(title)
 
         custom_model = self._custom_model
@@ -216,11 +279,15 @@ class ModelPickerScreen(Screen[str | None]):
         if custom_model is not None:
             rows.insert(0, (custom_model, True))
         show_vllm_status = self._show_vllm_status()
+        show_no_matches = not rows
 
         options_widget = self.query_one("#model-options", Static)
         options = Text(overflow="ellipsis", no_wrap=True)
+        if show_no_matches:
+            options.append("  No matching models\n", style="dim")
+            options.append("  Enter a custom model ID in provider:model format.\n", style="dim")
+        status_height = (3 if show_vllm_status else 0) + (2 if show_no_matches else 0)
         if rows:
-            status_height = 3 if show_vllm_status else 0
             start, end, show_above, show_below = self._model_window(
                 len(rows), options_widget.content_size.height - status_height
             )
@@ -228,7 +295,7 @@ class ModelPickerScreen(Screen[str | None]):
                 options.append(f"  ↑ {start} more\n", style="dim")
             for index in range(start, end):
                 model, is_custom = rows[index]
-                selected = index == self._cursor
+                selected = index + 1 == self._cursor
                 current = model == self._current
                 options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
                 options.append("● " if current else "  ", style=ACCENT_BOLD if current else "")
@@ -239,8 +306,9 @@ class ModelPickerScreen(Screen[str | None]):
                     options_widget.content_size.width - 4 - cell_len(leading) - cell_len(annotation),
                 )
                 model_style = ACCENT_BOLD if current else "bold" if selected else ""
+                display_model = model if is_custom else model.partition(":")[2]
                 options.append(leading, style=model_style)
-                options.append(_fit_model_id(model, model_width), style=model_style)
+                options.append(_fit_model_id(display_model, model_width), style=model_style)
                 if is_custom:
                     options.append("  (custom)", style="dim")
                 elif model in self._recommended:
@@ -248,15 +316,19 @@ class ModelPickerScreen(Screen[str | None]):
                 options.append("\n")
             if show_below:
                 options.append(f"  ↓ {len(rows) - end} more", style="dim")
-        else:
-            options.append("  No matching models\n", style="dim")
-            options.append("  To use a custom model, enter its full ID in provider:model format.", style="dim")
         if show_vllm_status:
             if options.plain and not options.plain.endswith("\n"):
                 options.append("\n")
             options.append("\n\n")
             options.append(f"  {self._vllm_status()}", style="dim")
         options_widget.update(options)
+
+        provider_selected = self._cursor == 0
+        provider_action = Text("❯   " if provider_selected else "    ", style=ACCENT_BOLD if provider_selected else "")
+        provider_action.append(_USE_ANOTHER_PROVIDER, style="bold" if provider_selected else "")
+        self.query_one("#change-provider", Static).update(provider_action)
+        provider_name = provider_spec(self._provider).name
+        self.query_one("#model-provider", Static).update(Text(f"    Current provider: {provider_name}", style="dim"))
 
         hint = Text.assemble(
             ("Esc", KEY_HINT),
@@ -267,6 +339,8 @@ class ModelPickerScreen(Screen[str | None]):
         self.query_one("#model-picker-hint", Static).update(hint)
 
     def _show_vllm_status(self) -> bool:
+        if self._provider != "vllm":
+            return False
         result = self._vllm_discovery.result()
         if result is not None and result.error is None:
             return False
@@ -286,15 +360,16 @@ class ModelPickerScreen(Screen[str | None]):
 
     def _model_window(self, row_count: int, height: int) -> tuple[int, int, bool, bool]:
         available = max(1, height)
+        cursor = min(max(self._cursor - 1, 0), row_count - 1)
         for capacity in range(min(row_count, available), 0, -1):
-            start = max(0, min(self._cursor - capacity // 2, row_count - capacity))
+            start = max(0, min(cursor - capacity // 2, row_count - capacity))
             end = start + capacity
             show_above = start > 0
             show_below = end < row_count
             if capacity + show_above + show_below <= available:
                 return start, end, show_above, show_below
 
-        start = self._cursor
+        start = cursor
         end = start + 1
         show_above = start > 0 and available > 1
         show_below = end < row_count and available > 1 + show_above
@@ -326,11 +401,14 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         *,
         catalog_loader: Callable[[], Awaitable[tuple[str, ...]]] | None = None,
         vllm_discovery: VLLMModelDiscovery | None = None,
+        credential_store: APIKeyStore | None = None,
     ) -> None:
         super().__init__()
         self._current = current
         self._catalog_loader = catalog_loader or load_local_model_catalog
         self._vllm_discovery = vllm_discovery or VLLMModelDiscovery()
+        self._credential_store = credential_store or APIKeyStore()
+        self._credentials_changed = False
         self._enabled = current.config is not None
         default = (
             ANTHROPIC_DEFAULT_LLM_CONFIG
@@ -352,7 +430,9 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
 
     @property
     def dirty(self) -> bool:
-        return self._enabled != self._initial_enabled or self._config != self._initial_config
+        return (
+            self._enabled != self._initial_enabled or self._config != self._initial_config or self._credentials_changed
+        )
 
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
@@ -409,19 +489,22 @@ class ConfigScreen(Screen[ResolvedLLMConfig | None]):
         role_name, setting = field.split("-", 1)
         role = cast(LLMRoleConfig, getattr(self._config, role_name))
         if setting == "model":
+            picker = ModelPickerScreen(
+                role_name,
+                role.model,
+                catalog_loader=self._catalog_loader,
+                vllm_discovery=self._vllm_discovery,
+                credential_store=self._credential_store,
+            )
             self.app.push_screen(
-                ModelPickerScreen(
-                    role_name,
-                    role.model,
-                    catalog_loader=self._catalog_loader,
-                    vllm_discovery=self._vllm_discovery,
-                ),
-                lambda value: self._set_model(role_name, value),
+                picker,
+                lambda value: self._set_model(role_name, value, credentials_changed=picker.credentials_changed),
             )
         else:
             self.action_change(1)
 
-    def _set_model(self, role_name: str, model: str | None) -> None:
+    def _set_model(self, role_name: str, model: str | None, *, credentials_changed: bool = False) -> None:
+        self._credentials_changed = self._credentials_changed or credentials_changed
         if model is not None:
             getattr(self._config, role_name).model = model
             self._refresh()

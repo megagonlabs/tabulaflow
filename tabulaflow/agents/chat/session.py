@@ -530,24 +530,12 @@ class ChatSession:
         """
         if self._running:
             raise RuntimeError("cannot change the LLM profile during an active turn")
-        unchanged = (
-            self.model == model
-            and self.reasoning == reasoning
-            and self.subagent_model == subagent_model
-            and self.subagent_reasoning == subagent_reasoning
-            and self.use_apply_patch == use_apply_patch
-        )
-
-        runtime_agent = self._pydantic_ai_agent
-        if self.model != model or self.use_apply_patch != use_apply_patch:
-            runtime_agent = self._make_agent(model, use_apply_patch=use_apply_patch)
+        runtime_agent = self._make_agent(model, use_apply_patch=use_apply_patch)
         subagent_provider_model = self._subagent_provider_model(subagent_model)
         keys = (
-            self._api_key_from_model(self._unwrap_model(runtime_agent.model) if runtime_agent is not None else None),
+            self._api_key_from_model(self._unwrap_model(runtime_agent.model)),
             self._api_key_from_model(subagent_provider_model),
         )
-        if unchanged:
-            return keys
 
         previous_model = self.model
         previous_use_apply_patch = self.use_apply_patch

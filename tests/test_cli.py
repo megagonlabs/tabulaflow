@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 import tabulaflow.cli as cli
 from tabulaflow.cli import app
 from tabulaflow.app.config import InvalidAppConfigError
+from tabulaflow.app.credentials import InvalidCredentialStoreError
 from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
@@ -149,6 +150,22 @@ def test_root_cli_reports_invalid_app_config_without_a_traceback(monkeypatch: Mo
 
     def fail_to_start(**_kwargs: object) -> None:
         raise InvalidAppConfigError(message)
+
+    monkeypatch.setattr(cli, "run_chat", fail_to_start)
+
+    result = CliRunner().invoke(app)
+
+    assert result.exit_code == 1
+    assert result.output == f"{message}\n"
+    assert "Traceback" not in result.output
+    assert "\x1b[" not in result.output
+
+
+def test_root_cli_reports_invalid_credentials_without_a_traceback(monkeypatch: MonkeyPatch) -> None:
+    message = "Invalid credential store: ~/.tabulaflow/credentials.json. Fix or delete the file."
+
+    def fail_to_start(**_kwargs: object) -> None:
+        raise InvalidCredentialStoreError(message)
 
     monkeypatch.setattr(cli, "run_chat", fail_to_start)
 
