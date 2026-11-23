@@ -179,7 +179,7 @@ class APIKeyScreen(Screen[APIKeySelection | None]):
     APIKeyScreen #api-key-options { height: auto; }
     APIKeyScreen #api-key-paste { height: auto; }
     APIKeyScreen #api-key-paste-label { width: auto; height: 1; }
-    APIKeyScreen #api-key-input { height: 3; width: 1fr; max-width: 64; margin: 0 0 0 2; border: round #6a737d; padding: 0 1; background: transparent; }
+    APIKeyScreen #api-key-input { height: 3; width: 1fr; max-width: 64; margin: 0 0 0 4; border: round #6a737d; padding: 0 1; background: transparent; }
     APIKeyScreen #api-key-input:focus { border: round $foreground; background: transparent; }
     APIKeyScreen #api-key-status { height: auto; color: $text-muted; }
     APIKeyScreen #api-key-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
