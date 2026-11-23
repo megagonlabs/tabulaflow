@@ -753,6 +753,7 @@ async def test_pasted_key_is_masked_saved_and_applied_with_unchanged_model(
         key_input = auth.query_one("#api-key-input", Input)
         assert key_input.display
         assert key_input.password
+        assert key_input.region.x == auth.query_one("#api-key-paste-label", Static).region.x + 4
         assert key_input.parent == auth.query_one("#api-key-paste")
         assert not auth.query_one("#api-key-options", Static).display
         assert auth.query_one("#api-key-paste").styles.margin.top == 0
