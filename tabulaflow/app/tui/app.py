@@ -36,7 +36,7 @@ from tabulaflow.app.config import (
     ResolvedLLMConfig,
     update_app_config,
 )
-from tabulaflow.app.credentials import mask_api_key as _masked_api_key
+from tabulaflow.app.credentials import mask_api_key
 from tabulaflow.app.model_catalog import ModelCatalog, VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane.cards import render_resolved_output
@@ -131,7 +131,7 @@ def _sanitize_exception_message(error: Exception) -> str:
     message = " ".join(str(error).split())
     for name, value in os.environ.items():
         if name.endswith("_API_KEY") and len(value) >= 12:
-            message = message.replace(value, _masked_api_key(value) or "***")
+            message = message.replace(value, mask_api_key(value) or "***")
     if len(message) > _MAX_ERROR_MESSAGE_LENGTH:
         return f"{message[: _MAX_ERROR_MESSAGE_LENGTH - 1].rstrip()}…"
     if message and not message.endswith((".", "!", "?", "…")):
@@ -273,13 +273,13 @@ def _llm_config_success_message(
 ) -> Text:
     """Build the status message for an activated LLM configuration."""
     main_key, subagent_key = keys
-    main_mask = _masked_api_key(main_key)
-    subagent_mask = _masked_api_key(subagent_key)
+    main_mask = mask_api_key(main_key)
+    subagent_mask = mask_api_key(subagent_key)
     shared_key = main_key is not None and main_key == subagent_key
 
     if automatic_env is not None:
         detected_key = main_key or subagent_key
-        detected_mask = _masked_api_key(detected_key) if automatic_env.endswith("_API_KEY") else None
+        detected_mask = mask_api_key(detected_key) if automatic_env.endswith("_API_KEY") else None
         detected = f"{automatic_env} detected"
         if detected_mask:
             detected += f" ({detected_mask})"

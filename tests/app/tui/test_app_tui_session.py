@@ -23,6 +23,7 @@ from tabulaflow.app.tui.commands import (
     HuggingFaceSubsetSelection,
 )
 from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMConfig, ResolvedLLMConfig
+from tabulaflow.app.credentials import mask_api_key
 from tabulaflow.app.model_catalog import VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
@@ -740,7 +741,7 @@ def test_llm_config_success_message(
     [("fw-api123456789WXYZ", "fw-***WXYZ"), ("short", None)],
 )
 def test_masked_api_key(api_key: str, expected: str | None) -> None:
-    assert tui._masked_api_key(api_key) == expected
+    assert mask_api_key(api_key) == expected
 
 
 @pytest.mark.parametrize(
