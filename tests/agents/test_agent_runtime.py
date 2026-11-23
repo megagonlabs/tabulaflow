@@ -270,3 +270,19 @@ async def test_data_source_summarizer_owns_versioned_semantic_cache_key(tmp_path
     changed = DataSourceSummarizer(max_words=200)
     await changed.summarize(connector)
     assert len(list((tmp_path / "agent" / "data_source_summaries").glob("v4@*.md"))) == 2
+
+
+async def test_invalidate_base_models_rebuilds_subsequent_models() -> None:
+    runtime = _get_agent_runtime()
+    builds = 0
+
+    def build() -> object:
+        nonlocal builds
+        builds += 1
+        return object()
+
+    first = runtime.get_base_model("model", build)
+    assert runtime.get_base_model("model", build) is first
+    runtime.invalidate_base_models()
+    assert runtime.get_base_model("model", build) is not first
+    assert builds == 2

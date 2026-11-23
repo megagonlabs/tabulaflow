@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic_ai.providers import infer_provider_class
 
 from tabulaflow import __version__
+from tabulaflow.app.providers import PROVIDER_SPECS
 from tabulaflow.core._cache import DEFAULT_CACHE_DIR, cache_lock, read_cached_model, write_cached_model
 
 MODEL_CATALOG_URL = "https://models.dev/api.json"
@@ -29,33 +30,7 @@ VLLM_DISCOVERY_TIMEOUT_SECONDS = 5
 _INVALID_VLLM_API_ERROR = "no valid vLLM models API found — check VLLM_BASE_URL"
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
-    "openai": "openai",
-    "deepseek": "deepseek",
-    "openrouter": "openrouter",
-    "vercel": "vercel",
-    "azure": "azure",
-    "google": "google",
-    "google-vertex": "google-cloud",
-    "google-vertex-anthropic": "google-cloud",
-    "amazon-bedrock": "bedrock",
-    "groq": "groq",
-    "anthropic": "anthropic",
-    "mistral": "mistral",
-    "cerebras": "cerebras",
-    "cohere": "cohere",
-    "crusoe": "crusoe",
-    "xai": "xai",
-    "moonshotai": "moonshotai",
-    "fireworks-ai": "fireworks",
-    "togetherai": "together",
-    "huggingface": "huggingface",
-    "github-copilot": "github-copilot",
-    "nebius": "nebius",
-    "ovhcloud": "ovhcloud",
-    "alibaba": "alibaba",
-    "snowflake-cortex": "snowflake",
-    "zai": "zai",
-    "ollama-cloud": "ollama",
+    catalog_id: provider.id for provider in PROVIDER_SPECS for catalog_id in provider.catalog_ids
 }
 _PYDANTIC_PROVIDER_PREFIXES = frozenset(_MODELS_DEV_PROVIDER_MAP.values())
 
@@ -267,16 +242,15 @@ def llm_model_catalog(
     *,
     current: str,
     recommended: tuple[str, ...],
+    provider: str | None = None,
     pinned: tuple[str, ...] = (),
     available: tuple[str, ...] = (),
 ) -> tuple[str, ...]:
-    """Order the current, recommended, pinned, and remaining available models."""
-    current_provider = current.partition(":")[0]
-    current_provider_models = tuple(
-        model for model in available if model.partition(":")[0] == current_provider
-    )
-    other_models = tuple(model for model in available if model.partition(":")[0] != current_provider)
-    return tuple(dict.fromkeys((current, *recommended, *pinned, *current_provider_models, *other_models)))
+    """Order models from the selected provider, with the current model first."""
+    provider = provider or current.partition(":")[0]
+    selected = (current,) if current.partition(":")[0] == provider else ()
+    candidates = (*selected, *recommended, *pinned, *available)
+    return tuple(dict.fromkeys(model for model in candidates if model.partition(":")[0] == provider))
 
 
 async def _read_cache(path: Path) -> _CatalogCache | None:

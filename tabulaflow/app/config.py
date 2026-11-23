@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.agents.llm import ReasoningLevel, uses_openai_responses
 
@@ -87,6 +87,15 @@ RECOMMENDED_SUBAGENT_MODELS: tuple[str, ...] = (
 )
 
 
+class CredentialPreference(BaseModel):
+    """A provider credential source explicitly selected in the app."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal["saved"]
+    variable: str = Field(min_length=1)
+
+
 class AppConfig(BaseModel):
     """Durable interactive-app preferences.
 
@@ -97,15 +106,18 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=(), extra="forbid")
 
     llm: LLMConfig | Literal["off"] | None = None
+    credential_preferences: dict[str, CredentialPreference] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class ResolvedLLMConfig:
-    """Persisted LLM intent paired with its effective runtime configuration."""
+    """Persisted LLM and credential intent paired with its effective runtime configuration."""
 
     selection: LLMConfig | Literal["off"] | None
     config: LLMConfig | None
     automatic_env: str | None = None
+    credential_preferences: dict[str, CredentialPreference] = field(default_factory=dict)
+    environment_credentials: dict[str, str] = field(default_factory=dict)
 
     @property
     def requests_per_minute(self) -> LLMRequestsPerMinute:
@@ -125,15 +137,16 @@ class ResolvedLLMConfig:
 
 def resolve_llm_config(config: AppConfig) -> ResolvedLLMConfig:
     """Resolve persisted intent into the effective runtime configuration."""
+    preferences = config.credential_preferences
     if config.llm == LLM_OFF:
-        return ResolvedLLMConfig(selection=LLM_OFF, config=None)
+        return ResolvedLLMConfig(selection=LLM_OFF, config=None, credential_preferences=preferences)
     if isinstance(config.llm, LLMConfig):
-        return ResolvedLLMConfig(selection=config.llm, config=config.llm)
+        return ResolvedLLMConfig(selection=config.llm, config=config.llm, credential_preferences=preferences)
     if os.getenv("OPENAI_API_KEY", "").strip():
-        return ResolvedLLMConfig(None, OPENAI_DEFAULT_LLM_CONFIG, "OPENAI_API_KEY")
+        return ResolvedLLMConfig(None, OPENAI_DEFAULT_LLM_CONFIG, "OPENAI_API_KEY", credential_preferences=preferences)
     if os.getenv("ANTHROPIC_API_KEY", "").strip():
-        return ResolvedLLMConfig(None, ANTHROPIC_DEFAULT_LLM_CONFIG, "ANTHROPIC_API_KEY")
-    return ResolvedLLMConfig(selection=None, config=None)
+        return ResolvedLLMConfig(None, ANTHROPIC_DEFAULT_LLM_CONFIG, "ANTHROPIC_API_KEY", credential_preferences=preferences)
+    return ResolvedLLMConfig(selection=None, config=None, credential_preferences=preferences)
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:

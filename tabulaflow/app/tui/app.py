@@ -36,6 +36,7 @@ from tabulaflow.app.config import (
     ResolvedLLMConfig,
     update_app_config,
 )
+from tabulaflow.app.credentials import mask_api_key
 from tabulaflow.app.model_catalog import ModelCatalog, VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane.cards import render_resolved_output
@@ -125,19 +126,12 @@ def _pane_panel(result: "ChatResult") -> PanePanel | None:
     return pane_panel_for_output(result.output)
 
 
-def _masked_api_key(key: str | None) -> str | None:
-    """Return a masked API key suitable for display."""
-    if key is None or len(key) < 12:
-        return None
-    return f"{key[:3]}***{key[-4:]}"
-
-
 def _sanitize_exception_message(error: Exception) -> str:
     """Return a display-ready error sentence with environment API keys masked."""
     message = " ".join(str(error).split())
     for name, value in os.environ.items():
         if name.endswith("_API_KEY") and len(value) >= 12:
-            message = message.replace(value, _masked_api_key(value) or "***")
+            message = message.replace(value, mask_api_key(value) or "***")
     if len(message) > _MAX_ERROR_MESSAGE_LENGTH:
         return f"{message[: _MAX_ERROR_MESSAGE_LENGTH - 1].rstrip()}…"
     if message and not message.endswith((".", "!", "?", "…")):
@@ -279,13 +273,13 @@ def _llm_config_success_message(
 ) -> Text:
     """Build the status message for an activated LLM configuration."""
     main_key, subagent_key = keys
-    main_mask = _masked_api_key(main_key)
-    subagent_mask = _masked_api_key(subagent_key)
+    main_mask = mask_api_key(main_key)
+    subagent_mask = mask_api_key(subagent_key)
     shared_key = main_key is not None and main_key == subagent_key
 
     if automatic_env is not None:
         detected_key = main_key or subagent_key
-        detected_mask = _masked_api_key(detected_key) if automatic_env.endswith("_API_KEY") else None
+        detected_mask = mask_api_key(detected_key) if automatic_env.endswith("_API_KEY") else None
         detected = f"{automatic_env} detected"
         if detected_mask:
             detected += f" ({detected_mask})"
@@ -881,7 +875,13 @@ class TabulaflowApp(App[None]):
                 main=LLMRoleConfig(model=model, effort="medium"),
                 subagent=LLMRoleConfig(model=model, effort="medium"),
             )
-            return ResolvedLLMConfig(None, config, "VLLM_BASE_URL"), None
+            return ResolvedLLMConfig(
+                None,
+                config,
+                "VLLM_BASE_URL",
+                credential_preferences=selection.credential_preferences,
+                environment_credentials=selection.environment_credentials,
+            ), None
         return selection, self._vllm_discovery_status(result)
 
     def _vllm_discovery_status(self, result: VLLMDiscoveryResult) -> str:
@@ -1358,7 +1358,10 @@ class TabulaflowApp(App[None]):
             session.apply_llm_request_rate(selection.config.requests_per_minute)
         session.select_llm_config(selection.config)
         self._llm_config = selection
-        update_app_config(llm=selection.selection)
+        update_app_config(
+            llm=selection.selection,
+            credential_preferences=selection.credential_preferences,
+        )
         self._refresh_bottom_status()
         self._start_llm_activation(selection)
 

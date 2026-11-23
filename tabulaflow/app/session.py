@@ -221,15 +221,13 @@ class AppSession:
                 keys = agent.resolve_api_keys()
                 self._chat_session = agent
                 return keys
-            if not self._chat_session_matches_config(config):
-                return self._chat_session.activate_llm_profile(
-                    model=config.main.model,
-                    reasoning=config.main.effort,
-                    subagent_model=config.subagent.model,
-                    subagent_reasoning=config.subagent.effort,
-                    use_apply_patch=model_supports_apply_patch(config.main.model),
-                )
-            return self._chat_session.resolve_api_keys()
+            return self._chat_session.activate_llm_profile(
+                model=config.main.model,
+                reasoning=config.main.effort,
+                subagent_model=config.subagent.model,
+                subagent_reasoning=config.subagent.effort,
+                use_apply_patch=model_supports_apply_patch(config.main.model),
+            )
 
     def note_event(self, description: str) -> None:
         """Append an app event to the chat session when LLM support is available."""

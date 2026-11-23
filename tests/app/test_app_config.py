@@ -10,6 +10,7 @@ from tabulaflow.app.config import (
     LLM_OFF,
     OPENAI_DEFAULT_LLM_CONFIG,
     AppConfig,
+    CredentialPreference,
     InvalidAppConfigError,
     LLMConfig,
     LLMRoleConfig,
@@ -71,6 +72,19 @@ def test_explicit_config_round_trip(tmp_path: Path) -> None:
     assert load_app_config(path) == config
     saved = json.loads(Path(path).read_text())
     assert saved["llm"]["main"] == {"model": "together:owner/main", "effort": "high"}
+
+
+def test_credential_preference_round_trip(tmp_path: Path) -> None:
+    path = str(tmp_path / "app_config.json")
+    preference = CredentialPreference(source="saved", variable="OPENAI_API_KEY")
+    config = AppConfig(credential_preferences={"openai": preference})
+
+    save_app_config(config, path)
+
+    assert load_app_config(path) == config
+    assert json.loads(Path(path).read_text())["credential_preferences"] == {
+        "openai": {"source": "saved", "variable": "OPENAI_API_KEY"}
+    }
 
 
 def test_old_reasoning_field_is_rejected() -> None:

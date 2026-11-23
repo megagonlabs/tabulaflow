@@ -588,3 +588,34 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert "service_tier" not in settings
     finally:
         await workspace.close_async()
+
+
+def test_unchanged_profile_rebuilds_main_runtime_with_current_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatSession(
+        registry=DataConnectorRegistry(),
+        model="openai:gpt-5",
+        reasoning="medium",
+        subagent_model="openai:gpt-5-mini",
+        subagent_reasoning="low",
+    )
+    runtime_agent = agent._pydantic_ai_agent
+    history = agent._context_messages
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-replacement456789abcd")
+    from tabulaflow.agents.runtime import invalidate_model_cache
+
+    invalidate_model_cache()
+    keys = agent.activate_llm_profile(
+        model=agent.model,
+        reasoning=agent.reasoning,
+        subagent_model=agent.subagent_model,
+        subagent_reasoning=agent.subagent_reasoning,
+        use_apply_patch=agent.use_apply_patch,
+    )
+
+    assert agent._pydantic_ai_agent is not runtime_agent
+    assert agent._context_messages is history
+    assert keys == ("sk-replacement456789abcd", "sk-replacement456789abcd")

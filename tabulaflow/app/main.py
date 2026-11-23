@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -42,8 +43,11 @@ def _app_agent_runtime_config(max_llm_requests_per_minute: int = 300) -> AgentRu
 
 def _resolve_startup_llm_config() -> ResolvedLLMConfig:
     from tabulaflow.app.config import load_app_config, resolve_llm_config
+    from tabulaflow.app.credentials import load_saved_api_keys
 
-    return resolve_llm_config(load_app_config())
+    config = load_app_config()
+    overridden = load_saved_api_keys(preferences=config.credential_preferences)
+    return replace(resolve_llm_config(config), environment_credentials=overridden)
 
 
 def run_chat(

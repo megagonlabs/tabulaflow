@@ -41,7 +41,7 @@ Choose one provider and configure it before launching TabulaFlow:
 
 TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
-models. Credentials are read from the environment and never saved.
+models. You can also paste an API key in `/config`.
 
 !!! note "vLLM tool calling"
     TabulaFlow relies on automatic tool calling. Follow the current
@@ -63,19 +63,21 @@ anthropic:claude-sonnet-5
 vllm:Qwen/Qwen3-8B
 ```
 
-The picker includes recommended models, the current selection, and compatible
-models from the installed provider stack. You can also type a complete custom
-identifier. TabulaFlow saves model selections in
-`~/.tabulaflow/app_config.json`, but continues to read credentials from the
-environment.
+The picker shows recommended and compatible models from the current provider.
+Choose **Use another provider** to switch providers. You can also type a complete
+custom identifier. TabulaFlow saves model selections in
+`~/.tabulaflow/app_config.json`.
+
+Environment credentials are detected automatically and used by default. Keys
+pasted in `/config` are saved with owner-only permissions in
+`~/.tabulaflow/credentials.json`. Selecting a saved key or pasting a new one
+overrides the environment default across restarts.
 
 ## Supported providers
 
-The model picker includes models from all the provider routes below. TabulaFlow
-uses Pydantic AI's environment variables and authentication unchanged; it does
-not store these credentials. Set the listed variables before launching
-TabulaFlow, then select a `provider:model` identifier in `/config` when
-automatic setup does not apply.
+TabulaFlow supports the provider routes below through Pydantic AI. Cloud and
+local providers use the authentication and connection settings listed below
+rather than saved keys from `/config`.
 
 ### API key providers
 
