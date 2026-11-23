@@ -57,6 +57,7 @@ class ProviderPickerScreen(Screen[ProviderSpec | None]):
 
     def __init__(self, current: str) -> None:
         super().__init__()
+        self._current = current
         self._providers = tuple(sorted(PROVIDER_SPECS, key=lambda provider: provider.id != current))
         self._visible = self._providers
         self._cursor = next(
@@ -135,8 +136,10 @@ class ProviderPickerScreen(Screen[ProviderSpec | None]):
             for index in range(start, end):
                 provider = self._visible[index]
                 selected = index == self._cursor
+                active = provider.id == self._current
                 options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
-                options.append(provider.name, style=ACCENT_BOLD if selected else "")
+                options.append("● " if active else "  ", style=ACCENT_BOLD if active else "")
+                options.append(provider.name, style=ACCENT_BOLD if active else "bold" if selected else "")
                 options.append("\n")
             if show_below:
                 options.append(f"  ↓ {len(self._visible) - end} more", style="dim")
@@ -177,7 +180,6 @@ class APIKeyScreen(Screen[APIKeySelection | None]):
     APIKeyScreen #api-key-paste { height: auto; }
     APIKeyScreen #api-key-paste-label { width: auto; height: 1; }
     APIKeyScreen #api-key-input { height: 3; width: 1fr; max-width: 64; margin: 0 0 0 2; border: round #6a737d; padding: 0 1; background: transparent; }
-    APIKeyScreen #api-key-input:focus { border: round #5FAF87; background: transparent; }
     APIKeyScreen #api-key-status { height: auto; color: $text-muted; }
     APIKeyScreen #api-key-hint { dock: bottom; padding: 0 1; color: #f5f5f5; background: #2a2a2a; }
     """
@@ -310,7 +312,7 @@ class APIKeyScreen(Screen[APIKeySelection | None]):
             active = index == active_index
             options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
             options.append("● " if active else "  ", style=ACCENT_BOLD if active else "")
-            options.append(option.label, style=ACCENT_BOLD if selected or active else "")
+            options.append(option.label, style=ACCENT_BOLD if active else "bold" if selected else "")
             if index + 1 < len(self._options):
                 options.append("\n\n")
         options_widget = self.query_one("#api-key-options", Static)
@@ -320,7 +322,7 @@ class APIKeyScreen(Screen[APIKeySelection | None]):
         paste_selected = self._cursor == len(self._options)
         paste_label = Text()
         paste_label.append("❯   " if paste_selected else "    ", style=ACCENT_BOLD if paste_selected else "")
-        paste_label.append("Paste API key", style=ACCENT_BOLD if paste_selected else "")
+        paste_label.append("Paste API key", style="bold" if paste_selected else "")
         self.query_one("#api-key-paste-label", Static).update(paste_label)
         self.query_one("#api-key-status", Static).update(Text(self._error, style="dim"))
         action = "Save" if self._editing_key else "Select"
