@@ -344,7 +344,8 @@ class ModelPickerScreen(Screen[str | None]):
         options_widget.update(options)
 
         provider_selected = self._cursor == 0
-        provider_action = Text("❯   " if provider_selected else "    ", style=ACCENT_BOLD if provider_selected else "")
+        provider_action = Text()
+        provider_action.append("❯   " if provider_selected else "    ", style=ACCENT_BOLD if provider_selected else "")
         provider_action.append(_USE_ANOTHER_PROVIDER, style="bold" if provider_selected else "")
         self.query_one("#change-provider", Static).update(provider_action)
         provider_name = provider_spec(self._provider).name

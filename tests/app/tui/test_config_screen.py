@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from textual.app import App
+from textual.color import Color
 from textual.content import Content
 from textual.screen import Screen
 from textual.style import Style
@@ -360,6 +361,13 @@ async def test_model_picker_title_contains_guidance_and_uses_plain_bold() -> Non
         assert "Navigate" not in hint
         assert "Type" not in hint
 
+        await pilot.press("up")
+        provider_action = picker.query_one("#change-provider", Static).render()
+        assert isinstance(provider_action, Content)
+        assert str(provider_action).startswith("❯   Use another provider")
+        assert provider_action.get_style_at_offset(0) == Style.parse(ACCENT_BOLD)
+        assert provider_action.get_style_at_offset(4) == Style.parse("bold")
+
         await pilot.press("escape", "down", "down", "enter")
         await pilot.pause()
         assert str(app.screen.query_one("#model-picker-title", Static).render()).startswith("Choose subagent model")
@@ -585,9 +593,16 @@ async def test_provider_picker_lists_only_provider_names() -> None:
         rendered = picker.query_one("#provider-options", Static).render()
         assert isinstance(rendered, Content)
         options = str(rendered)
-        assert options.splitlines()[:2] == ["❯ OpenAI", "  Anthropic"]
+        assert options.splitlines()[:2] == ["❯ ● OpenAI", "    Anthropic"]
         assert " · " not in options
-        assert all(rendered.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2))
+        assert all(rendered.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 2, 4))
+
+        await pilot.press("down")
+        rendered = picker.query_one("#provider-options", Static).render()
+        assert isinstance(rendered, Content)
+        options = str(rendered)
+        assert options.splitlines()[:2] == ["  ● OpenAI", "❯   Anthropic"]
+        assert rendered.get_style_at_offset(options.index("Anthropic")) == Style.parse("bold")
 
 
 async def test_connection_screen_offers_both_sources_even_with_identical_keys(
@@ -618,6 +633,13 @@ async def test_connection_screen_offers_both_sources_even_with_identical_keys(
         ]
         assert paste == "    Paste API key"
         assert auth._cursor == 1
+
+        await pilot.press("up")
+        rendered = auth.query_one("#api-key-options", Static).render()
+        assert isinstance(rendered, Content)
+        options = str(rendered)
+        assert options.splitlines()[0] == "❯   Use environment OPENAI_API_KEY (sk-***cret)"
+        assert rendered.get_style_at_offset(4) == Style.parse("bold")
 
 
 async def test_saved_key_loaded_into_environment_is_not_a_second_source(
@@ -687,7 +709,8 @@ async def test_provider_switch_uses_detected_key_and_updates_only_selected_role(
         paste_label = auth.query_one("#api-key-paste-label", Static).render()
         assert isinstance(paste_label, Content)
         assert str(paste_label).startswith("❯   Paste API key")
-        assert all(paste_label.get_style_at_offset(index) == Style.parse(ACCENT_BOLD) for index in (0, 4))
+        assert paste_label.get_style_at_offset(0) == Style.parse(ACCENT_BOLD)
+        assert paste_label.get_style_at_offset(4) == Style.parse("bold")
         await pilot.press("up")
         await pilot.pause()
         assert not key_input.has_focus
@@ -741,6 +764,7 @@ async def test_pasted_key_is_masked_saved_and_applied_with_unchanged_model(
         assert "Paste API key" in str(auth.query_one("#api-key-paste-label", Static).render())
         assert "credentials.json" not in str(auth.query_one("#api-key-status", Static).render())
         assert key_input.has_focus
+        assert key_input.styles.border_top == ("round", Color.parse("#6a737d"))
         assert str(auth.query_one("#api-key-paste-label", Static).render()).startswith("❯   Paste API key")
         await pilot.press(*"sk-pasted-secret")
         assert "sk-pasted-secret" not in str(key_input.render())
