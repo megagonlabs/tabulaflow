@@ -875,19 +875,22 @@ class TabulaflowApp(App[None]):
                 main=LLMRoleConfig(model=model, effort="medium"),
                 subagent=LLMRoleConfig(model=model, effort="medium"),
             )
+            connection = selection.endpoint_connections.get("vllm")
+            automatic_env = "VLLM_BASE_URL" if connection is None or connection.source == "environment" else None
             return ResolvedLLMConfig(
                 None,
                 config,
-                "VLLM_BASE_URL",
+                automatic_env,
                 credential_preferences=selection.credential_preferences,
-                environment_credentials=selection.environment_credentials,
+                endpoint_connections=selection.endpoint_connections,
+                environment_variables=selection.environment_variables,
             ), None
         return selection, self._vllm_discovery_status(result)
 
     def _vllm_discovery_status(self, result: VLLMDiscoveryResult) -> str:
         endpoint = self._vllm_discovery.endpoint_label or "configured endpoint"
         if result.error:
-            return f"✓ LLM off · vLLM discovery failed at {endpoint}: {result.error}. Fix it and restart TabulaFlow."
+            return f"✓ LLM off · vLLM discovery failed at {endpoint}: {result.error}. Retry in /config."
         count = len(result.models)
         return f"✓ LLM off · {count} vLLM models discovered at {endpoint}. Choose models in /config."
 
@@ -1361,6 +1364,7 @@ class TabulaflowApp(App[None]):
         update_app_config(
             llm=selection.selection,
             credential_preferences=selection.credential_preferences,
+            endpoint_connections=selection.endpoint_connections,
         )
         self._refresh_bottom_status()
         self._start_llm_activation(selection)

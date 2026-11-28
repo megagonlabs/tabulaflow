@@ -55,6 +55,16 @@ class APIKeyStore:
         """Atomically save a key in an owner-only file."""
         values = self.load()
         values[name] = key
+        self._write(values)
+
+    def delete(self, name: str) -> None:
+        """Remove a saved key if present."""
+        values = self.load()
+        if name in values:
+            del values[name]
+            self._write(values)
+
+    def _write(self, values: dict[str, str]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         descriptor, temporary_name = tempfile.mkstemp(prefix=f".{self.path.name}.", dir=self.path.parent)
         temporary_path = Path(temporary_name)
@@ -78,14 +88,17 @@ def load_saved_api_keys(
 ) -> dict[str, str]:
     """Load saved keys and return the original environment values for their names."""
     credentials = store or APIKeyStore()
-    preferred_variables = {preference.variable for preference in (preferences or {}).values()}
-    environment_credentials: dict[str, str] = {}
+    preferred_variables = {
+        preference.variable for preference in (preferences or {}).values() if preference.source == "saved"
+    }
+    explicit_variables = {preference.variable for preference in (preferences or {}).values()}
+    environment_variables: dict[str, str] = {}
     for name, key in credentials.load().items():
         environment_key = os.getenv(name, "")
-        environment_credentials[name] = environment_key
-        if name in preferred_variables or not environment_key.strip():
+        environment_variables[name] = environment_key
+        if name in preferred_variables or (name not in explicit_variables and not environment_key.strip()):
             os.environ[name] = key
-    return environment_credentials
+    return environment_variables
 
 
 def activate_api_key(name: str, key: str, *, persist: bool = False, store: APIKeyStore | None = None) -> None:
@@ -96,4 +109,26 @@ def activate_api_key(name: str, key: str, *, persist: bool = False, store: APIKe
     if persist:
         (store or APIKeyStore()).save(name, key)
     os.environ[name] = key
+    invalidate_model_cache()
+
+
+def activate_vllm_connection(
+    base_url: str,
+    api_key: str,
+    *,
+    persist_key: bool = False,
+    store: APIKeyStore | None = None,
+) -> None:
+    """Activate one vLLM endpoint and its optional authentication key."""
+    if persist_key:
+        credentials = store or APIKeyStore()
+        if api_key:
+            credentials.save("VLLM_API_KEY", api_key)
+        else:
+            credentials.delete("VLLM_API_KEY")
+    os.environ["VLLM_BASE_URL"] = base_url
+    if api_key:
+        os.environ["VLLM_API_KEY"] = api_key
+    else:
+        os.environ.pop("VLLM_API_KEY", None)
     invalidate_model_cache()

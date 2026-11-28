@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import os
 import sys
 
 import pytest
 
-from tabulaflow.app.config import AppConfig, CredentialPreference, ResolvedLLMConfig
+from tabulaflow.app.config import AppConfig, CredentialPreference, EndpointConnection, ResolvedLLMConfig
 from tabulaflow.app.main import _app_agent_runtime_config, _resolve_startup_llm_config
 from tabulaflow.app.tui import app as tui
 
@@ -132,4 +133,54 @@ def test_startup_passes_saved_credential_preferences(monkeypatch: pytest.MonkeyP
     result = _resolve_startup_llm_config()
     assert received == [{"openai": preference}]
     assert result.credential_preferences == {"openai": preference}
-    assert result.environment_credentials == {"OPENAI_API_KEY": "environment-key"}
+    assert result.environment_variables == {"OPENAI_API_KEY": "environment-key"}
+
+
+def test_startup_applies_saved_vllm_endpoint_and_preserves_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tabulaflow.app.config as app_config
+
+    preference = CredentialPreference(source="saved", variable="VLLM_API_KEY")
+    connection = EndpointConnection(base_url="http://saved:8000/v1", source="saved")
+    monkeypatch.setattr(
+        app_config,
+        "load_app_config",
+        lambda: AppConfig(
+            credential_preferences={"vllm": preference}, endpoint_connections={"vllm": connection}
+        ),
+    )
+    monkeypatch.setenv("VLLM_BASE_URL", "http://environment:8000/v1")
+    monkeypatch.setenv("VLLM_API_KEY", "environment-key")
+
+    def load_credentials(**_kwargs: object) -> dict[str, str]:
+        monkeypatch.setenv("VLLM_API_KEY", "saved-key")
+        return {"VLLM_API_KEY": "environment-key"}
+
+    monkeypatch.setattr("tabulaflow.app.credentials.load_saved_api_keys", load_credentials)
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+
+    result = _resolve_startup_llm_config()
+
+    assert os.environ["VLLM_BASE_URL"] == "http://saved:8000/v1"
+    assert os.environ["VLLM_API_KEY"] == "saved-key"
+    assert result.endpoint_connections == {"vllm": connection}
+    assert result.environment_variables == {
+        "VLLM_API_KEY": "environment-key",
+        "VLLM_BASE_URL": "http://environment:8000/v1",
+    }
+
+
+def test_startup_saved_vllm_endpoint_does_not_reuse_environment_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tabulaflow.app.config as app_config
+
+    connection = EndpointConnection(base_url="http://saved:8000/v1", source="saved")
+    monkeypatch.setattr(
+        app_config, "load_app_config", lambda: AppConfig(endpoint_connections={"vllm": connection})
+    )
+    monkeypatch.setenv("VLLM_BASE_URL", "http://environment:8000/v1")
+    monkeypatch.setenv("VLLM_API_KEY", "environment-key")
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+
+    _resolve_startup_llm_config()
+
+    assert os.environ["VLLM_BASE_URL"] == "http://saved:8000/v1"
+    assert "VLLM_API_KEY" not in os.environ

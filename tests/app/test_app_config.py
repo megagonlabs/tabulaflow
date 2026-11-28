@@ -11,6 +11,7 @@ from tabulaflow.app.config import (
     OPENAI_DEFAULT_LLM_CONFIG,
     AppConfig,
     CredentialPreference,
+    EndpointConnection,
     InvalidAppConfigError,
     LLMConfig,
     LLMRoleConfig,
@@ -85,6 +86,26 @@ def test_credential_preference_round_trip(tmp_path: Path) -> None:
     assert json.loads(Path(path).read_text())["credential_preferences"] == {
         "openai": {"source": "saved", "variable": "OPENAI_API_KEY"}
     }
+
+
+def test_endpoint_connection_round_trip_and_normalization(tmp_path: Path) -> None:
+    path = str(tmp_path / "app_config.json")
+    connection = EndpointConnection(base_url="localhost:8000/v1/", source="saved")
+    config = AppConfig(endpoint_connections={"vllm": connection})
+
+    save_app_config(config, path)
+
+    assert connection.base_url == "http://localhost:8000/v1"
+    assert load_app_config(path) == config
+    assert json.loads(Path(path).read_text())["endpoint_connections"] == {
+        "vllm": {"base_url": "http://localhost:8000/v1", "source": "saved"}
+    }
+
+
+@pytest.mark.parametrize("url", ["", "ftp://localhost:8000", "http://localhost:8000/v1?key=secret"])
+def test_endpoint_connection_rejects_invalid_urls(url: str) -> None:
+    with pytest.raises(ValueError):
+        EndpointConnection(base_url=url)
 
 
 def test_old_reasoning_field_is_rejected() -> None:

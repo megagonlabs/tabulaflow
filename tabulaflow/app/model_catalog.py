@@ -27,7 +27,8 @@ MIN_MODEL_CONTEXT_TOKENS = 128_000
 MODEL_RELEASE_MAX_AGE_MONTHS = 6
 _CACHE_SCHEMA_VERSION = 5
 VLLM_DISCOVERY_TIMEOUT_SECONDS = 5
-_INVALID_VLLM_API_ERROR = "no valid vLLM models API found — check VLLM_BASE_URL"
+DEFAULT_VLLM_BASE_URL = "http://127.0.0.1:8000/v1"
+_INVALID_VLLM_API_ERROR = "no vLLM models API found — check that the URL ends in /v1"
 
 _MODELS_DEV_PROVIDER_MAP: Mapping[str, str] = {
     catalog_id: provider.id for provider in PROVIDER_SPECS for catalog_id in provider.catalog_ids
@@ -63,35 +64,50 @@ class VLLMDiscoveryResult:
 
     models: tuple[str, ...] = ()
     error: str | None = None
+    authentication_required: bool = False
 
 
 class VLLMModelDiscovery:
-    """One shared background model-discovery task for ``VLLM_BASE_URL``."""
+    """Shared background model discovery for the active vLLM endpoint."""
 
     def __init__(self, *, base_url: str | None = None, api_key: str | None = None) -> None:
         self.base_url = (base_url if base_url is not None else os.getenv("VLLM_BASE_URL", "")).strip()
         self._api_key = api_key if api_key is not None else os.getenv("VLLM_API_KEY", "").strip()
         self.endpoint_label = _endpoint_label(self.base_url) if self.base_url else None
         self._task: asyncio.Task[VLLMDiscoveryResult] | None = None
+        self._result: VLLMDiscoveryResult | None = None
+
+    def configure(self, base_url: str, api_key: str, result: VLLMDiscoveryResult | None = None) -> None:
+        """Switch discovery to a validated endpoint."""
+        self.base_url = base_url
+        self._api_key = api_key
+        self.endpoint_label = _endpoint_label(base_url)
+        self._task = None
+        self._result = result
 
     def start(self) -> None:
         """Start discovery once when an endpoint is configured."""
-        if self.base_url and self._task is None:
-            self._task = asyncio.create_task(_discover_vllm_models(self.base_url, self._api_key))
+        if self.base_url and self._task is None and self._result is None:
+            self._task = asyncio.create_task(discover_vllm_models(self.base_url, self._api_key))
 
     async def warm(self) -> VLLMDiscoveryResult | None:
         """Wait for the shared discovery task, starting it when needed."""
         self.start()
+        if self._result is not None:
+            return self._result
         return await asyncio.shield(self._task) if self._task is not None else None
 
     def result(self) -> VLLMDiscoveryResult | None:
         """Return the completed result without waiting."""
+        if self._result is not None:
+            return self._result
         if self._task is None or not self._task.done():
             return None
         return self._task.result()
 
 
-async def _discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+async def discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+    """Discover models exposed by one OpenAI-compatible vLLM endpoint."""
     headers = {"Accept": "application/json", "User-Agent": f"tabulaflow/{__version__}"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -99,7 +115,7 @@ async def _discover_vllm_models(base_url: str, api_key: str) -> VLLMDiscoveryRes
         async with httpx.AsyncClient(timeout=VLLM_DISCOVERY_TIMEOUT_SECONDS) as client:
             response = await client.get(f"{base_url.rstrip('/')}/models", headers=headers)
         if response.status_code in {401, 403}:
-            return VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY")
+            return VLLMDiscoveryResult(error="authentication required", authentication_required=True)
         if response.status_code == 404:
             return VLLMDiscoveryResult(error=_INVALID_VLLM_API_ERROR)
         response.raise_for_status()

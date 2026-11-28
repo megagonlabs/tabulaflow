@@ -11,6 +11,7 @@ import pytest
 import tabulaflow.app.model_catalog as model_catalog_module
 from tabulaflow.app.model_catalog import (
     ModelCatalog,
+    VLLMDiscoveryResult,
     VLLMModelDiscovery,
     _BundledCatalog,
     _CatalogEntry,
@@ -156,7 +157,8 @@ async def test_vllm_discovery_reports_authentication_failure(monkeypatch: pytest
     result = await discovery.warm()
 
     assert result is not None
-    assert result.error == "authentication failed — check VLLM_API_KEY"
+    assert result.error == "authentication required"
+    assert result.authentication_required
 
 
 @pytest.mark.parametrize(
@@ -178,7 +180,7 @@ async def test_vllm_discovery_reports_invalid_models_api(
     result = await discovery.warm()
 
     assert result is not None
-    assert result.error == "no valid vLLM models API found — check VLLM_BASE_URL"
+    assert result.error == "no vLLM models API found — check that the URL ends in /v1"
 
 
 async def test_vllm_discovery_reports_http_status(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -396,3 +398,14 @@ async def test_process_catalog_returns_local_models_while_warming(
     finish_refresh.set()
     assert await warming == ("fireworks:refreshed",)
     assert await catalog.get() == ("fireworks:refreshed",)
+
+
+async def test_vllm_discovery_reuses_validated_endpoint_result() -> None:
+    discovery = VLLMModelDiscovery(base_url="")
+    result = VLLMDiscoveryResult(models=("vllm:local",))
+
+    discovery.configure("http://localhost:8000/v1", "", result)
+
+    assert await discovery.warm() == result
+    assert discovery.result() == result
+    assert discovery.endpoint_label == "localhost:8000/v1"

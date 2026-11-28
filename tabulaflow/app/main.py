@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from enum import StrEnum
+import os
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.config import ResolvedLLMConfig
@@ -43,11 +44,18 @@ def _app_agent_runtime_config(max_llm_requests_per_minute: int = 300) -> AgentRu
 
 def _resolve_startup_llm_config() -> ResolvedLLMConfig:
     from tabulaflow.app.config import load_app_config, resolve_llm_config
-    from tabulaflow.app.credentials import load_saved_api_keys
+    from tabulaflow.app.credentials import activate_vllm_connection, load_saved_api_keys
 
     config = load_app_config()
     overridden = load_saved_api_keys(preferences=config.credential_preferences)
-    return replace(resolve_llm_config(config), environment_credentials=overridden)
+    endpoint = config.endpoint_connections.get("vllm")
+    if endpoint is not None and endpoint.source == "saved":
+        overridden.setdefault("VLLM_BASE_URL", os.getenv("VLLM_BASE_URL", ""))
+        overridden.setdefault("VLLM_API_KEY", os.getenv("VLLM_API_KEY", ""))
+        preference = config.credential_preferences.get("vllm")
+        api_key = os.getenv("VLLM_API_KEY", "") if preference is not None and preference.source == "saved" else ""
+        activate_vllm_connection(endpoint.base_url, api_key)
+    return replace(resolve_llm_config(config), environment_variables=overridden)
 
 
 def run_chat(
