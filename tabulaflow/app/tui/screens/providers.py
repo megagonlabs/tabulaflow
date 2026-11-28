@@ -369,9 +369,10 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
 
     DEFAULT_CSS = """
     VLLMConnectionScreen { background: $background; }
-    VLLMConnectionScreen #connection-body { height: 1fr; padding: 1 3; }
+    VLLMConnectionScreen #connection-body { height: auto; padding: 1 3; }
     VLLMConnectionScreen #connection-title { height: auto; margin-bottom: 1; }
     VLLMConnectionScreen #connection-options { height: auto; }
+    VLLMConnectionScreen #custom-endpoint { height: auto; }
     VLLMConnectionScreen #connection-url-label, #connection-key-label { width: auto; height: 1; }
     VLLMConnectionScreen #connection-url-input, #connection-key-input {
         height: 3; width: 1fr; max-width: 80; margin: 0 0 0 4;
@@ -422,9 +423,8 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
             self._options.append(_EndpointOption(connection.base_url, saved_key, "saved"))
         active_index = self._active_option_index()
         self._cursor = active_index if active_index is not None else len(self._options)
-        self._show_api_key = False
+        self._key_selected = False
         self._connecting = False
-        self._pending_option: _EndpointOption | None = None
         self._initial_url = connection.base_url if connection is not None else DEFAULT_VLLM_BASE_URL
 
     def _active_option_index(self) -> int | None:
@@ -435,12 +435,12 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
         with Vertical(id="connection-body"):
             yield Static(Text("Connect vLLM", style="bold"), id="connection-title")
             yield Static(id="connection-options")
-            with Vertical(id="connection-url"):
+            with Vertical(id="custom-endpoint"):
                 yield Static(id="connection-url-label")
                 yield Input(value=self._initial_url, id="connection-url-input")
-            with Vertical(id="connection-key"):
-                yield Static(id="connection-key-label")
-                yield Input(placeholder="API key", password=True, id="connection-key-input")
+                with Vertical(id="connection-key"):
+                    yield Static(id="connection-key-label")
+                    yield Input(placeholder="API key", password=True, id="connection-key-input")
             yield Static(id="connection-status")
         yield Static(id="connection-hint")
 
@@ -450,37 +450,36 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
     def action_move(self, delta: int) -> None:
         if self._connecting:
             return
-        cursor = max(0, min(len(self._options) + 1, self._cursor + delta))
+        custom_index = len(self._options)
+        if self._key_selected:
+            if delta < 0:
+                self._key_selected = False
+                self._sync_focus()
+            return
+        if self._cursor == custom_index and delta > 0:
+            self._key_selected = True
+            self._error = ""
+            self._sync_focus()
+            return
+        cursor = max(0, min(custom_index, self._cursor + delta))
         if cursor != self._cursor:
             self._cursor = cursor
-            self._pending_option = None
             self._error = ""
             self._sync_focus()
 
     def action_select(self) -> None:
         if self._connecting:
             return
-        if self._cursor == len(self._options) + 1 and not self._show_api_key:
-            self._show_api_key = True
-            self._error = ""
-            self._sync_focus()
-            return
         source: Literal["environment", "saved"]
-        if self._pending_option is not None and self._show_api_key:
-            base_url = self._pending_option.base_url
-            api_key = self.query_one("#connection-key-input", Input).value.strip()
-            source = "saved"
-        elif self._cursor < len(self._options):
+        if self._cursor < len(self._options):
             option = self._options[self._cursor]
             base_url = option.base_url
             api_key = option.api_key
             source = option.source
-            self._pending_option = option
         else:
             base_url = self.query_one("#connection-url-input", Input).value
-            api_key = self.query_one("#connection-key-input", Input).value.strip() if self._show_api_key else ""
+            api_key = self.query_one("#connection-key-input", Input).value.strip()
             source = "saved"
-            self._pending_option = None
         try:
             base_url = normalize_endpoint_url(base_url)
         except ValueError as error:
@@ -498,8 +497,9 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
         if result.error is not None:
             self._error = result.error
             if result.authentication_required:
-                self._show_api_key = True
-                self._cursor = len(self._options) + 1
+                self.query_one("#connection-url-input", Input).value = base_url
+                self._cursor = len(self._options)
+                self._key_selected = True
                 self._error = "Authentication required. Enter an API key and retry."
             self._sync_focus()
             return
@@ -519,12 +519,12 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
 
     def _sync_focus(self) -> None:
         self._refresh()
-        if self._cursor == len(self._options):
-            self.query_one("#connection-url-input", Input).focus()
-        elif self._cursor == len(self._options) + 1 and self._show_api_key:
+        if self._cursor != len(self._options):
+            self.focus()
+        elif self._key_selected:
             self.query_one("#connection-key-input", Input).focus()
         else:
-            self.focus()
+            self.query_one("#connection-url-input", Input).focus()
 
     def action_cancel(self) -> None:
         if not self._connecting:
@@ -533,35 +533,36 @@ class VLLMConnectionScreen(Screen[VLLMConnectionSelection | None]):
     def _refresh(self) -> None:
         options = Text(overflow="ellipsis", no_wrap=True)
         active_index = self._active_option_index()
+        cursor_style = "bold" if active_index is not None else ACCENT_BOLD
         for index, option in enumerate(self._options):
             selected = index == self._cursor
             active = index == active_index
             label = f"Use {option.source} endpoint ({option.base_url})"
             options.append("❯ " if selected else "  ", style=ACCENT_BOLD if selected else "")
             options.append("● " if active else "  ", style=ACCENT_BOLD if active else "")
-            options.append(label, style=ACCENT_BOLD if active else "bold" if selected else "")
+            options.append(label, style=ACCENT_BOLD if active else cursor_style if selected else "")
             if index + 1 < len(self._options):
                 options.append("\n\n")
         options_widget = self.query_one("#connection-options", Static)
         options_widget.update(options)
         options_widget.display = bool(self._options)
-        self.query_one("#connection-url").styles.margin = (1 if self._options else 0, 0, 0, 0)
+        self.query_one("#custom-endpoint").styles.margin = (1 if self._options else 0, 0, 0, 0)
 
         url_selected = self._cursor == len(self._options)
-        url_label = Text("❯   " if url_selected else "    ", style=ACCENT_BOLD if url_selected else "")
-        url_label.append("Server URL", style="bold" if url_selected else "")
+        url_label = Text()
+        url_label.append("❯   " if url_selected else "    ", style=ACCENT_BOLD if url_selected else "")
+        url_label.append("Server URL", style=cursor_style if url_selected else "")
         self.query_one("#connection-url-label", Static).update(url_label)
         self.query_one("#connection-url-input", Input).disabled = self._connecting
 
-        key_selected = self._cursor == len(self._options) + 1
-        key_label = Text("❯   " if key_selected else "    ", style=ACCENT_BOLD if key_selected else "")
+        key_label = Text()
+        key_label.append("    ")
         key_label.append(
-            "API key (optional)" if self._show_api_key else "Add API key (optional)",
-            style="bold" if key_selected else "dim",
+            "API key (optional)",
+            style=cursor_style if self._key_selected else "dim",
         )
         self.query_one("#connection-key-label", Static).update(key_label)
         key_input = self.query_one("#connection-key-input", Input)
-        key_input.display = self._show_api_key
         key_input.disabled = self._connecting
         self.query_one("#connection-status", Static).update(Text(self._error, style="dim"))
         self.query_one("#connection-hint", Static).update(

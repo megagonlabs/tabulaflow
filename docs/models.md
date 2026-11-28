@@ -32,10 +32,7 @@ Choose one provider and configure it before launching TabulaFlow:
     tabulaflow
     ```
 
-    You can also launch without these variables and connect in `/config`.
-    Choose a model, then **Use another provider → vLLM**. Connect to the
-    default local URL or enter your server URL. TabulaFlow discovers the
-    available models and asks for an API key only if the endpoint requires one.
+    You can also launch without these variables and connect to vLLM in `/config`.
 
 === "Fireworks AI"
 

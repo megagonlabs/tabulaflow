@@ -977,9 +977,20 @@ async def test_vllm_provider_connects_and_auto_selects_single_model(
         connection = app.screen
         assert isinstance(connection, VLLMConnectionScreen)
         url_input = connection.query_one("#connection-url-input", Input)
+        key_input = connection.query_one("#connection-key-input", Input)
         assert url_input.value == "http://127.0.0.1:8000/v1"
         assert url_input.has_focus
-        assert not connection.query_one("#connection-key-input", Input).display
+        assert key_input.display
+        url_label = connection.query_one("#connection-url-label", Static).render()
+        assert isinstance(url_label, Content)
+        assert url_label.get_style_at_offset(4) == Style.parse(ACCENT_BOLD)
+
+        await pilot.press("down")
+        assert key_input.has_focus
+        assert str(connection.query_one("#connection-url-label", Static).render()).startswith("❯")
+        assert str(connection.query_one("#connection-key-label", Static).render()).startswith("    ")
+        await pilot.press("up")
+        assert url_input.has_focus
 
         await pilot.press("enter")
         await asyncio.wait_for(selection_made.wait(), timeout=2)
@@ -996,7 +1007,7 @@ async def test_vllm_provider_connects_and_auto_selects_single_model(
 async def test_vllm_connection_requests_key_after_authentication_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+    monkeypatch.setenv("VLLM_BASE_URL", "http://127.0.0.1:8001/v1")
     monkeypatch.delenv("VLLM_API_KEY", raising=False)
     monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
     store = APIKeyStore(tmp_path / "credentials.json")
@@ -1021,7 +1032,7 @@ async def test_vllm_connection_requests_key_after_authentication_failure(
 
     def track_focus() -> None:
         original_sync_focus()
-        if connection._show_api_key:
+        if connection._key_selected and connection._error.startswith("Authentication required"):
             authentication_requested.set()
 
     monkeypatch.setattr(connection, "_sync_focus", track_focus)
@@ -1034,22 +1045,44 @@ async def test_vllm_connection_requests_key_after_authentication_failure(
 
             self.push_screen(connection, record)
 
-    async with ConnectionApp().run_test() as pilot:
+    async with ConnectionApp().run_test(size=(80, 50)) as pilot:
         await pilot.press("enter")
         await asyncio.wait_for(authentication_requested.wait(), timeout=2)
+        layout_refreshed = asyncio.Event()
+        connection.call_after_refresh(layout_refreshed.set)
+        await asyncio.wait_for(layout_refreshed.wait(), timeout=2)
 
+        url_input = connection.query_one("#connection-url-input", Input)
         key_input = connection.query_one("#connection-key-input", Input)
+        key_label = connection.query_one("#connection-key-label", Static)
+        custom_endpoint = connection.query_one("#custom-endpoint")
+        assert url_input.value == "http://127.0.0.1:8001/v1"
         assert key_input.display
         assert key_input.has_focus
+        assert key_input.parent is not None and key_input.parent.parent is custom_endpoint
+        assert key_label.region.y == url_input.region.y + url_input.region.height + 1
         assert "Authentication required" in str(connection.query_one("#connection-status", Static).render())
         assert store.get("VLLM_API_KEY") is None
+
+        options = connection.query_one("#connection-options", Static).render()
+        assert isinstance(options, Content)
+        assert options.get_style_at_offset(options.plain.index("Use environment")) == Style.parse(ACCENT_BOLD)
+        rendered_url_label = connection.query_one("#connection-url-label", Static).render()
+        assert isinstance(rendered_url_label, Content)
+        assert str(rendered_url_label).startswith("❯")
+        assert rendered_url_label.get_style_at_offset(0) == Style.parse(ACCENT_BOLD)
+        assert rendered_url_label.get_style_at_offset(4) == Style.parse("bold")
+        rendered_key_label = key_label.render()
+        assert isinstance(rendered_key_label, Content)
+        assert str(rendered_key_label).startswith("    ")
+        assert rendered_key_label.get_style_at_offset(4) == Style.parse("bold")
 
         await pilot.press(*"secret-key", "enter")
         await asyncio.wait_for(selection_made.wait(), timeout=2)
 
     assert calls == ["", "secret-key"]
     assert selected == [
-        VLLMConnectionSelection("http://127.0.0.1:8000/v1", "secret-key", "saved", ("vllm:private",))
+        VLLMConnectionSelection("http://127.0.0.1:8001/v1", "secret-key", "saved", ("vllm:private",))
     ]
     assert store.get("VLLM_API_KEY") == "secret-key"
     assert os.environ["VLLM_API_KEY"] == "secret-key"
