@@ -7,6 +7,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from tabulaflow._paths import DEFAULT_HOME_DIR
@@ -22,6 +23,27 @@ APP_MAX_FANOUT_CONCURRENCY = 1000
 
 class InvalidAppConfigError(ValueError):
     """An app configuration file could not be parsed or validated."""
+
+
+def normalize_endpoint_url(value: str) -> str:
+    """Normalize and validate an HTTP endpoint URL."""
+    value = value.strip()
+    if not value:
+        raise ValueError("Server URL cannot be empty")
+    if "://" not in value:
+        value = f"http://{value}"
+    if any(character.isspace() for character in value):
+        raise ValueError("Server URL cannot contain whitespace")
+    try:
+        url = urlsplit(value)
+        _ = url.port
+    except ValueError as error:
+        raise ValueError("Enter a valid server URL") from error
+    if url.scheme not in {"http", "https"} or not url.hostname or url.query or url.fragment:
+        raise ValueError("Enter a valid HTTP server URL")
+    if url.username or url.password:
+        raise ValueError("Server URL cannot contain credentials")
+    return value.rstrip("/")
 
 
 def model_supports_apply_patch(model: str) -> bool:
@@ -92,8 +114,23 @@ class CredentialPreference(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    source: Literal["saved"]
+    source: Literal["environment", "saved"]
     variable: str = Field(min_length=1)
+
+
+class EndpointConnection(BaseModel):
+    """A saved endpoint and the source selected for runtime use."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_url: str
+    source: Literal["environment", "saved"] = "saved"
+
+    @field_validator("base_url")
+    @classmethod
+    def valid_base_url(cls, base_url: str) -> str:
+        """Require a normalized HTTP endpoint URL."""
+        return normalize_endpoint_url(base_url)
 
 
 class AppConfig(BaseModel):
@@ -107,17 +144,19 @@ class AppConfig(BaseModel):
 
     llm: LLMConfig | Literal["off"] | None = None
     credential_preferences: dict[str, CredentialPreference] = Field(default_factory=dict)
+    endpoint_connections: dict[str, EndpointConnection] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class ResolvedLLMConfig:
-    """Persisted LLM and credential intent paired with its effective runtime configuration."""
+    """Persisted LLM and connection intent paired with its effective runtime configuration."""
 
     selection: LLMConfig | Literal["off"] | None
     config: LLMConfig | None
     automatic_env: str | None = None
     credential_preferences: dict[str, CredentialPreference] = field(default_factory=dict)
-    environment_credentials: dict[str, str] = field(default_factory=dict)
+    endpoint_connections: dict[str, EndpointConnection] = field(default_factory=dict)
+    environment_variables: dict[str, str] = field(default_factory=dict)
 
     @property
     def requests_per_minute(self) -> LLMRequestsPerMinute:
@@ -138,15 +177,34 @@ class ResolvedLLMConfig:
 def resolve_llm_config(config: AppConfig) -> ResolvedLLMConfig:
     """Resolve persisted intent into the effective runtime configuration."""
     preferences = config.credential_preferences
+    endpoints = config.endpoint_connections
     if config.llm == LLM_OFF:
-        return ResolvedLLMConfig(selection=LLM_OFF, config=None, credential_preferences=preferences)
+        return ResolvedLLMConfig(
+            selection=LLM_OFF, config=None, credential_preferences=preferences, endpoint_connections=endpoints
+        )
     if isinstance(config.llm, LLMConfig):
-        return ResolvedLLMConfig(selection=config.llm, config=config.llm, credential_preferences=preferences)
+        return ResolvedLLMConfig(
+            selection=config.llm, config=config.llm, credential_preferences=preferences, endpoint_connections=endpoints
+        )
     if os.getenv("OPENAI_API_KEY", "").strip():
-        return ResolvedLLMConfig(None, OPENAI_DEFAULT_LLM_CONFIG, "OPENAI_API_KEY", credential_preferences=preferences)
+        return ResolvedLLMConfig(
+            None,
+            OPENAI_DEFAULT_LLM_CONFIG,
+            "OPENAI_API_KEY",
+            credential_preferences=preferences,
+            endpoint_connections=endpoints,
+        )
     if os.getenv("ANTHROPIC_API_KEY", "").strip():
-        return ResolvedLLMConfig(None, ANTHROPIC_DEFAULT_LLM_CONFIG, "ANTHROPIC_API_KEY", credential_preferences=preferences)
-    return ResolvedLLMConfig(selection=None, config=None, credential_preferences=preferences)
+        return ResolvedLLMConfig(
+            None,
+            ANTHROPIC_DEFAULT_LLM_CONFIG,
+            "ANTHROPIC_API_KEY",
+            credential_preferences=preferences,
+            endpoint_connections=endpoints,
+        )
+    return ResolvedLLMConfig(
+        selection=None, config=None, credential_preferences=preferences, endpoint_connections=endpoints
+    )
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:

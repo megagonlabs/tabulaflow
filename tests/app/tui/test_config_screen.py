@@ -11,12 +11,17 @@ from textual.screen import Screen
 from textual.style import Style
 from textual.widgets import Input, Static
 
-from tabulaflow.app.config import CredentialPreference, LLMConfig, LLMRoleConfig, ResolvedLLMConfig
+from tabulaflow.app.config import EndpointConnection, CredentialPreference, LLMConfig, LLMRoleConfig, ResolvedLLMConfig
 from tabulaflow.app.credentials import APIKeyStore
 from tabulaflow.app.model_catalog import VLLMDiscoveryResult, VLLMModelDiscovery
 from tabulaflow.app.providers import provider_spec
 from tabulaflow.app.tui.screens.config import ConfigScreen, ModelPickerScreen
-from tabulaflow.app.tui.screens.providers import APIKeyScreen, ProviderPickerScreen
+from tabulaflow.app.tui.screens.providers import (
+    APIKeyScreen,
+    ProviderPickerScreen,
+    VLLMConnectionScreen,
+    VLLMConnectionSelection,
+)
 from tabulaflow.app.tui.theme import ACCENT_BOLD
 
 _TEST_MODEL_CATALOG = (
@@ -50,6 +55,11 @@ class _VLLMDiscovery(VLLMModelDiscovery):
     ) -> None:
         self.base_url = base_url
         self.endpoint_label = endpoint_label
+        self._result = result
+
+    def configure(self, base_url: str, api_key: str, result: VLLMDiscoveryResult | None = None) -> None:
+        self.base_url = base_url
+        self.endpoint_label = base_url
         self._result = result
 
     def result(self) -> VLLMDiscoveryResult | None:
@@ -388,7 +398,7 @@ async def test_filter_accepts_a_custom_model_identifier() -> None:
         assert "test:model" in _text(screen, "#field-main-model")
 
 
-async def test_model_picker_explains_how_to_enable_vllm_discovery() -> None:
+async def test_model_picker_shows_when_vllm_is_not_connected() -> None:
     discovery = _VLLMDiscovery()
     picker = ModelPickerScreen("main", "vllm:Qwen/Qwen3-8B", vllm_discovery=discovery)
 
@@ -399,7 +409,7 @@ async def test_model_picker_explains_how_to_enable_vllm_discovery() -> None:
     async with PickerApp().run_test() as pilot:
         await pilot.pause()
         options = _option_text(picker)
-        assert "\n\n\n  vLLM · set VLLM_BASE_URL to discover models" in options
+        assert "\n\n\n  vLLM · no endpoint connected" in options
 
 
 async def test_model_picker_lists_discovered_vllm_models() -> None:
@@ -647,7 +657,7 @@ async def test_saved_key_loaded_into_environment_is_not_a_second_source(
     auth = APIKeyScreen(
         provider_spec("openai"),
         credential_store=store,
-        environment_credentials={"OPENAI_API_KEY": ""},
+        environment_variables={"OPENAI_API_KEY": ""},
     )
 
     class PickerApp(App[None]):
@@ -863,7 +873,7 @@ async def test_environment_selection_restores_automatic_precedence(
             _CONFIG,
             _CONFIG,
             credential_preferences={"openai": preference},
-            environment_credentials={"OPENAI_API_KEY": "sk-environment-secret"},
+            environment_variables={"OPENAI_API_KEY": "sk-environment-secret"},
         ),
         credential_store=store,
     )
@@ -884,7 +894,7 @@ async def test_environment_selection_restores_automatic_precedence(
 
     result = app.results[0]
     assert result is not None and result.credential_preferences == {}
-    assert result.environment_credentials == {"OPENAI_API_KEY": "sk-environment-secret"}
+    assert result.environment_variables == {"OPENAI_API_KEY": "sk-environment-secret"}
 
 
 async def test_cancelling_provider_or_key_selection_preserves_configuration(tmp_path: Path) -> None:
@@ -923,18 +933,37 @@ async def test_cancelling_provider_or_key_selection_preserves_configuration(tmp_
     assert app.results == [None]
 
 
-async def test_local_provider_switch_skips_api_key_screen(tmp_path: Path) -> None:
-    discovery = _VLLMDiscovery(result=VLLMDiscoveryResult(models=("vllm:Qwen/Qwen3-8B",)))
+async def test_vllm_provider_connects_and_auto_selects_single_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLLM_API_KEY", raising=False)
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+    discovery = _VLLMDiscovery()
+    store = APIKeyStore(tmp_path / "credentials.json")
     picker = ModelPickerScreen(
         "main",
         _CONFIG.main.model,
         vllm_discovery=discovery,
-        credential_store=APIKeyStore(tmp_path / "credentials.json"),
+        credential_store=store,
     )
+    selected: list[str | None] = []
+    selection_made = asyncio.Event()
+
+    async def discover(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+        assert base_url == "http://127.0.0.1:8000/v1"
+        assert api_key == ""
+        return VLLMDiscoveryResult(models=("vllm:Qwen/Qwen3-8B",))
+
+    monkeypatch.setattr("tabulaflow.app.tui.screens.providers.discover_vllm_models", discover)
 
     class PickerApp(App[None]):
         def on_mount(self) -> None:
-            self.push_screen(picker)
+            def record(value: str | None) -> None:
+                selected.append(value)
+                selection_made.set()
+
+            self.push_screen(picker, record)
 
     app = PickerApp()
     async with app.run_test() as pilot:
@@ -945,7 +974,172 @@ async def test_local_provider_switch_skips_api_key_screen(tmp_path: Path) -> Non
         await pilot.press(*"vllm", "enter")
         await pilot.pause()
 
-        assert _active_screen(app) == picker
-        assert picker._provider == "vllm"
-        assert "Qwen/Qwen3-8B" in _option_text(picker)
-        assert "(current: vLLM)" in str(picker.query_one("#change-provider", Static).render())
+        connection = app.screen
+        assert isinstance(connection, VLLMConnectionScreen)
+        url_input = connection.query_one("#connection-url-input", Input)
+        assert url_input.value == "http://127.0.0.1:8000/v1"
+        assert url_input.has_focus
+        assert not connection.query_one("#connection-key-input", Input).display
+
+        await pilot.press("enter")
+        await asyncio.wait_for(selection_made.wait(), timeout=2)
+
+    assert selected == ["vllm:Qwen/Qwen3-8B"]
+    assert os.environ["VLLM_BASE_URL"] == "http://127.0.0.1:8000/v1"
+    assert "VLLM_API_KEY" not in os.environ
+    assert picker.endpoint_connections == {
+        "vllm": EndpointConnection(base_url="http://127.0.0.1:8000/v1", source="saved")
+    }
+    assert picker.credential_preferences == {}
+
+
+async def test_vllm_connection_requests_key_after_authentication_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLLM_API_KEY", raising=False)
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+    store = APIKeyStore(tmp_path / "credentials.json")
+    discovery = _VLLMDiscovery()
+    calls: list[str] = []
+
+    async def discover(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+        calls.append(api_key)
+        if not api_key:
+            return VLLMDiscoveryResult(error="authentication required", authentication_required=True)
+        return VLLMDiscoveryResult(models=("vllm:private",))
+
+    connection = VLLMConnectionScreen(
+        discovery=discovery,
+        discovery_loader=discover,
+        credential_store=store,
+    )
+    selected: list[VLLMConnectionSelection | None] = []
+    selection_made = asyncio.Event()
+    authentication_requested = asyncio.Event()
+    original_sync_focus = connection._sync_focus
+
+    def track_focus() -> None:
+        original_sync_focus()
+        if connection._show_api_key:
+            authentication_requested.set()
+
+    monkeypatch.setattr(connection, "_sync_focus", track_focus)
+
+    class ConnectionApp(App[None]):
+        def on_mount(self) -> None:
+            def record(value: VLLMConnectionSelection | None) -> None:
+                selected.append(value)
+                selection_made.set()
+
+            self.push_screen(connection, record)
+
+    async with ConnectionApp().run_test() as pilot:
+        await pilot.press("enter")
+        await asyncio.wait_for(authentication_requested.wait(), timeout=2)
+
+        key_input = connection.query_one("#connection-key-input", Input)
+        assert key_input.display
+        assert key_input.has_focus
+        assert "Authentication required" in str(connection.query_one("#connection-status", Static).render())
+        assert store.get("VLLM_API_KEY") is None
+
+        await pilot.press(*"secret-key", "enter")
+        await asyncio.wait_for(selection_made.wait(), timeout=2)
+
+    assert calls == ["", "secret-key"]
+    assert selected == [
+        VLLMConnectionSelection("http://127.0.0.1:8000/v1", "secret-key", "saved", ("vllm:private",))
+    ]
+    assert store.get("VLLM_API_KEY") == "secret-key"
+    assert os.environ["VLLM_API_KEY"] == "secret-key"
+
+
+async def test_vllm_connection_switches_back_to_original_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://saved:8000/v1")
+    monkeypatch.setenv("VLLM_API_KEY", "saved-key")
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("VLLM_API_KEY", "saved-key")
+    saved = EndpointConnection(base_url="http://saved:8000/v1", source="saved")
+
+    async def discover(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+        return VLLMDiscoveryResult(models=("vllm:main", "vllm:fast"))
+
+    connection = VLLMConnectionScreen(
+        connection=saved,
+        discovery=_VLLMDiscovery(),
+        discovery_loader=discover,
+        credential_store=store,
+        environment_variables={
+            "VLLM_BASE_URL": "http://environment:8000/v1",
+            "VLLM_API_KEY": "environment-key",
+        },
+    )
+    selected: list[VLLMConnectionSelection | None] = []
+    selection_made = asyncio.Event()
+
+    class ConnectionApp(App[None]):
+        def on_mount(self) -> None:
+            def record(value: VLLMConnectionSelection | None) -> None:
+                selected.append(value)
+                selection_made.set()
+
+            self.push_screen(connection, record)
+
+    async with ConnectionApp().run_test() as pilot:
+        await pilot.pause()
+        options = str(connection.query_one("#connection-options", Static).render())
+        assert "Use environment endpoint (http://environment:8000/v1)" in options
+        assert "❯ ● Use saved endpoint (http://saved:8000/v1)" in options
+
+        await pilot.press("up", "enter")
+        await asyncio.wait_for(selection_made.wait(), timeout=2)
+
+    assert selected[0] is not None
+    assert selected[0].source == "environment"
+    assert selected[0].models == ("vllm:main", "vllm:fast")
+    assert os.environ["VLLM_BASE_URL"] == "http://environment:8000/v1"
+    assert os.environ["VLLM_API_KEY"] == "environment-key"
+    assert store.get("VLLM_API_KEY") == "saved-key"
+
+
+async def test_failed_vllm_discovery_does_not_change_connection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://original:8000/v1")
+    monkeypatch.setenv("VLLM_API_KEY", "original-key")
+
+    async def discover(base_url: str, api_key: str) -> VLLMDiscoveryResult:
+        return VLLMDiscoveryResult(error="could not connect to endpoint")
+
+    connection = VLLMConnectionScreen(
+        discovery=_VLLMDiscovery(),
+        discovery_loader=discover,
+        credential_store=APIKeyStore(tmp_path / "credentials.json"),
+    )
+    discovery_failed = asyncio.Event()
+    original_sync_focus = connection._sync_focus
+
+    def track_focus() -> None:
+        original_sync_focus()
+        if connection._error == "could not connect to endpoint":
+            discovery_failed.set()
+
+    monkeypatch.setattr(connection, "_sync_focus", track_focus)
+
+    class ConnectionApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(connection)
+
+    async with ConnectionApp().run_test() as pilot:
+        await pilot.press("enter")
+        await asyncio.wait_for(discovery_failed.wait(), timeout=2)
+
+        assert pilot.app.screen is connection
+        assert "could not connect" in str(connection.query_one("#connection-status", Static).render())
+
+    assert os.environ["VLLM_BASE_URL"] == "http://original:8000/v1"
+    assert os.environ["VLLM_API_KEY"] == "original-key"

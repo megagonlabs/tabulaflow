@@ -986,12 +986,12 @@ async def test_unconfigured_single_vllm_model_is_selected_automatically(
         (
             VLLMDiscoveryResult(error="authentication failed — check VLLM_API_KEY"),
             "✓ LLM off · vLLM discovery failed at localhost:8000/v1: authentication failed — check "
-            "VLLM_API_KEY. Fix it and restart TabulaFlow.",
+            "VLLM_API_KEY. Retry in /config.",
         ),
         (
             VLLMDiscoveryResult(error="no valid vLLM models API found — check VLLM_BASE_URL"),
             "✓ LLM off · vLLM discovery failed at localhost:8000/v1: no valid vLLM models API found — "
-            "check VLLM_BASE_URL. Fix it and restart TabulaFlow.",
+            "check VLLM_BASE_URL. Retry in /config.",
         ),
     ],
 )
@@ -1411,7 +1411,7 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         await pilot.pause()
 
         assert session.selected_llm_config == config
-        assert updates == [{"llm": config, "credential_preferences": {}}]
+        assert updates == [{"llm": config, "credential_preferences": {}, "endpoint_connections": {}}]
         assert activations == [selection]
 
 

@@ -12,6 +12,7 @@ from tabulaflow.app.credentials import (
     APIKeyStore,
     InvalidCredentialStoreError,
     activate_api_key,
+    activate_vllm_connection,
     load_saved_api_keys,
 )
 
@@ -95,3 +96,39 @@ def test_saved_store_contains_only_environment_names_and_keys(tmp_path: Path) ->
     path = tmp_path / "credentials.json"
     APIKeyStore(path).save("OPENAI_API_KEY", "sk-test")
     assert json.loads(path.read_text()) == {"OPENAI_API_KEY": "sk-test"}
+
+
+def test_explicit_environment_key_is_not_replaced_by_saved_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("VLLM_API_KEY", "saved-key")
+    monkeypatch.setenv("VLLM_API_KEY", "environment-key")
+    preferences = {"vllm": CredentialPreference(source="environment", variable="VLLM_API_KEY")}
+
+    environment = load_saved_api_keys(store, preferences=preferences)
+
+    assert os.environ["VLLM_API_KEY"] == "environment-key"
+    assert environment == {"VLLM_API_KEY": "environment-key"}
+
+
+def test_activate_vllm_connection_replaces_url_and_optional_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = APIKeyStore(tmp_path / "credentials.json")
+    store.save("VLLM_API_KEY", "old-key")
+    monkeypatch.setenv("VLLM_BASE_URL", "http://old:8000/v1")
+    monkeypatch.setenv("VLLM_API_KEY", "old-key")
+    monkeypatch.setattr("tabulaflow.app.credentials.invalidate_model_cache", lambda: None)
+
+    activate_vllm_connection("http://new:8000/v1", "new-key", persist_key=True, store=store)
+
+    assert os.environ["VLLM_BASE_URL"] == "http://new:8000/v1"
+    assert os.environ["VLLM_API_KEY"] == "new-key"
+    assert store.get("VLLM_API_KEY") == "new-key"
+
+    activate_vllm_connection("http://local:8000/v1", "", persist_key=True, store=store)
+
+    assert os.environ["VLLM_BASE_URL"] == "http://local:8000/v1"
+    assert "VLLM_API_KEY" not in os.environ
+    assert store.get("VLLM_API_KEY") is None

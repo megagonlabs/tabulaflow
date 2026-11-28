@@ -32,6 +32,11 @@ Choose one provider and configure it before launching TabulaFlow:
     tabulaflow
     ```
 
+    You can also launch without these variables and connect in `/config`.
+    Choose a model, then **Use another provider → vLLM**. Connect to the
+    default local URL or enter your server URL. TabulaFlow discovers the
+    available models and asks for an API key only if the endpoint requires one.
+
 === "Fireworks AI"
 
     ```bash
@@ -41,7 +46,7 @@ Choose one provider and configure it before launching TabulaFlow:
 
 TabulaFlow automatically selects models for OpenAI, Anthropic, and single-model
 vLLM endpoints. Use `/config` to change them or select among multiple vLLM
-models. You can also paste an API key in `/config`.
+models. You can also paste API keys and connect to vLLM servers in `/config`.
 
 !!! note "vLLM tool calling"
     TabulaFlow relies on automatic tool calling. Follow the current
@@ -71,13 +76,15 @@ custom identifier. TabulaFlow saves model selections in
 Environment credentials are detected automatically and used by default. Keys
 pasted in `/config` are saved with owner-only permissions in
 `~/.tabulaflow/credentials.json`. Selecting a saved key or pasting a new one
-overrides the environment default across restarts.
+overrides the environment default across restarts. Saved vLLM URLs and connection
+source preferences are stored in `app_config.json`; their keys remain in
+`credentials.json`.
 
 ## Supported providers
 
-TabulaFlow supports the provider routes below through Pydantic AI. Cloud and
-local providers use the authentication and connection settings listed below
-rather than saved keys from `/config`.
+TabulaFlow supports the provider routes below through Pydantic AI. The tables
+list the environment settings for shell-based configuration; API-key providers
+and vLLM can also be configured interactively in `/config`.
 
 ### API key providers
 
